@@ -519,6 +519,15 @@ impl Collection {
         let (exam_attempts, exam_correct) = self.storage.sr_exam_attempt_stats()?;
         let graded_attempts = self.storage.sr_attempt_count()?;
         let (topics_total, topics_covered) = self.storage.sr_topic_coverage()?;
+        // Weighted coverage lets readiness abstain when a high-weight section is
+        // skipped even though raw topic count looks fine.
+        let coverage_rows: Vec<TopicCoverageRow> = self
+            .storage
+            .sr_topic_coverage_detail()?
+            .into_iter()
+            .map(|(_, _, weight, cards)| TopicCoverageRow { weight, cards })
+            .collect();
+        let weighted_coverage = summarize_coverage(&coverage_rows).weighted_coverage;
         Ok(compute_readiness(&ReadinessInputs {
             review_cards,
             mature_cards,
@@ -527,6 +536,7 @@ impl Collection {
             graded_attempts,
             topics_total,
             topics_covered,
+            weighted_coverage,
         }))
     }
 }

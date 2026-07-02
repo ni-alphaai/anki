@@ -37,6 +37,9 @@ pub struct ReadinessInputs {
     pub graded_attempts: u32,
     pub topics_total: u32,
     pub topics_covered: u32,
+    /// Weight-weighted coverage (0..1). Lets the give-up rule catch a deck that
+    /// covers many low-weight topics but skips a whole high-weight section.
+    pub weighted_coverage: f32,
 }
 
 /// The computed three-score report.
@@ -113,11 +116,16 @@ pub fn compute_readiness(inputs: &ReadinessInputs) -> ReadinessReport {
             inputs.review_cards, MIN_REVIEW_CARDS
         ));
     }
-    if coverage < MIN_COVERAGE {
+    // Gate on BOTH raw and weighted coverage: a deck can cover many low-weight
+    // topics yet skip a whole high-weight section (raw looks fine, weighted does
+    // not). Readiness must abstain in that case, so block on the weaker of the two.
+    let effective_coverage = coverage.min(inputs.weighted_coverage);
+    if effective_coverage < MIN_COVERAGE {
         missing.push(format!(
-            "topic coverage {:.0}%/{:.0}%",
+            "topic coverage {:.0}%/{:.0}% (weighted {:.0}%)",
             coverage * 100.0,
-            MIN_COVERAGE * 100.0
+            MIN_COVERAGE * 100.0,
+            inputs.weighted_coverage * 100.0
         ));
     }
 
@@ -135,7 +143,7 @@ pub fn compute_readiness(inputs: &ReadinessInputs) -> ReadinessReport {
         "memory"
     } else if !performance_sufficient {
         "performance"
-    } else if coverage < MIN_COVERAGE {
+    } else if effective_coverage < MIN_COVERAGE {
         "coverage"
     } else if inputs.graded_attempts < MIN_GRADED_ATTEMPTS {
         "attempts"
@@ -180,6 +188,7 @@ mod test {
             graded_attempts: 60,
             topics_total: 10,
             topics_covered: 8,
+            weighted_coverage: 0.8,
         };
         let report = compute_readiness(&inputs);
         assert!(report.sufficient, "reason: {}", report.reason);
@@ -200,6 +209,7 @@ mod test {
             graded_attempts: 60,
             topics_total: 10,
             topics_covered: 9,
+            weighted_coverage: 0.9,
         };
         let report = compute_readiness(&inputs);
         // memory 0.9, performance 0.5 -> gap 0.4 (recall outruns application)
@@ -216,9 +226,31 @@ mod test {
             graded_attempts: 60,
             topics_total: 10,
             topics_covered: 2, // 20% < 50%
+            weighted_coverage: 0.2,
         };
         let report = compute_readiness(&inputs);
         assert!(!report.sufficient);
         assert!(report.reason.contains("topic coverage"));
+    }
+
+    #[test]
+    fn high_raw_but_low_weighted_coverage_blocks() {
+        // A deck that covers many topics by count (54.8%) but skips a whole
+        // high-weight section (weighted 43.9%) must NOT show ready. This is the
+        // spec's "10,000-card deck that skips a high-weight section" case.
+        let inputs = ReadinessInputs {
+            review_cards: 100,
+            mature_cards: 70,
+            exam_attempts: 50,
+            exam_correct: 40,
+            graded_attempts: 60,
+            topics_total: 31,
+            topics_covered: 17, // 54.8% by count -> passes the raw floor
+            weighted_coverage: 0.439, // but a heavy section is missing
+        };
+        let report = compute_readiness(&inputs);
+        assert!(!report.sufficient);
+        assert_eq!(report.blocking_dimension, "coverage");
+        assert!(report.reason.contains("weighted"));
     }
 }

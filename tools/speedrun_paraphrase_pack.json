@@ -1,0 +1,607 @@
+{
+  "name": "Speedrun paraphrase test (30 cards x 2)",
+  "license": "AGPL-3.0-or-later",
+  "note": "Hand-authored MCAT-style content (no AI, no copyrighted source). Each card is a memory fact tagged with an MCAT foundational-concept topic (fc1..fc10). Each card carries two exam-style questions that test the SAME underlying idea in DIFFERENT words - they are deliberately not verbatim restatements of the card, so they survive the engine's leakage check (rslib/src/speedrun/leakage.rs). 'tag' (pp01..pp30) uniquely identifies the source card; 'topic' links it to the outline.",
+  "cards": [
+    {
+      "topic": "fc1",
+      "tag": "pp01",
+      "front": "What kind of covalent bond joins amino acids in a protein's primary structure, and what small molecule is released when it forms?",
+      "back": "An amide bond (the peptide bond); a molecule of water is released in a condensation (dehydration) reaction.",
+      "questions": [
+        {
+          "stem": "Which two functional groups react with each other to link a pair of amino acids into a dipeptide?",
+          "options": ["A carboxyl group and an amino group", "Two hydroxyl groups", "A thiol and a phosphate", "Two amino groups"],
+          "correct_index": 0,
+          "explanation": "The carboxyl of one residue and the amino of the next condense to form the amide bond, expelling water."
+        },
+        {
+          "stem": "A protease cleaves a polypeptide in the small intestine. At the reaction site, the enzyme must:",
+          "options": ["Add a water molecule to break the linkage", "Remove a water molecule", "Oxidize the alpha carbon", "Add a phosphate group"],
+          "correct_index": 0,
+          "explanation": "Breaking a peptide bond is hydrolysis - the reverse of condensation - so water is consumed to split the amide."
+        }
+      ]
+    },
+    {
+      "topic": "fc1",
+      "tag": "pp02",
+      "front": "How does a catalyst change a reaction's kinetics and thermodynamics?",
+      "back": "It lowers the activation energy and speeds the forward and reverse rates equally; it does not change the equilibrium constant or the overall free-energy change.",
+      "questions": [
+        {
+          "stem": "An enzyme is introduced to a reaction that has already reached equilibrium. What happens to the position of that equilibrium?",
+          "options": ["It shifts toward products", "It shifts toward reactants", "It is unchanged", "It depends on the enzyme concentration"],
+          "correct_index": 2,
+          "explanation": "Catalysts speed both directions equally and cannot move the equilibrium position or alter Keq."
+        },
+        {
+          "stem": "A catalyst accelerates a reaction primarily by:",
+          "options": ["Making the products more stable", "Providing a pathway with a lower-energy transition state", "Increasing the overall free-energy change", "Raising the system temperature"],
+          "correct_index": 1,
+          "explanation": "Catalysts offer an alternate route with a smaller activation barrier; delta-G and Keq are untouched."
+        }
+      ]
+    },
+    {
+      "topic": "fc1",
+      "tag": "pp03",
+      "front": "What is the main driving force that folds a globular protein in aqueous solution?",
+      "back": "The hydrophobic effect: nonpolar side chains cluster in the protein interior away from water, which is entropically favorable for the surrounding water.",
+      "questions": [
+        {
+          "stem": "In a water-soluble protein, which residue is most likely to be found buried in the core rather than on the surface?",
+          "options": ["Lysine", "Aspartate", "Valine", "Arginine"],
+          "correct_index": 2,
+          "explanation": "Valine's nonpolar side chain is favored in the interior; charged residues like lysine, aspartate, and arginine prefer the aqueous surface."
+        },
+        {
+          "stem": "Adding a high concentration of urea unfolds a protein. Which level of structure does this most directly disrupt first?",
+          "options": ["The sequence of residues", "The noncovalent contacts holding the folded shape", "The peptide backbone bonds", "The identity of the amino acids"],
+          "correct_index": 1,
+          "explanation": "Denaturants disrupt the weak noncovalent interactions (H-bonds, hydrophobic contacts) of secondary/tertiary structure, not the covalent primary sequence."
+        }
+      ]
+    },
+    {
+      "topic": "fc2",
+      "tag": "pp04",
+      "front": "Where is most ATP generated in a eukaryotic cell, and through what process?",
+      "back": "In the mitochondrion, by oxidative phosphorylation - the electron transport chain builds a proton gradient that ATP synthase uses (chemiosmosis).",
+      "questions": [
+        {
+          "stem": "Across which membrane is the proton-motive force that powers ATP synthase established?",
+          "options": ["The outer mitochondrial membrane", "The inner mitochondrial membrane", "The nuclear envelope", "The rough endoplasmic reticulum"],
+          "correct_index": 1,
+          "explanation": "The electron transport chain pumps protons across the inner mitochondrial membrane, creating the gradient ATP synthase taps."
+        },
+        {
+          "stem": "A toxin makes the inner mitochondrial membrane leaky to protons. What is the most direct consequence?",
+          "options": ["Glycolysis halts immediately", "ATP production by chemiosmosis collapses", "DNA replication stops", "The cell cannot import glucose"],
+          "correct_index": 1,
+          "explanation": "Dissipating the proton gradient uncouples the chain from ATP synthase, so oxidative-phosphorylation ATP output falls."
+        }
+      ]
+    },
+    {
+      "topic": "fc2",
+      "tag": "pp05",
+      "front": "How does cholesterol affect the fluidity of an animal cell membrane?",
+      "back": "It acts as a fluidity buffer: it decreases fluidity at high temperature and prevents tight packing (maintains fluidity) at low temperature.",
+      "questions": [
+        {
+          "stem": "At low temperature, what does cholesterol do to a phospholipid bilayer?",
+          "options": ["Lets the lipids pack tightly and solidify", "Keeps the lipids from packing so the membrane stays fluid", "Has no measurable effect", "Converts the bilayer into a monolayer"],
+          "correct_index": 1,
+          "explanation": "By wedging between phospholipids, cholesterol blocks tight packing in the cold, preserving fluidity."
+        },
+        {
+          "stem": "Which change would most increase the fluidity of a membrane?",
+          "options": ["More unsaturated fatty-acid tails with kinks", "Longer, fully saturated tails", "Lowering the temperature", "Adding more cholesterol at high temperature"],
+          "correct_index": 0,
+          "explanation": "Double-bond kinks prevent tight packing, raising fluidity; saturation, cold, and cholesterol tend to reduce it."
+        }
+      ]
+    },
+    {
+      "topic": "fc2",
+      "tag": "pp06",
+      "front": "What defining membrane-bound structure do eukaryotic cells possess that prokaryotic cells lack?",
+      "back": "A membrane-enclosed nucleus (plus other membrane-bound organelles such as mitochondria and ER).",
+      "questions": [
+        {
+          "stem": "Which feature is present in eukaryotes but absent in bacteria?",
+          "options": ["A plasma membrane", "Ribosomes", "Internal membrane-enclosed organelles", "A genome made of DNA"],
+          "correct_index": 2,
+          "explanation": "Only eukaryotes compartmentalize functions in membrane-bound organelles; the other features are shared."
+        },
+        {
+          "stem": "Some antibiotics kill bacteria without harming human cytoplasmic translation because bacterial ribosomes:",
+          "options": ["Are structurally different from eukaryotic cytoplasmic ribosomes", "Do not exist", "Are identical to human ribosomes", "Are located in the nucleus"],
+          "correct_index": 0,
+          "explanation": "Prokaryotic (70S) ribosomes differ enough from eukaryotic (80S) ribosomes to be targeted selectively."
+        }
+      ]
+    },
+    {
+      "topic": "fc3",
+      "tag": "pp07",
+      "front": "What is the dominant control mechanism that maintains homeostasis for variables like blood glucose and body temperature?",
+      "back": "Negative feedback - the corrective response opposes and reduces the initiating change, returning the variable toward its set point.",
+      "questions": [
+        {
+          "stem": "After a meal, rising blood glucose triggers insulin release, which lowers glucose again. This loop is an example of:",
+          "options": ["Positive feedback", "Negative feedback", "A feed-forward loop only", "An open-loop system"],
+          "correct_index": 1,
+          "explanation": "The response (insulin lowering glucose) opposes the stimulus (high glucose), the hallmark of negative feedback."
+        },
+        {
+          "stem": "Which of the following is instead a POSITIVE-feedback process?",
+          "options": ["Sweating when overheated", "The baroreceptor reflex", "Oxytocin-driven uterine contractions during labor", "Insulin regulation of glucose"],
+          "correct_index": 2,
+          "explanation": "Labor contractions amplify themselves via oxytocin (positive feedback); the others damp a deviation (negative feedback)."
+        }
+      ]
+    },
+    {
+      "topic": "fc3",
+      "tag": "pp08",
+      "front": "Where does blood filtration begin in the nephron, and what is normally held back?",
+      "back": "At the glomerulus, filtering into Bowman's capsule; water and small solutes pass while blood cells and large plasma proteins are retained.",
+      "questions": [
+        {
+          "stem": "Finding substantial albumin in a patient's urine most likely signals damage to which structure?",
+          "options": ["The glomerular filtration barrier", "The loop of Henle", "The collecting-duct ADH receptors", "The urinary bladder wall"],
+          "correct_index": 0,
+          "explanation": "A healthy glomerulus excludes large proteins; leaking albumin points to a damaged filtration barrier."
+        },
+        {
+          "stem": "Antidiuretic hormone raises water reabsorption chiefly by acting on which segment?",
+          "options": ["The glomerulus", "The collecting duct", "The afferent arteriole", "The proximal-tubule brush border"],
+          "correct_index": 1,
+          "explanation": "ADH inserts aquaporins in the collecting duct, increasing water reabsorption and concentrating the urine."
+        }
+      ]
+    },
+    {
+      "topic": "fc3",
+      "tag": "pp09",
+      "front": "What physically drives oxygen and carbon dioxide exchange across the alveolar membrane?",
+      "back": "Passive diffusion down each gas's partial-pressure gradient - no active transport is required.",
+      "questions": [
+        {
+          "stem": "Oxygen moves from the alveolar air into pulmonary capillary blood because:",
+          "options": ["A pump actively transports it inward", "Alveolar oxygen partial pressure exceeds that in the capillary", "Carbon dioxide drags it along", "The blood is warmer than the air"],
+          "correct_index": 1,
+          "explanation": "Gases diffuse from higher to lower partial pressure; alveolar PO2 > capillary PO2 drives O2 inward."
+        },
+        {
+          "stem": "Emphysema destroys alveolar walls. This impairs gas exchange mainly by:",
+          "options": ["Reducing the surface area available for diffusion", "Reversing the partial-pressure gradient", "Making diffusion an active process", "Increasing hemoglobin's oxygen affinity"],
+          "correct_index": 0,
+          "explanation": "Loss of alveolar walls lowers surface area (and raises diffusion distance), slowing exchange."
+        }
+      ]
+    },
+    {
+      "topic": "fc4",
+      "tag": "pp10",
+      "front": "For a ball thrown straight up (ignore air resistance), what are its velocity and acceleration at the highest point of the flight?",
+      "back": "Velocity is momentarily zero; acceleration is g (about 9.8 m/s^2) directed downward the entire time.",
+      "questions": [
+        {
+          "stem": "At the very top of its trajectory, an upward-thrown ball has:",
+          "options": ["Zero velocity and zero acceleration", "Maximum velocity and zero acceleration", "Zero velocity but a downward acceleration of g", "Zero velocity and an upward acceleration"],
+          "correct_index": 2,
+          "explanation": "Speed reaches zero at the apex, yet gravity still acts, so the acceleration stays g downward."
+        },
+        {
+          "stem": "Neglecting drag, how does the acceleration of a tossed projectile behave during the whole flight?",
+          "options": ["It is constant, g downward, throughout", "It is zero at the peak", "It reverses direction at the top", "It grows as the ball rises"],
+          "correct_index": 0,
+          "explanation": "Only gravity acts, so acceleration is a constant g downward at every instant of the flight."
+        }
+      ]
+    },
+    {
+      "topic": "fc4",
+      "tag": "pp11",
+      "front": "How does an object's kinetic energy depend on its speed?",
+      "back": "Kinetic energy equals one-half m v-squared, so it scales with the square of speed - doubling the speed quadruples the kinetic energy.",
+      "questions": [
+        {
+          "stem": "If a car's speed triples while its mass is unchanged, its kinetic energy increases by a factor of:",
+          "options": ["3", "6", "9", "the square root of 3"],
+          "correct_index": 2,
+          "explanation": "KE goes as v^2, so tripling v multiplies KE by 3^2 = 9."
+        },
+        {
+          "stem": "Two carts carry equal kinetic energy, but cart A has four times the mass of cart B. How does A's speed compare to B's?",
+          "options": ["A moves at half of B's speed", "A moves at twice B's speed", "A moves at one-fourth of B's speed", "They move at the same speed"],
+          "correct_index": 0,
+          "explanation": "Equal KE with 4x mass means 4 v_A^2 = v_B^2, so v_A = v_B / 2."
+        }
+      ]
+    },
+    {
+      "topic": "fc4",
+      "tag": "pp12",
+      "front": "For an ideal fluid moving through a pipe that narrows, how do the flow speed and the pressure change in the constricted region?",
+      "back": "Speed increases (continuity: A times v is constant) and pressure decreases (Bernoulli's principle).",
+      "questions": [
+        {
+          "stem": "Blood passes through a narrowed (stenotic) segment of an artery. Within the narrow region, the flow speed and pressure:",
+          "options": ["Speed rises while pressure falls", "Speed falls while pressure rises", "Both rise", "Both stay the same"],
+          "correct_index": 0,
+          "explanation": "Continuity forces higher speed in the constriction, and Bernoulli's principle then predicts lower pressure there."
+        },
+        {
+          "stem": "The continuity equation for an incompressible fluid implies that where a tube's cross-sectional area is smaller, the fluid's speed is:",
+          "options": ["Greater", "Smaller", "Unchanged", "Zero"],
+          "correct_index": 0,
+          "explanation": "Because A times v is constant, a smaller area must be paired with a larger speed."
+        }
+      ]
+    },
+    {
+      "topic": "fc5",
+      "tag": "pp13",
+      "front": "When does a weak-acid/conjugate-base buffer resist changes in pH most effectively?",
+      "back": "When the pH equals the pKa of the weak acid, where the conjugate acid and base concentrations are equal and buffering capacity is maximal.",
+      "questions": [
+        {
+          "stem": "A buffer made from a weak acid resists pH change best when the solution pH is:",
+          "options": ["Close to the acid's pKa", "Far above the pKa", "Far below the pKa", "Exactly 7.0 regardless of the acid"],
+          "correct_index": 0,
+          "explanation": "Buffering capacity peaks at pH = pKa, where the base/acid ratio is 1."
+        },
+        {
+          "stem": "By the Henderson-Hasselbalch relationship, if the conjugate base and weak acid are present in equal concentrations, the pH equals:",
+          "options": ["The pKa", "The pKa plus 1", "7.0", "The pKb"],
+          "correct_index": 0,
+          "explanation": "pH = pKa + log([A-]/[HA]); when [A-] = [HA], the log term is zero, so pH = pKa."
+        }
+      ]
+    },
+    {
+      "topic": "fc5",
+      "tag": "pp14",
+      "front": "How does raising the temperature affect an exothermic reaction that is at equilibrium?",
+      "back": "For an exothermic reaction heat is effectively a product, so adding heat shifts the equilibrium toward reactants and lowers the equilibrium constant.",
+      "questions": [
+        {
+          "stem": "Heating an exothermic reaction that sits at equilibrium will:",
+          "options": ["Shift it toward reactants", "Shift it toward products", "Produce no shift at all", "Only speed the forward reaction"],
+          "correct_index": 0,
+          "explanation": "Treat heat as a product; adding it drives the system backward (toward reactants) and reduces Keq."
+        },
+        {
+          "stem": "If product is continuously removed from a reaction at equilibrium, the system responds by:",
+          "options": ["Shifting toward products to replace what was lost", "Shifting toward reactants", "Stopping entirely", "Increasing its equilibrium constant"],
+          "correct_index": 0,
+          "explanation": "By Le Chatelier's principle, removing product pulls the reaction forward to make more product."
+        }
+      ]
+    },
+    {
+      "topic": "fc5",
+      "tag": "pp15",
+      "front": "In a redox reaction, what happens to the species that is oxidized?",
+      "back": "It loses electrons (its oxidation state increases) and, in doing so, serves as the reducing agent.",
+      "questions": [
+        {
+          "stem": "The species that donates electrons in a redox reaction is best described as the:",
+          "options": ["Reducing agent, which is itself oxidized", "Oxidizing agent, which is itself reduced", "Catalyst", "Spectator ion"],
+          "correct_index": 0,
+          "explanation": "An electron donor reduces its partner and is therefore the reducing agent, becoming oxidized."
+        },
+        {
+          "stem": "A carbon atom's oxidation state increases when it:",
+          "options": ["Gains bonds to oxygen (loses electron density)", "Gains bonds to hydrogen", "Gains electrons", "Forms a coordinate bond to a metal"],
+          "correct_index": 0,
+          "explanation": "Bonding to more electronegative oxygen pulls electron density away, raising carbon's oxidation state (oxidation)."
+        }
+      ]
+    },
+    {
+      "topic": "fc6",
+      "tag": "pp16",
+      "front": "What is the functional difference between the retina's rods and cones?",
+      "back": "Rods are highly sensitive and handle dim-light, colorless vision; cones need brighter light and provide color vision and high acuity.",
+      "questions": [
+        {
+          "stem": "In very dim lighting, human vision depends primarily on which photoreceptors?",
+          "options": ["Cones", "Rods", "Retinal ganglion cells alone", "The cones packed in the fovea"],
+          "correct_index": 1,
+          "explanation": "Rods' high sensitivity makes them the workhorses of scotopic (low-light) vision."
+        },
+        {
+          "stem": "The ability to distinguish colors arises from:",
+          "options": ["A single photopigment shared by all receptors", "Three cone types tuned to different wavelengths", "Rods responding to wavelength", "The optic disc"],
+          "correct_index": 1,
+          "explanation": "Trichromatic color vision comes from three cone classes with distinct opsins."
+        }
+      ]
+    },
+    {
+      "topic": "fc6",
+      "tag": "pp17",
+      "front": "What ion movement produces the rising (depolarization) phase of a neuron's action potential?",
+      "back": "A rapid influx of sodium ions through voltage-gated sodium channels.",
+      "questions": [
+        {
+          "stem": "A toxin blocks voltage-gated sodium channels on an axon. What is the expected effect?",
+          "options": ["Action-potential depolarization is prevented", "Conduction speeds up", "The neuron becomes hyperexcitable", "Only repolarization is blocked"],
+          "correct_index": 0,
+          "explanation": "Without sodium entry there is no upstroke, so the action potential cannot fire."
+        },
+        {
+          "stem": "The repolarization phase that returns the membrane toward rest is driven mainly by:",
+          "options": ["Potassium leaving the cell", "Sodium entering the cell", "Calcium entering the cell", "Chloride leaving the cell"],
+          "correct_index": 0,
+          "explanation": "Voltage-gated potassium channels open and K+ efflux repolarizes the membrane."
+        }
+      ]
+    },
+    {
+      "topic": "fc6",
+      "tag": "pp18",
+      "front": "What does Weber's law say about the just-noticeable difference between two stimuli?",
+      "back": "The just-noticeable difference is a constant proportion of the original stimulus magnitude, not a fixed absolute amount.",
+      "questions": [
+        {
+          "stem": "You can just tell a 100 g weight from a 110 g weight. According to Weber's law, starting from 200 g you would need about:",
+          "options": ["205 g", "210 g", "220 g", "400 g"],
+          "correct_index": 2,
+          "explanation": "The JND is a fixed fraction (here 10%); 10% of 200 g is 20 g, so about 220 g is detectable."
+        },
+        {
+          "stem": "The lowest stimulus intensity a person can detect 50% of the time is called the:",
+          "options": ["Difference threshold", "Absolute threshold", "Weber fraction", "Point of subjective equality"],
+          "correct_index": 1,
+          "explanation": "That minimum detectable intensity is the absolute threshold; the JND is the difference threshold."
+        }
+      ]
+    },
+    {
+      "topic": "fc7",
+      "tag": "pp19",
+      "front": "What distinguishes operant conditioning from classical conditioning?",
+      "back": "Operant conditioning links a voluntary behavior to its consequences (reinforcement or punishment); classical conditioning links a neutral stimulus to an involuntary, reflexive response.",
+      "questions": [
+        {
+          "stem": "A rat presses a lever more and more often because each press delivers a food pellet. This is:",
+          "options": ["Operant conditioning", "Classical conditioning", "Habituation", "Insight learning"],
+          "correct_index": 0,
+          "explanation": "The behavior changes because of its consequence (food), which defines operant conditioning."
+        },
+        {
+          "stem": "A dog that has learned to salivate to a bell previously paired with food is showing:",
+          "options": ["Classical conditioning", "Operant conditioning", "Negative reinforcement", "Response shaping"],
+          "correct_index": 0,
+          "explanation": "A formerly neutral bell now triggers a reflexive response - the signature of classical conditioning."
+        }
+      ]
+    },
+    {
+      "topic": "fc7",
+      "tag": "pp20",
+      "front": "How does negative reinforcement differ from punishment?",
+      "back": "Negative reinforcement removes an aversive stimulus to increase a behavior; punishment (positive or negative) decreases a behavior.",
+      "questions": [
+        {
+          "stem": "Taking a pain reliever ends a headache, which makes you more likely to take it next time. This is an example of:",
+          "options": ["Negative reinforcement", "Positive punishment", "Negative punishment", "Extinction"],
+          "correct_index": 0,
+          "explanation": "Removing an aversive state (the headache) strengthens the behavior, which is negative reinforcement."
+        },
+        {
+          "stem": "Which procedure is specifically intended to make a behavior LESS likely?",
+          "options": ["Punishment", "Negative reinforcement", "Positive reinforcement", "Shaping"],
+          "correct_index": 0,
+          "explanation": "Punishment reduces behavior; the reinforcement types increase it."
+        }
+      ]
+    },
+    {
+      "topic": "fc7",
+      "tag": "pp21",
+      "front": "Which reinforcement schedule produces the highest, steadiest response rate that is most resistant to extinction?",
+      "back": "A variable-ratio schedule, in which reinforcement follows an unpredictable number of responses (e.g., slot machines).",
+      "questions": [
+        {
+          "stem": "A slot machine pays out after an unpredictable, changing number of plays. Which reinforcement schedule is this?",
+          "options": ["Fixed-ratio", "Variable-ratio", "Fixed-interval", "Variable-interval"],
+          "correct_index": 1,
+          "explanation": "Reward tied to an unpredictable NUMBER of responses is a variable-ratio schedule."
+        },
+        {
+          "stem": "Which schedule of reinforcement is generally the hardest to extinguish?",
+          "options": ["Continuous reinforcement", "Fixed-interval", "Variable-ratio", "Fixed-ratio"],
+          "correct_index": 2,
+          "explanation": "Variable-ratio schedules yield the most persistent responding and slowest extinction."
+        }
+      ]
+    },
+    {
+      "topic": "fc8",
+      "tag": "pp22",
+      "front": "What is the fundamental attribution error?",
+      "back": "The tendency to overattribute other people's behavior to their disposition or personality while underweighting situational causes.",
+      "questions": [
+        {
+          "stem": "You conclude that a driver who cut you off is simply a rude person, rather than possibly rushing to an emergency. This reflects:",
+          "options": ["The fundamental attribution error", "The self-serving bias", "The just-world hypothesis", "In-group favoritism"],
+          "correct_index": 0,
+          "explanation": "Explaining another's act by character while ignoring the situation is the fundamental attribution error."
+        },
+        {
+          "stem": "The fundamental attribution error involves systematically UNDERestimating the influence of:",
+          "options": ["Situational or external factors", "Dispositional factors", "Genetic factors", "Reinforcement history"],
+          "correct_index": 0,
+          "explanation": "Observers lean on disposition and discount the situation when judging others."
+        }
+      ]
+    },
+    {
+      "topic": "fc8",
+      "tag": "pp23",
+      "front": "What is the self-serving bias?",
+      "back": "The tendency to attribute one's own successes to internal factors and one's own failures to external factors.",
+      "questions": [
+        {
+          "stem": "A student credits an A to her own intelligence but blames an F on an 'unfair exam.' This pattern is the:",
+          "options": ["Self-serving bias", "Fundamental attribution error", "Bystander effect", "Stereotype threat"],
+          "correct_index": 0,
+          "explanation": "Taking credit for success and externalizing failure is the self-serving bias."
+        },
+        {
+          "stem": "The self-serving bias is generally thought to function to protect a person's:",
+          "options": ["Self-esteem", "Working-memory capacity", "Reaction time", "Sensory threshold"],
+          "correct_index": 0,
+          "explanation": "By claiming wins and disowning losses, the bias shields self-esteem."
+        }
+      ]
+    },
+    {
+      "topic": "fc8",
+      "tag": "pp24",
+      "front": "What is stereotype threat?",
+      "back": "The anxiety that one's performance might confirm a negative stereotype about one's own group, which can itself impair performance.",
+      "questions": [
+        {
+          "stem": "A capable test-taker underperforms right after being reminded of a negative stereotype about their group. This best illustrates:",
+          "options": ["Stereotype threat", "The halo effect", "Mere-exposure effect", "The actor-observer bias"],
+          "correct_index": 0,
+          "explanation": "Fear of confirming the stereotype degrades performance - the definition of stereotype threat."
+        },
+        {
+          "stem": "Stereotype threat is thought to hurt performance most directly by increasing:",
+          "options": ["Anxiety and cognitive load during the task", "Long-term memory storage", "Sensory acuity", "Baseline intelligence"],
+          "correct_index": 0,
+          "explanation": "The extra anxiety consumes working-memory resources needed for the task."
+        }
+      ]
+    },
+    {
+      "topic": "fc9",
+      "tag": "pp25",
+      "front": "During the demographic transition that accompanies industrialization, how do birth and death rates change over time?",
+      "back": "Death rates fall first (better food, sanitation, medicine); birth rates fall later. The lag between them produces a period of rapid population growth.",
+      "questions": [
+        {
+          "stem": "Why does a society experience rapid population growth in the EARLY phase of the demographic transition?",
+          "options": ["Death rates drop while birth rates remain high", "Birth rates suddenly rise", "Both rates rise together", "Both rates fall together"],
+          "correct_index": 0,
+          "explanation": "The early gap - falling deaths but still-high births - drives the fastest growth."
+        },
+        {
+          "stem": "A country now has both low birth rates and low death rates. Which demographic-transition stage is this?",
+          "options": ["The pre-industrial stage", "The early-transition stage", "A late stage", "It is outside the model"],
+          "correct_index": 2,
+          "explanation": "Low-low rates characterize the late stage, where population growth levels off."
+        }
+      ]
+    },
+    {
+      "topic": "fc9",
+      "tag": "pp26",
+      "front": "What does 'social mobility' refer to in sociology?",
+      "back": "The movement of individuals or groups between positions in a system of social stratification (which can be upward or downward).",
+      "questions": [
+        {
+          "stem": "A person born into poverty who later becomes wealthy has experienced:",
+          "options": ["Upward social mobility", "Horizontal mobility", "Downward mobility", "No mobility"],
+          "correct_index": 0,
+          "explanation": "Rising to a higher stratum within one's lifetime is upward (intragenerational) mobility."
+        },
+        {
+          "stem": "A rigid caste system is best characterized by:",
+          "options": ["Very low social mobility", "High social mobility", "Purely merit-based advancement", "Frequent movement between strata"],
+          "correct_index": 0,
+          "explanation": "Caste membership is ascribed and fixed, so mobility between strata is minimal."
+        }
+      ]
+    },
+    {
+      "topic": "fc9",
+      "tag": "pp27",
+      "front": "In sociology, what is a 'social institution'?",
+      "back": "A stable, organized set of norms, roles, and structures that meets a basic social need - e.g., family, education, religion, government, and the economy.",
+      "questions": [
+        {
+          "stem": "Which of the following is an example of a social institution?",
+          "options": ["A single friendly conversation", "The education system", "An individual personality trait", "A knee-jerk reflex"],
+          "correct_index": 1,
+          "explanation": "Education is an enduring, norm-governed structure serving a societal need - a social institution."
+        },
+        {
+          "stem": "Secondary socialization is carried out mainly through institutions such as:",
+          "options": ["Schools and workplaces", "Only the immediate family", "Inherited genes", "Spinal reflex arcs"],
+          "correct_index": 0,
+          "explanation": "Beyond the family, schools and workplaces socialize individuals into broader roles (secondary socialization)."
+        }
+      ]
+    },
+    {
+      "topic": "fc10",
+      "tag": "pp28",
+      "front": "What are the 'social determinants of health'?",
+      "back": "Nonmedical conditions - such as income, education, housing, environment, and access to care - that strongly shape health outcomes.",
+      "questions": [
+        {
+          "stem": "Children in a low-income neighborhood beside a busy freeway have unusually high asthma rates. This best illustrates:",
+          "options": ["A social and environmental determinant of health", "A purely genetic disorder", "Random chance", "A single infectious agent"],
+          "correct_index": 0,
+          "explanation": "Neighborhood conditions and pollution exposure are social/environmental determinants of health."
+        },
+        {
+          "stem": "Which of the following is a social determinant of health?",
+          "options": ["Educational attainment", "ABO blood type", "Mitochondrial DNA sequence", "Resting heart rate"],
+          "correct_index": 0,
+          "explanation": "Education is a classic social determinant; the others are biological traits, not social conditions."
+        }
+      ]
+    },
+    {
+      "topic": "fc10",
+      "tag": "pp29",
+      "front": "What is a health disparity?",
+      "back": "A preventable difference in health outcomes across social groups, often linked to income, race, or geography.",
+      "questions": [
+        {
+          "stem": "A rural region with very few clinics shows consistently worse health outcomes than a nearby city. This gap is best described as:",
+          "options": ["A health disparity driven by unequal access", "A genetically inevitable difference", "A placebo effect", "Ordinary random variation"],
+          "correct_index": 0,
+          "explanation": "A preventable, access-linked outcome gap between groups is a health disparity."
+        },
+        {
+          "stem": "Extending insurance coverage to a previously underserved population most directly targets:",
+          "options": ["Access-related health disparities", "The germ theory of disease", "Mendelian inheritance patterns", "Absolute sensory thresholds"],
+          "correct_index": 0,
+          "explanation": "Improving access is aimed at reducing disparities that stem from unequal access to care."
+        }
+      ]
+    },
+    {
+      "topic": "fc10",
+      "tag": "pp30",
+      "front": "In general, how is socioeconomic status (SES) related to health and educational outcomes across a population?",
+      "back": "Higher SES is associated with better health and educational outcomes - a graded, positive relationship known as the SES gradient.",
+      "questions": [
+        {
+          "stem": "Across large populations, lower socioeconomic status is most consistently associated with:",
+          "options": ["Worse average health outcomes", "Better average health outcomes", "No relationship to health", "Greater average longevity"],
+          "correct_index": 0,
+          "explanation": "The SES gradient means lower status tracks with poorer health on average."
+        },
+        {
+          "stem": "The 'SES gradient' in health means that outcomes:",
+          "options": ["Improve stepwise as socioeconomic status rises", "Are unrelated to income", "Depend only on genetics", "Get worse as status rises"],
+          "correct_index": 0,
+          "explanation": "Health improves at each higher step of the SES ladder - a stepwise (graded) gradient."
+        }
+      ]
+    }
+  ]
+}

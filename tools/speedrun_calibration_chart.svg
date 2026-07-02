@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="640" viewBox="0 0 780 640" font-family="Helvetica, Arial, sans-serif">
+<rect x="0" y="0" width="780" height="640" fill="#ffffff"/>
+<text x="335.0" y="30" text-anchor="middle" font-size="19" font-weight="bold" fill="#333333">Speedrun memory-model calibration</text>
+<text x="335.0" y="49" text-anchor="middle" font-size="12.5" fill="#666666">Reliability diagram on held-out predictions (n=200 per scenario, 10 equal-width bins, abstain below 20)</text>
+<line x1="95.0" y1="60" x2="95.0" y2="540" stroke="#e6e6e6" stroke-width="1"/>
+<line x1="95" y1="540.0" x2="575" y2="540.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="95.0" y="556" text-anchor="middle" font-size="11" fill="#555555">0.0</text>
+<text x="85" y="544.0" text-anchor="end" font-size="11" fill="#555555">0.0</text>
+<line x1="143.0" y1="60" x2="143.0" y2="540" stroke="#e6e6e6" stroke-width="1"/>
+<line x1="95" y1="492.0" x2="575" y2="492.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="143.0" y="556" text-anchor="middle" font-size="11" fill="#555555">0.1</text>
+<text x="85" y="496.0" text-anchor="end" font-size="11" fill="#555555">0.1</text>
+<line x1="191.0" y1="60" x2="191.0" y2="540" stroke="#e6e6e6" stroke-width="1"/>
+<line x1="95" y1="444.0" x2="575" y2="444.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="191.0" y="556" text-anchor="middle" font-size="11" fill="#555555">0.2</text>
+<text x="85" y="448.0" text-anchor="end" font-size="11" fill="#555555">0.2</text>
+<line x1="239.0" y1="60" x2="239.0" y2="540" stroke="#e6e6e6" stroke-width="1"/>
+<line x1="95" y1="396.0" x2="575" y2="396.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="239.0" y="556" text-anchor="middle" font-size="11" fill="#555555">0.3</text>
+<text x="85" y="400.0" text-anchor="end" font-size="11" fill="#555555">0.3</text>
+<line x1="287.0" y1="60" x2="287.0" y2="540" stroke="#e6e6e6" stroke-width="1"/>
+<line x1="95" y1="348.0" x2="575" y2="348.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="287.0" y="556" text-anchor="middle" font-size="11" fill="#555555">0.4</text>
+<text x="85" y="352.0" text-anchor="end" font-size="11" fill="#555555">0.4</text>
+<line x1="335.0" y1="60" x2="335.0" y2="540" stroke="#e6e6e6" stroke-width="1"/>
+<line x1="95" y1="300.0" x2="575" y2="300.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="335.0" y="556" text-anchor="middle" font-size="11" fill="#555555">0.5</text>
+<text x="85" y="304.0" text-anchor="end" font-size="11" fill="#555555">0.5</text>
+<line x1="383.0" y1="60" x2="383.0" y2="540" stroke="#e6e6e6" stroke-width="1"/>
+<line x1="95" y1="252.0" x2="575" y2="252.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="383.0" y="556" text-anchor="middle" font-size="11" fill="#555555">0.6</text>
+<text x="85" y="256.0" text-anchor="end" font-size="11" fill="#555555">0.6</text>
+<line x1="431.0" y1="60" x2="431.0" y2="540" stroke="#e6e6e6" stroke-width="1"/>
+<line x1="95" y1="204.0" x2="575" y2="204.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="431.0" y="556" text-anchor="middle" font-size="11" fill="#555555">0.7</text>
+<text x="85" y="208.0" text-anchor="end" font-size="11" fill="#555555">0.7</text>
+<line x1="479.0" y1="60" x2="479.0" y2="540" stroke="#e6e6e6" stroke-width="1"/>
+<line x1="95" y1="156.0" x2="575" y2="156.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="479.0" y="556" text-anchor="middle" font-size="11" fill="#555555">0.8</text>
+<text x="85" y="160.0" text-anchor="end" font-size="11" fill="#555555">0.8</text>
+<line x1="527.0" y1="60" x2="527.0" y2="540" stroke="#e6e6e6" stroke-width="1"/>
+<line x1="95" y1="108.0" x2="575" y2="108.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="527.0" y="556" text-anchor="middle" font-size="11" fill="#555555">0.9</text>
+<text x="85" y="112.0" text-anchor="end" font-size="11" fill="#555555">0.9</text>
+<line x1="575.0" y1="60" x2="575.0" y2="540" stroke="#e6e6e6" stroke-width="1"/>
+<line x1="95" y1="60.0" x2="575" y2="60.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="575.0" y="556" text-anchor="middle" font-size="11" fill="#555555">1.0</text>
+<text x="85" y="64.0" text-anchor="end" font-size="11" fill="#555555">1.0</text>
+<rect x="95" y="60" width="480" height="480" fill="none" stroke="#333333" stroke-width="1.3"/>
+<line x1="95.0" y1="540.0" x2="575.0" y2="60.0" stroke="#888888" stroke-width="1.6" stroke-dasharray="6 5"/>
+<polyline points="117.3,348.0 165.2,396.0 215.5,348.0 261.9,348.0 312.5,300.0 356.4,276.0 410.3,252.0 453.7,300.0 501.1,228.0 552.1,156.0" fill="none" stroke="#d1495b" stroke-width="2.4"/>
+<circle cx="117.3" cy="348.0" r="4.2" fill="#d1495b" stroke="#ffffff" stroke-width="1"/>
+<circle cx="165.2" cy="396.0" r="4.2" fill="#d1495b" stroke="#ffffff" stroke-width="1"/>
+<circle cx="215.5" cy="348.0" r="4.2" fill="#d1495b" stroke="#ffffff" stroke-width="1"/>
+<circle cx="261.9" cy="348.0" r="4.2" fill="#d1495b" stroke="#ffffff" stroke-width="1"/>
+<circle cx="312.5" cy="300.0" r="4.2" fill="#d1495b" stroke="#ffffff" stroke-width="1"/>
+<circle cx="356.4" cy="276.0" r="4.2" fill="#d1495b" stroke="#ffffff" stroke-width="1"/>
+<circle cx="410.3" cy="252.0" r="4.2" fill="#d1495b" stroke="#ffffff" stroke-width="1"/>
+<circle cx="453.7" cy="300.0" r="4.2" fill="#d1495b" stroke="#ffffff" stroke-width="1"/>
+<circle cx="501.1" cy="228.0" r="4.2" fill="#d1495b" stroke="#ffffff" stroke-width="1"/>
+<circle cx="552.1" cy="156.0" r="4.2" fill="#d1495b" stroke="#ffffff" stroke-width="1"/>
+<polyline points="117.3,516.0 165.2,468.0 215.5,420.0 261.9,372.0 312.5,324.0 356.4,276.0 410.3,204.0 453.7,180.0 501.1,108.0 552.1,60.0" fill="none" stroke="#0b8043" stroke-width="2.4"/>
+<circle cx="117.3" cy="516.0" r="4.2" fill="#0b8043" stroke="#ffffff" stroke-width="1"/>
+<circle cx="165.2" cy="468.0" r="4.2" fill="#0b8043" stroke="#ffffff" stroke-width="1"/>
+<circle cx="215.5" cy="420.0" r="4.2" fill="#0b8043" stroke="#ffffff" stroke-width="1"/>
+<circle cx="261.9" cy="372.0" r="4.2" fill="#0b8043" stroke="#ffffff" stroke-width="1"/>
+<circle cx="312.5" cy="324.0" r="4.2" fill="#0b8043" stroke="#ffffff" stroke-width="1"/>
+<circle cx="356.4" cy="276.0" r="4.2" fill="#0b8043" stroke="#ffffff" stroke-width="1"/>
+<circle cx="410.3" cy="204.0" r="4.2" fill="#0b8043" stroke="#ffffff" stroke-width="1"/>
+<circle cx="453.7" cy="180.0" r="4.2" fill="#0b8043" stroke="#ffffff" stroke-width="1"/>
+<circle cx="501.1" cy="108.0" r="4.2" fill="#0b8043" stroke="#ffffff" stroke-width="1"/>
+<circle cx="552.1" cy="60.0" r="4.2" fill="#0b8043" stroke="#ffffff" stroke-width="1"/>
+<text x="85" y="573" text-anchor="end" font-size="10" fill="#999999">n/bin</text>
+<text x="119.0" y="573" text-anchor="middle" font-size="10" fill="#999999">20</text>
+<text x="167.0" y="573" text-anchor="middle" font-size="10" fill="#999999">20</text>
+<text x="215.0" y="573" text-anchor="middle" font-size="10" fill="#999999">20</text>
+<text x="263.0" y="573" text-anchor="middle" font-size="10" fill="#999999">20</text>
+<text x="311.0" y="573" text-anchor="middle" font-size="10" fill="#999999">20</text>
+<text x="359.0" y="573" text-anchor="middle" font-size="10" fill="#999999">20</text>
+<text x="407.0" y="573" text-anchor="middle" font-size="10" fill="#999999">20</text>
+<text x="455.0" y="573" text-anchor="middle" font-size="10" fill="#999999">20</text>
+<text x="503.0" y="573" text-anchor="middle" font-size="10" fill="#999999">20</text>
+<text x="551.0" y="573" text-anchor="middle" font-size="10" fill="#999999">20</text>
+<text x="335.0" y="595" text-anchor="middle" font-size="13" fill="#333333">Mean predicted probability of recall</text>
+<text x="30" y="300.0" text-anchor="middle" font-size="13" fill="#333333" transform="rotate(-90 30 300.0)">Observed recall (mean outcome)</text>
+<rect x="341.0" y="386.4" width="226.0" height="78" rx="6" fill="#ffffff" fill-opacity="0.92" stroke="#cccccc" stroke-width="1"/>
+<line x1="353.0" y1="406.4" x2="381.0" y2="406.4" stroke="#888888" stroke-width="1.6" stroke-dasharray="6 5"/>
+<text x="389.0" y="410.4" font-size="11.5" fill="#333333">ideal: perfectly calibrated (y = x)</text>
+<line x1="353.0" y1="430.4" x2="381.0" y2="430.4" stroke="#0b8043" stroke-width="2.4"/>
+<circle cx="367.0" cy="430.4" r="4.2" fill="#0b8043" stroke="#ffffff" stroke-width="1"/>
+<text x="389.0" y="434.4" font-size="11.5" fill="#333333">well-calibrated (Brier 0.159, log-loss 0.479)</text>
+<line x1="353.0" y1="454.4" x2="381.0" y2="454.4" stroke="#d1495b" stroke-width="2.4"/>
+<circle cx="367.0" cy="454.4" r="4.2" fill="#d1495b" stroke="#ffffff" stroke-width="1"/>
+<text x="389.0" y="458.4" font-size="11.5" fill="#333333">over-confident (Brier 0.263, log-loss 0.780)</text>
+</svg>

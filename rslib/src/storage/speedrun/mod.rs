@@ -297,16 +297,18 @@ impl SqliteStorage {
     }
 
     pub(crate) fn add_sr_readiness(&self, snapshot: &SrReadiness) -> Result<i64> {
+        // Let SQLite assign the rowid. The snapshot is append-only history keyed
+        // by `computed_at_ms`; using the millisecond timestamp as the primary key
+        // made two computations in the same millisecond collide on the UNIQUE id.
         self.db
             .prepare_cached(
-                "insert into sr_readiness (id, computed_at_ms, memory, performance, \
+                "insert into sr_readiness (computed_at_ms, memory, performance, \
                  recall_perf_gap, coverage, readiness_scaled, low_scaled, high_scaled, \
                  sufficient, reason, memory_sufficient, performance_sufficient, \
                  blocking_dimension) \
-                 values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                 values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             )?
             .execute(params![
-                snapshot.id,
                 snapshot.computed_at_ms,
                 snapshot.memory,
                 snapshot.performance,
@@ -321,7 +323,7 @@ impl SqliteStorage {
                 snapshot.performance_sufficient,
                 snapshot.blocking_dimension,
             ])?;
-        Ok(snapshot.id)
+        Ok(self.db.last_insert_rowid())
     }
 
     pub(crate) fn get_latest_sr_readiness(&self) -> Result<Option<SrReadiness>> {
