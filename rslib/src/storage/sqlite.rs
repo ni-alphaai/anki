@@ -547,6 +547,11 @@ impl SqliteStorage {
             storage.commit_trx()?;
         }
 
+        // Speedrun's evidence tables live beside the Anki collection tables and
+        // are created idempotently on every open, independent of Anki's schema
+        // version.
+        storage.create_speedrun_tables()?;
+
         Ok(storage)
     }
 

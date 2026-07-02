@@ -1,0 +1,17 @@
+SELECT id,
+  cid,
+  nid,
+  session_id,
+  answered_at_ms,
+  took_ms,
+  question_type,
+  selected,
+  correct,
+  diagnosis_kind,
+  diagnosis_confidence,
+  routed_action,
+  action_status,
+  usn,
+  data,
+  predicted
+FROM sr_attempts

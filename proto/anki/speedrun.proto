@@ -1,0 +1,284 @@
+// Copyright: Ankitects Pty Ltd and contributors
+// License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
+
+syntax = "proto3";
+
+option java_multiple_files = true;
+
+package anki.speedrun;
+
+import "anki/generic.proto";
+
+// Speedrun's diagnostic evidence service. Records exam-style/SRS attempts,
+// classifies misses into a root-cause failure mode (deterministically, with no
+// AI), reads back the evidence for a card, and computes the three separate
+// scores (memory, performance, readiness).
+service SpeedrunService {
+  rpc RecordAttempt(RecordAttemptRequest) returns (RecordAttemptResponse);
+  rpc GetAttemptsForCard(GetAttemptsForCardRequest) returns (SrAttempts);
+  rpc ClassifyAttempt(ClassifyAttemptRequest) returns (Diagnosis);
+  // Recompute the readiness snapshot from raw evidence and cache it.
+  rpc ComputeReadiness(generic.Empty) returns (ReadinessSnapshot);
+  // Return the latest cached snapshot (computing one if none exists yet).
+  rpc GetReadinessSnapshot(generic.Empty) returns (ReadinessSnapshot);
+  // Register a held-out exam-style question (paraphrase test bank).
+  rpc AddQuestionItem(QuestionItem) returns (QuestionItemId);
+  rpc GetQuestionItemsForCard(GetQuestionItemsForCardRequest) returns (QuestionItems);
+  // Recall-vs-performance gap over cards with exam-style attempts.
+  rpc GetPerformanceReport(generic.Empty) returns (PerformanceReport);
+  // Topic outline / coverage map.
+  rpc SetTopicMap(TopicMap) returns (SetTopicMapResponse);
+  rpc GetTopicMap(generic.Empty) returns (TopicMap);
+  // Load the built-in MCAT foundational-concept starter outline.
+  rpc SeedMcatTopicOutline(generic.Empty) returns (SetTopicMapResponse);
+  // How much of the outline the deck covers (a topic is covered if a note is
+  // tagged with it).
+  rpc GetCoverageReport(generic.Empty) returns (CoverageReport);
+  // Calibration (Brier/log-loss) of captured predictions vs actual outcomes.
+  rpc GetCalibrationReport(generic.Empty) returns (CalibrationReport);
+  // Card ids in study order for a deck, honoring the SpeedrunPointsAtStake
+  // toggle. Used by the ablation harness (toggle ON vs OFF).
+  rpc GetReviewOrder(GetReviewOrderRequest) returns (ReviewOrder);
+  // Exam-anchored scheduling: exam date + target score, and the derived plan.
+  rpc SetExamProfile(ExamProfile) returns (ExamProfile);
+  rpc GetExamProfile(generic.Empty) returns (ExamProfile);
+  rpc GetExamPlan(generic.Empty) returns (ExamPlan);
+  // Paraphrase-test integrity: held-out items that duplicate a study card's text.
+  rpc GetLeakageReport(generic.Empty) returns (LeakageReport);
+  // Concept-linked practice: held-out questions for a (weak) topic.
+  rpc GetRoutedPractice(GetRoutedPracticeRequest) returns (QuestionItems);
+  // Let the student correct a diagnosis / advance the routed action lifecycle.
+  rpc UpdateAttemptDiagnosis(UpdateAttemptDiagnosisRequest) returns (generic.Empty);
+  rpc SetActionStatus(SetActionStatusRequest) returns (generic.Empty);
+  // Fetch a batch of held-out questions for a practice session (optionally
+  // filtered to one topic). Appended last to keep existing method indices stable.
+  rpc GetPracticeQuestions(GetPracticeQuestionsRequest) returns (QuestionItems);
+}
+
+// Backend counterpart. The methods above are implemented on Collection and are
+// implicitly delegated to the Backend, so this service is intentionally empty.
+service BackendSpeedrunService {}
+
+// Signals used by the deterministic classifier. Kept as scalars (not enums) so
+// the generated bindings stay simple.
+message ClassifyAttemptRequest {
+  bool correct = 1;
+  uint32 took_ms = 2;
+  bool recall_failed = 3;
+  bool passage_evidence_missed = 4;
+  // 0=srs review, 1=passage mcq, 2=discrete mcq
+  uint32 question_type = 5;
+}
+
+// kind: 0=none,1=memory,2=reasoning,3=passage,4=test_taking,5=correct
+// routed_action: 0=none,1=resurface,2=passage_practice,3=strategy,4=advance
+message Diagnosis {
+  uint32 kind = 1;
+  float confidence = 2;
+  uint32 routed_action = 3;
+}
+
+message RecordAttemptRequest {
+  int64 card_id = 1;
+  int64 note_id = 2;
+  string session_id = 3;
+  int64 answered_at_ms = 4;
+  uint32 took_ms = 5;
+  uint32 question_type = 6;
+  optional int32 selected = 7;
+  bool correct = 8;
+  ClassifyAttemptRequest signals = 9;
+  string data = 10;
+  // optional pre-answer predicted probability of a correct outcome (0..1),
+  // used for calibration
+  optional float predicted = 11;
+}
+
+message RecordAttemptResponse {
+  int64 id = 1;
+  Diagnosis diagnosis = 2;
+}
+
+message SrAttempt {
+  int64 id = 1;
+  int64 card_id = 2;
+  int64 note_id = 3;
+  bool correct = 4;
+  uint32 diagnosis_kind = 5;
+  float diagnosis_confidence = 6;
+  uint32 routed_action = 7;
+  int64 answered_at_ms = 8;
+}
+
+message GetAttemptsForCardRequest {
+  int64 card_id = 1;
+}
+
+// A held-out exam-style question paraphrasing a source card's concept.
+message QuestionItem {
+  int64 id = 1;
+  // Source card this question paraphrases (0 = none).
+  int64 card_id = 2;
+  string topic = 3;
+  // 0=hand_authored, 1=open_licensed, 2=ai_generated
+  uint32 provenance = 4;
+  string payload = 5;
+}
+
+message QuestionItems {
+  repeated QuestionItem items = 1;
+}
+
+message QuestionItemId {
+  int64 id = 1;
+}
+
+message GetQuestionItemsForCardRequest {
+  int64 card_id = 1;
+}
+
+message GetRoutedPracticeRequest {
+  string topic = 1;
+}
+
+message GetPracticeQuestionsRequest {
+  // Max questions to return.
+  uint32 limit = 1;
+  // Optional topic filter; empty = any topic.
+  string topic = 2;
+}
+
+// routed_action: 0=none,1=resurface,2=passage_practice,3=strategy,4=advance
+message UpdateAttemptDiagnosisRequest {
+  int64 attempt_id = 1;
+  uint32 diagnosis_kind = 2;
+  uint32 routed_action = 3;
+}
+
+// action_status: 0=pending,1=accepted,2=dismissed,3=completed
+message SetActionStatusRequest {
+  int64 attempt_id = 1;
+  uint32 action_status = 2;
+}
+
+// Recall (SRS mature proxy) vs performance (exam-style accuracy) over source
+// cards that have exam-style attempts. A positive gap means recall outruns
+// application - the memory-to-application bridge is weak.
+message PerformanceReport {
+  uint32 cards_evaluated = 1;
+  uint32 exam_attempts = 2;
+  float recall_rate = 3;
+  float performance_rate = 4;
+  float recall_perf_gap = 5;
+  bool sufficient = 6;
+  string note = 7;
+  uint32 question_items = 8;
+}
+
+message TopicMapEntry {
+  string topic = 1;
+  string label = 2;
+  float weight = 3;
+}
+
+message TopicMap {
+  repeated TopicMapEntry entries = 1;
+}
+
+message SetTopicMapResponse {
+  uint32 topics = 1;
+}
+
+message TopicCoverage {
+  string topic = 1;
+  string label = 2;
+  float weight = 3;
+  uint32 cards = 4;
+  bool covered = 5;
+}
+
+message CoverageReport {
+  uint32 topics_total = 1;
+  uint32 topics_covered = 2;
+  float coverage = 3;
+  float weighted_coverage = 4;
+  repeated TopicCoverage topics = 5;
+}
+
+message GetReviewOrderRequest {
+  int64 deck_id = 1;
+}
+
+message ReviewOrder {
+  repeated int64 card_ids = 1;
+}
+
+// exam_date_ms: unix millis (0 = unset); target_score: 472..528 (0 = unset).
+message ExamProfile {
+  int64 exam_date_ms = 1;
+  uint32 target_score = 2;
+}
+
+message LeakageReport {
+  uint32 total_items = 1;
+  uint32 flagged = 2;
+  repeated int64 flagged_item_ids = 3;
+  bool clean = 4;
+}
+
+// Derived exam-anchored plan. study_mode is long_term | consolidation |
+// maintenance.
+message ExamPlan {
+  bool has_profile = 1;
+  int64 days_left = 2;
+  uint32 current_readiness = 3;
+  uint32 target_score = 4;
+  bool on_track = 5;
+  uint32 needed_points = 6;
+  float points_per_week_needed = 7;
+  string study_mode = 8;
+  string recommended_tier = 9;
+  bool readiness_sufficient = 10;
+  string note = 11;
+}
+
+// One reliability-curve bucket: predictions falling in [lo, hi).
+message CalibrationBin {
+  float lo = 1;
+  float hi = 2;
+  uint32 count = 3;
+  float mean_predicted = 4;
+  float mean_outcome = 5;
+}
+
+message CalibrationReport {
+  uint32 n = 1;
+  float brier = 2;
+  float log_loss = 3;
+  bool sufficient = 4;
+  string note = 5;
+  repeated CalibrationBin bins = 6;
+}
+
+// The three separate scores plus the give-up state.
+// memory/performance/coverage are 0..1; readiness is on the MCAT scale
+// (472-528). `sufficient` is false when the give-up rule abstains.
+message ReadinessSnapshot {
+  float memory = 1;
+  float performance = 2;
+  float recall_perf_gap = 3;
+  float coverage = 4;
+  uint32 readiness_scaled = 5;
+  uint32 low_scaled = 6;
+  uint32 high_scaled = 7;
+  bool sufficient = 8;
+  string reason = 9;
+  int64 computed_at_ms = 10;
+  bool memory_sufficient = 11;
+  bool performance_sufficient = 12;
+  string blocking_dimension = 13;
+}
+
+message SrAttempts {
+  repeated SrAttempt attempts = 1;
+}

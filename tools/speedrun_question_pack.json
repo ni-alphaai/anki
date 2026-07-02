@@ -1,0 +1,91 @@
+{
+  "name": "Speedrun starter MCAT pack",
+  "license": "AGPL-3.0-or-later",
+  "note": "Hand-authored MCAT-style discrete questions (no AI, no copyrighted source). card_tag links a question to source cards carrying that tag.",
+  "questions": [
+    {
+      "topic": "fc1",
+      "card_tag": "fc1",
+      "stem": "Which amino acid is most likely to be buried in the hydrophobic interior of a globular protein in aqueous solution?",
+      "options": ["Aspartate", "Leucine", "Lysine", "Glutamate"],
+      "correct_index": 1,
+      "explanation": "Leucine has a nonpolar aliphatic side chain, so it is favored in the protein interior; the others are charged/polar and prefer the aqueous surface."
+    },
+    {
+      "topic": "fc1",
+      "card_tag": "fc1",
+      "stem": "An enzyme lowers the activation energy of a reaction. This affects:",
+      "options": [
+        "The equilibrium constant",
+        "Only the forward reaction rate",
+        "Both the forward and reverse reaction rates",
+        "The overall free energy change"
+      ],
+      "correct_index": 2,
+      "explanation": "Catalysts lower activation energy for both directions equally; they speed attainment of equilibrium without changing K or delta-G."
+    },
+    {
+      "topic": "fc1",
+      "card_tag": "fc1",
+      "stem": "The bond linking adjacent residues in a protein backbone is best described as:",
+      "options": ["An ester", "An amide", "An ether", "A thioester"],
+      "correct_index": 1,
+      "explanation": "The peptide bond is an amide bond between a carboxyl carbon and an amino nitrogen."
+    },
+    {
+      "topic": "fc5",
+      "card_tag": "fc5",
+      "stem": "A buffer best resists changes in pH when:",
+      "options": [
+        "pH equals the pKa of the weak acid",
+        "pH is far above the pKa",
+        "pH is far below the pKa",
+        "the temperature is exactly 25 C"
+      ],
+      "correct_index": 0,
+      "explanation": "Buffering capacity is maximal when pH = pKa, where the conjugate acid/base ratio is 1 (Henderson-Hasselbalch)."
+    },
+    {
+      "topic": "fc5",
+      "card_tag": "fc5",
+      "stem": "Raising temperature in an exothermic reaction at equilibrium shifts the system:",
+      "options": [
+        "Toward products",
+        "Toward reactants",
+        "No shift occurs",
+        "Toward whichever side has more moles of gas"
+      ],
+      "correct_index": 1,
+      "explanation": "For an exothermic reaction heat is a product; by Le Chatelier, added heat shifts equilibrium toward reactants and lowers K."
+    },
+    {
+      "topic": "fc5",
+      "card_tag": "fc5",
+      "stem": "Which molecule is expected to have the highest normal boiling point?",
+      "options": ["CH4", "H2O", "H2S", "CO2"],
+      "correct_index": 1,
+      "explanation": "Water forms extensive hydrogen bonds, giving it the highest boiling point among these small molecules."
+    },
+    {
+      "topic": "fc4",
+      "card_tag": "fc4",
+      "stem": "A ball is thrown straight upward. At its highest point, its acceleration is:",
+      "options": [
+        "Zero",
+        "g, directed downward",
+        "g, directed upward",
+        "Dependent on the ball's mass"
+      ],
+      "correct_index": 1,
+      "explanation": "Velocity is momentarily zero at the apex, but gravitational acceleration remains g downward throughout the flight."
+    },
+    {
+      "topic": "fc4",
+      "card_tag": "fc4",
+      "stem": "If an object's speed doubles, its kinetic energy changes by a factor of:",
+      "options": ["2", "4", "1/2", "the square root of 2"],
+      "correct_index": 1,
+      "explanation": "Kinetic energy scales with the square of speed (KE = 1/2 m v^2), so doubling v quadruples KE."
+    }
+  ]
+}

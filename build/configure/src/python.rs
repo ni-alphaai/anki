@@ -73,7 +73,7 @@ pub fn setup_venv(build: &mut Build) -> Result<()> {
                 "qt/pyproject.toml",
                 "uv.lock"
             ],
-            extra_args: "--all-packages --extra qt --extra audio",
+            extra_args: "--all-packages --extra qt --extra audio --extra voice",
             extra_binary_exports,
         },
     )?;

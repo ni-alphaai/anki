@@ -11,6 +11,7 @@ mod graves;
 mod note;
 mod notetype;
 mod revlog;
+mod speedrun;
 mod sqlite;
 mod sync;
 mod sync_check;
@@ -19,6 +20,11 @@ mod upgrades;
 
 use std::fmt::Write;
 
+pub(crate) use speedrun::SrAttempt;
+pub(crate) use speedrun::SrProfile;
+pub(crate) use speedrun::SrQuestionItem;
+pub(crate) use speedrun::SrReadiness;
+pub(crate) use speedrun::SrTopicMapEntry;
 pub(crate) use sqlite::ProcessTextFlags;
 pub(crate) use sqlite::SqliteStorage;
 

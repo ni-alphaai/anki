@@ -1626,6 +1626,11 @@ title="{}" {}>{}</button>""".format(
         gui_hooks.operation_did_execute.append(self.on_operation_did_execute)
         gui_hooks.focus_did_change.append(self.on_focus_did_change)
 
+        # Speedrun: register diagnostic-evidence review hooks and menu actions.
+        from aqt import speedrun
+
+        speedrun.setup(self)
+
         self._activeWindowOnPlay: QWidget | None = None
 
     def onOdueInvalid(self) -> None:

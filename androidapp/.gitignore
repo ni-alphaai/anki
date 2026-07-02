@@ -1,0 +1,18 @@
+# Android / Gradle build artifacts
+*.iml
+.gradle/
+.kotlin/
+/build/
+/app/build/
+/captures/
+/.idea/
+
+# Machine-specific SDK location
+/local.properties
+
+# Prebuilt native lib is a build output of ../rsandroid
+# (rebuild with cargo-ndk; see README.md).
+/app/src/main/jniLibs/
+
+# Local dev screenshots
+/uishots/

@@ -158,6 +158,12 @@ impl CardQueues {
             .chain(self.intraday_ahead_iter().map(Into::into))
     }
 
+    /// The card ids in presentation order. Used by the Speedrun ablation
+    /// harness to compare orderings with/without the points-at-stake queue.
+    pub(crate) fn card_order(&self) -> Vec<CardId> {
+        self.iter().map(|entry| entry.card_id()).collect()
+    }
+
     /// Remove the provided card from the top of the queues and
     /// adjust the counts. If it was not at the top, return an error.
     fn pop_entry(&mut self, id: CardId) -> Result<QueueEntry> {

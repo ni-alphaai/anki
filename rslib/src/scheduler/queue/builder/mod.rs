@@ -287,9 +287,111 @@ impl Collection {
 
         queues.gather_cards(self)?;
 
+        // Speedrun: reorder due review cards by points-at-stake when enabled.
+        // This only reshuffles already-due cards, so FSRS intervals and undo
+        // are untouched.
+        if self.get_config_bool(BoolKey::SpeedrunPointsAtStake) {
+            self.reorder_reviews_by_points_at_stake(&mut queues.review)?;
+        }
+
+        // Speedrun: interleave confusable sibling topics (after points-at-stake,
+        // so within-topic order still reflects value). Applies to due reviews and
+        // to new-card introduction order; ordering only, so FSRS intervals and
+        // undo are untouched.
+        if self.get_config_bool(BoolKey::SpeedrunInterleaveTopics) {
+            self.interleave_reviews_by_topic(&mut queues.review)?;
+            self.interleave_new_by_topic(&mut queues.new)?;
+            // Preserve our interleaved new-card order through build()'s sort_new.
+            queues.context.sort_options.new_order = NewCardSortOrder::NoSort;
+        }
+
         let queues = queues.build(self.learn_ahead_secs() as i64);
 
         Ok(queues)
+    }
+
+    /// Stable-sort due review cards by descending points-at-stake score, using
+    /// recorded attempt weakness as evidence. Equal scores preserve the
+    /// existing (FSRS) order.
+    fn reorder_reviews_by_points_at_stake(&self, reviews: &mut [DueCard]) -> Result<()> {
+        use crate::speedrun::points_at_stake::points_at_stake_score;
+        use crate::speedrun::points_at_stake::CardValueInputs;
+
+        let mut scores: Vec<f32> = Vec::with_capacity(reviews.len());
+        for card in reviews.iter() {
+            let weakness = self.storage.sr_card_weakness(card.id)?;
+            let recall_perf_gap = self.storage.sr_card_recall_perf_gap(card.id)?;
+            scores.push(points_at_stake_score(&CardValueInputs {
+                topic_weight: 1.0,
+                weakness,
+                memory_age_days: 0.0,
+                recall_perf_gap,
+            }));
+        }
+        let mut order: Vec<usize> = (0..reviews.len()).collect();
+        order.sort_by(|&a, &b| {
+            scores[b]
+                .partial_cmp(&scores[a])
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then(a.cmp(&b))
+        });
+        let reordered: Vec<DueCard> = order.into_iter().map(|i| reviews[i]).collect();
+        reviews.copy_from_slice(&reordered);
+        Ok(())
+    }
+
+    /// Compute (group, topic) key arrays for a sequence of cards. topic = the
+    /// first matching `sr_topic_map` tag; group = the topic's parent path (the
+    /// substring before the last "::"), or the topic itself when it has no
+    /// hierarchy -- so flat / rote tags become their own singleton group and are
+    /// never interleaved.
+    fn confusable_keys(&self, ids: &[CardId]) -> Result<(Vec<usize>, Vec<usize>)> {
+        let mut group_keys: HashMap<String, usize> = HashMap::new();
+        let mut topic_keys: HashMap<String, usize> = HashMap::new();
+        let mut groups: Vec<usize> = Vec::with_capacity(ids.len());
+        let mut topics: Vec<usize> = Vec::with_capacity(ids.len());
+        for &id in ids {
+            let topic = self.storage.sr_card_topic(id)?.unwrap_or_default();
+            let group = match topic.rfind("::") {
+                Some(pos) => topic[..pos].to_string(),
+                None => topic.clone(),
+            };
+            let gnext = group_keys.len();
+            groups.push(*group_keys.entry(group).or_insert(gnext));
+            let tnext = topic_keys.len();
+            topics.push(*topic_keys.entry(topic).or_insert(tnext));
+        }
+        Ok((groups, topics))
+    }
+
+    /// Interleave confusable sibling topics within due reviews, keeping unrelated
+    /// concepts (and rote/flat tags) blocked. Reorders due cards only.
+    fn interleave_reviews_by_topic(&self, reviews: &mut [DueCard]) -> Result<()> {
+        use crate::speedrun::interleave::interleave_grouped_indices;
+
+        let ids: Vec<CardId> = reviews.iter().map(|c| c.id).collect();
+        let (groups, topics) = self.confusable_keys(&ids)?;
+        let reordered: Vec<DueCard> = interleave_grouped_indices(&groups, &topics)
+            .into_iter()
+            .map(|i| reviews[i])
+            .collect();
+        reviews.copy_from_slice(&reordered);
+        Ok(())
+    }
+
+    /// Interleave confusable sibling topics within the new-card introduction
+    /// order (ordering only; FSRS intervals are untouched).
+    fn interleave_new_by_topic(&self, new: &mut [NewCard]) -> Result<()> {
+        use crate::speedrun::interleave::interleave_grouped_indices;
+
+        let ids: Vec<CardId> = new.iter().map(|c| c.id).collect();
+        let (groups, topics) = self.confusable_keys(&ids)?;
+        let reordered: Vec<NewCard> = interleave_grouped_indices(&groups, &topics)
+            .into_iter()
+            .map(|i| new[i])
+            .collect();
+        new.copy_from_slice(&reordered);
+        Ok(())
     }
 }
 
@@ -542,5 +644,227 @@ mod test {
         CardAdder::new().deck(child.id).add(&mut col);
         col.set_current_deck(child.id).unwrap();
         assert_eq!(col.card_queue_len(), 0);
+    }
+
+    #[test]
+    fn speedrun_points_at_stake_reorders_due_reviews() -> Result<()> {
+        use crate::storage::SrAttempt;
+
+        let mut col = Collection::new();
+        let deck = col.get_or_create_normal_deck("Default").unwrap();
+        let nt = col.get_notetype_by_name("Basic")?.unwrap();
+
+        // two due review cards with identical due/interval
+        let mut cards = vec![];
+        for _ in 0..2 {
+            let mut note = nt.new_note();
+            note.set_field(0, "foo")?;
+            note.id.0 = 0;
+            col.add_note(&mut note, deck.id)?;
+            let mut card = col.storage.get_card_by_ordinal(note.id, 0)?.unwrap();
+            card.interval = 10;
+            card.due = 0;
+            card.ctype = CardType::Review;
+            card.queue = CardQueue::Review;
+            cards.push(card);
+        }
+        let strong_id = cards[0].id;
+        let weak_id = cards[1].id;
+        col.update_cards_maybe_undoable(cards, false)?;
+
+        let attempt = |id: i64, cid: CardId, correct: bool| SrAttempt {
+            id,
+            cid,
+            nid: NoteId(1),
+            session_id: String::new(),
+            answered_at_ms: id,
+            took_ms: 0,
+            question_type: 0,
+            selected: None,
+            correct,
+            diagnosis_kind: 0,
+            diagnosis_confidence: 0.0,
+            routed_action: 0,
+            action_status: 0,
+            usn: Usn(-1),
+            data: String::new(),
+            predicted: None,
+        };
+        // weak card missed; strong card correct
+        col.storage.add_sr_attempt(&attempt(1, weak_id, false))?;
+        col.storage.add_sr_attempt(&attempt(2, strong_id, true))?;
+
+        // flag off: both present, default order
+        let baseline: Vec<CardId> = col.build_queues(deck.id)?.iter().map(|e| e.card_id()).collect();
+        assert_eq!(baseline.len(), 2);
+
+        // flag on: weak card surfaces first
+        col.set_config_bool(BoolKey::SpeedrunPointsAtStake, true, false)?;
+        let ranked: Vec<CardId> = col.build_queues(deck.id)?.iter().map(|e| e.card_id()).collect();
+        assert_eq!(ranked.len(), 2);
+        assert_eq!(ranked[0], weak_id, "weak card should be first when enabled");
+        assert!(ranked.contains(&strong_id));
+        Ok(())
+    }
+
+    #[test]
+    fn speedrun_interleaves_due_reviews_by_topic() -> Result<()> {
+        use crate::storage::SrTopicMapEntry;
+
+        let mut col = Collection::new();
+        let deck = col.get_or_create_normal_deck("Default").unwrap();
+        let nt = col.get_notetype_by_name("Basic")?.unwrap();
+
+        // sibling subtopics under the same concept (fc1) -> confusable set
+        col.storage.replace_sr_topic_map(&[
+            SrTopicMapEntry {
+                topic: "fc1::a".to_string(),
+                label: String::new(),
+                weight: 1.0,
+            },
+            SrTopicMapEntry {
+                topic: "fc1::b".to_string(),
+                label: String::new(),
+                weight: 1.0,
+            },
+        ])?;
+
+        // two due review cards per sibling topic
+        let mut cards = vec![];
+        for tag in ["fc1::a", "fc1::a", "fc1::b", "fc1::b"] {
+            let mut note = nt.new_note();
+            note.set_field(0, "x")?;
+            note.tags = vec![tag.to_string()];
+            col.add_note(&mut note, deck.id)?;
+            let mut card = col.storage.get_card_by_ordinal(note.id, 0)?.unwrap();
+            card.ctype = CardType::Review;
+            card.queue = CardQueue::Review;
+            card.interval = 10;
+            card.due = 0;
+            cards.push(card);
+        }
+        col.update_cards_maybe_undoable(cards, false)?;
+
+        col.set_config_bool(BoolKey::SpeedrunInterleaveTopics, true, false)?;
+        let order: Vec<CardId> = col.build_queues(deck.id)?.iter().map(|e| e.card_id()).collect();
+        assert_eq!(order.len(), 4);
+
+        // consecutive cards should not share a topic
+        let topics: Vec<String> = order
+            .iter()
+            .map(|cid| col.storage.sr_card_topic(*cid).unwrap().unwrap())
+            .collect();
+        for window in topics.windows(2) {
+            assert_ne!(window[0], window[1], "topics should alternate: {topics:?}");
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn speedrun_blocks_unrelated_concepts() -> Result<()> {
+        use crate::storage::SrTopicMapEntry;
+
+        let mut col = Collection::new();
+        let deck = col.get_or_create_normal_deck("Default").unwrap();
+        let nt = col.get_notetype_by_name("Basic")?.unwrap();
+
+        // topics under different concepts (fc1 vs fc2) are NOT confusable
+        col.storage.replace_sr_topic_map(&[
+            SrTopicMapEntry {
+                topic: "fc1::a".to_string(),
+                label: String::new(),
+                weight: 1.0,
+            },
+            SrTopicMapEntry {
+                topic: "fc2::b".to_string(),
+                label: String::new(),
+                weight: 1.0,
+            },
+        ])?;
+
+        // gather order alternates the two concepts
+        let mut cards = vec![];
+        for tag in ["fc1::a", "fc2::b", "fc1::a", "fc2::b"] {
+            let mut note = nt.new_note();
+            note.set_field(0, "x")?;
+            note.tags = vec![tag.to_string()];
+            col.add_note(&mut note, deck.id)?;
+            let mut card = col.storage.get_card_by_ordinal(note.id, 0)?.unwrap();
+            card.ctype = CardType::Review;
+            card.queue = CardQueue::Review;
+            card.interval = 10;
+            card.due = 0;
+            cards.push(card);
+        }
+        col.update_cards_maybe_undoable(cards, false)?;
+
+        col.set_config_bool(BoolKey::SpeedrunInterleaveTopics, true, false)?;
+        let order: Vec<CardId> = col.build_queues(deck.id)?.iter().map(|e| e.card_id()).collect();
+        assert_eq!(order.len(), 4);
+
+        // unrelated concepts stay blocked (each concept's cards are adjacent),
+        // not interleaved across each other.
+        let parents: Vec<String> = order
+            .iter()
+            .map(|cid| {
+                let topic = col.storage.sr_card_topic(*cid).unwrap().unwrap();
+                topic.split("::").next().unwrap().to_string()
+            })
+            .collect();
+        assert_eq!(parents[0], parents[1], "concept should be blocked: {parents:?}");
+        assert_eq!(parents[2], parents[3], "concept should be blocked: {parents:?}");
+        assert_ne!(parents[0], parents[2], "concepts should not interleave: {parents:?}");
+        Ok(())
+    }
+
+    #[test]
+    fn speedrun_interleaves_new_cards_by_topic() -> Result<()> {
+        use crate::storage::SrTopicMapEntry;
+
+        let mut col = Collection::new();
+        let deck = col.get_or_create_normal_deck("Default").unwrap();
+        let nt = col.get_notetype_by_name("Basic")?.unwrap();
+
+        col.storage.replace_sr_topic_map(&[
+            SrTopicMapEntry {
+                topic: "fc1::a".to_string(),
+                label: String::new(),
+                weight: 1.0,
+            },
+            SrTopicMapEntry {
+                topic: "fc1::b".to_string(),
+                label: String::new(),
+                weight: 1.0,
+            },
+        ])?;
+
+        // new cards (not reviews), two per sibling topic
+        let mut cards = vec![];
+        for (i, tag) in ["fc1::a", "fc1::a", "fc1::b", "fc1::b"].iter().enumerate() {
+            let mut note = nt.new_note();
+            note.set_field(0, "x")?;
+            note.tags = vec![tag.to_string()];
+            col.add_note(&mut note, deck.id)?;
+            let mut card = col.storage.get_card_by_ordinal(note.id, 0)?.unwrap();
+            card.ctype = CardType::New;
+            card.queue = CardQueue::New;
+            card.due = i as i32;
+            cards.push(card);
+        }
+        col.update_cards_maybe_undoable(cards, false)?;
+
+        col.set_config_bool(BoolKey::SpeedrunInterleaveTopics, true, false)?;
+        let order: Vec<CardId> = col.build_queues(deck.id)?.iter().map(|e| e.card_id()).collect();
+        assert_eq!(order.len(), 4);
+
+        // new-card introduction order interleaves the sibling topics
+        let topics: Vec<String> = order
+            .iter()
+            .map(|cid| col.storage.sr_card_topic(*cid).unwrap().unwrap())
+            .collect();
+        for window in topics.windows(2) {
+            assert_ne!(window[0], window[1], "new-card topics should alternate: {topics:?}");
+        }
+        Ok(())
     }
 }

@@ -42,6 +42,13 @@ pub enum BoolKey {
     FsrsLegacyEvaluate,
     LoadBalancerEnabled,
     FsrsShortTermWithStepsEnabled,
+    // Speedrun: reorder due review cards by points-at-stake (weakness-weighted).
+    // Default off so plain Anki behaviour is unchanged; also serves as the
+    // ablation toggle for the study-feature test.
+    SpeedrunPointsAtStake,
+    // Speedrun: interleave due review cards across topics (round-robin) instead
+    // of long same-topic blocks. Default off.
+    SpeedrunInterleaveTopics,
     #[strum(to_string = "normalize_note_text")]
     NormalizeNoteText,
     #[strum(to_string = "dayLearnFirst")]
