@@ -26,15 +26,16 @@ from html import escape
 # are the single source of truth for the Speedrun look.
 _TOKENS = """
 :root {
-  --sr-canvas:#FBFBFD; --sr-surface:#FFFFFF; --sr-ink:#1D1D1F; --sr-secondary:#6E6E73;
-  --sr-hairline:#E5E5EA; --sr-memory:#0A84FF; --sr-perf:#34C759; --sr-accent:#5E5CE6;
-  --sr-amber:#FF9F0A; --sr-radius:18px;
+  --sr-canvas:#F2F3F5; --sr-surface:#FFFFFF; --sr-ink:#16181D; --sr-secondary:#6B7280;
+  --sr-hairline:#E7EAEE; --sr-memory:#2E7BF6; --sr-perf:#22C55E; --sr-accent:#2E7BF6;
+  --sr-amber:#E0900B; --sr-radius:20px;
   --sr-shadow:0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.06);
   --sr-font:-apple-system,"SF Pro Display","SF Pro Text","Inter",system-ui,"Segoe UI",Roboto,sans-serif;
 }
 .night-mode, [data-bs-theme="dark"] {
-  --sr-canvas:#1C1C1E; --sr-surface:#2C2C2E; --sr-ink:#F5F5F7; --sr-secondary:#98989D;
-  --sr-hairline:rgba(255,255,255,.12);
+  --sr-canvas:#0C0D0F; --sr-surface:#17181B; --sr-ink:#F2F3F5; --sr-secondary:#9AA0A8;
+  --sr-memory:#4B93FF; --sr-perf:#30D158; --sr-accent:#4B93FF; --sr-amber:#FBBF24;
+  --sr-hairline:rgba(255,255,255,.10);
   --sr-shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.45);
 }
 """
@@ -64,6 +65,23 @@ _COMPONENTS = """
 .sr-abstain .sr-score { font-size: 24px; font-weight: 600; color: var(--sr-amber); }
 .sr-abstain p { margin: 8px 0 0; font-size: 13px; color: var(--sr-secondary); line-height: 1.5; }
 .sr-block { color: var(--sr-ink); font-weight: 600; }
+
+/* signature readiness ring (mirrors the phone) */
+.sr-herocard { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.sr-herocard .sr-eyebrow { align-self: flex-start; }
+.sr-hero-ring { width: 158px; height: 158px; border-radius: 50%; margin: 8px 0 4px; flex: none;
+  background: conic-gradient(var(--sr-memory), var(--sr-perf) var(--frac, 0deg), var(--sr-hairline) 0);
+  display: grid; place-items: center; }
+.sr-hero-ring.sr-ring-empty { background: var(--sr-hairline); }
+.sr-hole { width: 126px; height: 126px; border-radius: 50%; background: var(--sr-surface);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.sr-hole .sr-num { font-size: 46px; font-weight: 600; line-height: 1; letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums; color: var(--sr-ink); }
+.sr-hole .sr-num.sr-muted { font-size: 34px; color: var(--sr-amber); }
+.sr-hole .sr-holelbl { font-size: 11px; color: var(--sr-secondary); margin-top: 5px;
+  text-transform: uppercase; letter-spacing: .06em; }
+.sr-herocard .sr-range { font-size: 14px; color: var(--sr-secondary); font-variant-numeric: tabular-nums; }
+.sr-herocard p { margin: 4px 0 0; font-size: 13px; color: var(--sr-secondary); line-height: 1.5; }
 
 /* three signals */
 .sr-signals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
@@ -97,7 +115,7 @@ _COMPONENTS = """
 .sr-mini .sr-s { font-size: 12px; color: var(--sr-secondary); }
 
 /* next action */
-.sr-next { display: flex; align-items: flex-start; gap: 12px; border-left: 3px solid var(--sr-accent); }
+.sr-next { display: flex; align-items: center; gap: 14px; border-left: 3px solid var(--sr-accent); }
 .sr-next .sr-t { font-weight: 600; font-size: 15px; }
 .sr-next .sr-d { font-size: 13px; color: var(--sr-secondary); margin-top: 3px; line-height: 1.5; }
 
@@ -107,7 +125,8 @@ _COMPONENTS = """
   background: var(--sr-surface); border: 1px solid var(--sr-hairline); border-radius: 980px;
   padding: 7px 14px; transition: background .15s, border-color .15s; }
 .sr-btn:hover { border-color: var(--sr-accent); }
-.sr-btn.sr-primary { background: var(--sr-accent); border-color: var(--sr-accent); color: #fff; }
+.sr-btn.sr-primary { background: var(--sr-ink); border-color: var(--sr-ink); color: var(--sr-surface); font-weight: 600; }
+.sr-btn.sr-primary:hover { opacity: .9; border-color: var(--sr-ink); }
 .sr-toggle { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--sr-secondary);
   cursor: pointer; border: 1px solid var(--sr-hairline); border-radius: 980px; padding: 6px 12px; }
 .sr-toggle[data-on="1"] { color: var(--sr-ink); border-color: var(--sr-accent); }
@@ -245,12 +264,16 @@ def banner_html(data: dict) -> str:
 
 def _hero(data: dict) -> str:
     if data.get("sufficient"):
+        frac = max(0.0, min(1.0, (data["readiness"] - 472) / 56.0))
+        deg = round(frac * 360)
         return (
-            '<div class="sr-card"><p class="sr-eyebrow">Readiness &middot; MCAT 472&ndash;528</p>'
-            '<div class="sr-hero">'
-            f'<span class="sr-score">{data["readiness"]}</span>'
-            f'<span class="sr-range">likely {data["low"]}&ndash;{data["high"]}</span></div>'
-            f'<p class="sr-updated">Updated {escape(data.get("updated", "just now"))}.</p></div>'
+            '<div class="sr-card sr-herocard">'
+            '<p class="sr-eyebrow">Readiness &middot; MCAT 472&ndash;528</p>'
+            f'<div class="sr-hero-ring" style="--frac:{deg}deg"><div class="sr-hole">'
+            f'<span class="sr-num">{data["readiness"]}</span>'
+            '<span class="sr-holelbl">projected</span></div></div>'
+            f'<p class="sr-range">Likely {data["low"]}&ndash;{data["high"]}</p>'
+            f'<p>Updated {escape(data.get("updated", "just now"))}.</p></div>'
         )
     block = data.get("blocking", "")
     block_line = (
@@ -259,8 +282,11 @@ def _hero(data: dict) -> str:
         else ""
     )
     return (
-        '<div class="sr-card sr-abstain"><p class="sr-eyebrow">Readiness &middot; MCAT 472&ndash;528</p>'
-        '<div class="sr-score">No score yet &mdash; honest abstention</div>'
+        '<div class="sr-card sr-herocard sr-abstain">'
+        '<p class="sr-eyebrow">Readiness &middot; MCAT 472&ndash;528</p>'
+        '<div class="sr-hero-ring sr-ring-empty"><div class="sr-hole">'
+        '<span class="sr-num sr-muted">&mdash;</span>'
+        '<span class="sr-holelbl">no score yet</span></div></div>'
         f'<p>{escape(data.get("reason", ""))}</p>{block_line}</div>'
     )
 
@@ -270,7 +296,7 @@ def _signals(data: dict) -> str:
         '<div class="sr-signals">'
         + _signal("Memory", data["memory"], "var(--sr-memory)", not data.get("memory_ok", True))
         + _signal("Performance", data["performance"], "var(--sr-perf)", not data.get("perf_ok", True))
-        + _signal("Coverage", data["coverage"], "var(--sr-accent)", False)
+        + _signal("Coverage", data["coverage"], "var(--sr-secondary)", False)
         + "</div>"
     )
 
@@ -321,10 +347,19 @@ def _next_action(data: dict) -> str:
     na = data.get("next_action") or {}
     title = na.get("title", "Keep studying")
     detail = na.get("detail", "")
+    cmd = na.get("cmd")
+    cta = na.get("cta")
+    button = (
+        f'<button class="sr-btn sr-primary" onclick="pycmd(\'{escape(cmd)}\')">{escape(cta)}</button>'
+        if cmd and cta
+        else ""
+    )
     return (
-        '<div class="sr-card sr-next"><div><p class="sr-eyebrow">Next best action</p>'
+        '<div class="sr-card sr-next"><div style="flex:1">'
+        '<p class="sr-eyebrow">Next best action</p>'
         f'<div class="sr-t">{escape(title)}</div>'
-        f'<div class="sr-d">{escape(detail)}</div></div></div>'
+        f'<div class="sr-d">{escape(detail)}</div></div>'
+        f"{button}</div>"
     )
 
 
@@ -342,8 +377,9 @@ def _actions(data: dict) -> str:
     exam_label = "Edit exam target" if (data.get("exam") or {}).get("has") else "Set exam target"
     return (
         '<div class="sr-actions">'
+        "<button class=\"sr-btn\" onclick=\"pycmd('speedrun:practice')\">Practice questions</button>"
         f"{seed}"
-        f"<button class=\"sr-btn sr-primary\" onclick=\"pycmd('speedrun:exam')\">{exam_label}</button>"
+        f"<button class=\"sr-btn\" onclick=\"pycmd('speedrun:exam')\">{exam_label}</button>"
         "<button class=\"sr-btn\" onclick=\"pycmd('speedrun:refresh')\">Refresh</button>"
         + toggle(
             "speedrun:toggle:points",

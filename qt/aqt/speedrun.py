@@ -313,35 +313,48 @@ def _collect(col, fresh: bool) -> dict:
 
 
 def _next_action(data: dict) -> dict:
+    """The single recommended step, with the command that performs it so the
+    panel's card can be a real button (not inert text)."""
     if not data["sufficient"]:
+        seed_cmd = "speedrun:seed" if data.get("cov_total", 0) == 0 else None
         by = {
             "memory": (
                 "Study more cards",
                 "Readiness needs more graded reviews before it can estimate your memory signal.",
+                None,
+                None,
             ),
             "performance": (
                 "Answer held-out questions",
                 "Register and answer exam-style questions so performance is measured separately from recall.",
+                "speedrun:practice",
+                "Practice now",
             ),
             "coverage": (
                 "Cover more of the outline",
                 "Seed the MCAT outline and tag cards by topic; readiness abstains below 50% coverage.",
+                seed_cmd,
+                "Seed topics" if seed_cmd else None,
             ),
             "attempts": (
                 "Record a few more attempts",
                 "Keep reviewing; a handful more graded attempts will unlock your readiness estimate.",
+                None,
+                None,
             ),
         }
-        title, detail = by.get(
+        title, detail, cmd, cta = by.get(
             data.get("blocking", ""),
-            ("Build more evidence", data.get("reason", "")),
+            ("Build more evidence", data.get("reason", ""), None, None),
         )
-        return {"title": title, "detail": detail}
+        return {"title": title, "detail": detail, "cmd": cmd, "cta": cta}
 
     if data["gap"] >= 0.15:
         return {
             "title": "Bridge recall to application",
-            "detail": "Your recall outruns your exam-style performance. Do concept-linked passage practice to close the gap.",
+            "detail": "Your recall outruns your exam-style performance. Practice concept-linked questions to close the gap.",
+            "cmd": "speedrun:practice",
+            "cta": "Practice now",
         }
     exam = data.get("exam") or {}
     if exam.get("has") and exam.get("readiness_sufficient") and not exam.get("on_track"):
@@ -349,10 +362,14 @@ def _next_action(data: dict) -> dict:
             "title": "Pick up the pace",
             "detail": f"You need about +{exam.get('needed', 0)} points "
             f"(~{exam.get('per_week', 0):.1f}/week) to reach your target by exam day.",
+            "cmd": "speedrun:exam",
+            "cta": "Adjust plan",
         }
     return {
         "title": "On track — keep going",
-        "detail": "Memory, performance, and coverage all look healthy. Maintain your spaced reviews.",
+        "detail": "Memory, performance, and coverage all look healthy. Keep your spaced reviews steady.",
+        "cmd": "speedrun:practice",
+        "cta": "Practice",
     }
 
 
@@ -493,6 +510,8 @@ def _refresh(mw: aqt.AnkiQt, msg: str | None = None) -> None:
             mw.deckBrowser.refresh()
         else:
             mw.reset()
+        # Keep the toolbar's cached readiness number in sync with the panel.
+        mw.toolbar.redraw()
     except Exception:
         pass
     if msg:
@@ -724,10 +743,7 @@ def _start_practice(mw: aqt.AnkiQt) -> None:
             }
         )
     if not questions:
-        tooltip(
-            "No practice questions yet. Import a pack:\n"
-            "tools/import_question_pack.sh tools/speedrun_mmlu_pack.json <collection>"
-        )
+        tooltip("No practice questions yet — import a question pack to begin.")
         return
     _PracticeDialog(mw, questions).exec()
 
