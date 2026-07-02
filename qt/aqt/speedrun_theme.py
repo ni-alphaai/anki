@@ -24,13 +24,26 @@ from html import escape
 
 # Apple "clinical daylight" tokens; dark values mirror Anki night mode. These
 # are the single source of truth for the Speedrun look.
-_TOKENS = """
+# Bundled OFL fonts, served by Anki's media server from aqt/data/web/imgs/ at
+# /_anki/imgs/. Variable weight axes let one file cover the whole range. These
+# mirror the mobile identity: Geist (product sans) + Fraunces (display serif).
+_FONTS = """
+@font-face { font-family:"Geist"; font-style:normal; font-weight:100 900;
+  font-display:swap; src:url("/_anki/imgs/speedrun-geist.ttf") format("truetype"); }
+@font-face { font-family:"Fraunces"; font-style:normal; font-weight:100 900;
+  font-display:swap; src:url("/_anki/imgs/speedrun-fraunces.ttf") format("truetype"); }
+"""
+
+_TOKENS = (
+    _FONTS
+    + """
 :root {
   --sr-canvas:#F2F3F5; --sr-surface:#FFFFFF; --sr-ink:#16181D; --sr-secondary:#6B7280;
   --sr-hairline:#E7EAEE; --sr-memory:#2E7BF6; --sr-perf:#22C55E; --sr-accent:#2E7BF6;
   --sr-amber:#E0900B; --sr-radius:20px;
   --sr-shadow:0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.06);
-  --sr-font:-apple-system,"SF Pro Display","SF Pro Text","Inter",system-ui,"Segoe UI",Roboto,sans-serif;
+  --sr-font:"Geist",-apple-system,"SF Pro Text","Inter",system-ui,"Segoe UI",Roboto,sans-serif;
+  --sr-display:"Fraunces","Geist",Georgia,"Times New Roman",serif;
 }
 .night-mode, [data-bs-theme="dark"] {
   --sr-canvas:#0C0D0F; --sr-surface:#17181B; --sr-ink:#F2F3F5; --sr-secondary:#9AA0A8;
@@ -39,6 +52,7 @@ _TOKENS = """
   --sr-shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.45);
 }
 """
+)
 
 # Styling for the Speedrun components themselves. Always injected wherever a
 # component is rendered, so the embeds look right even with the reskin off.
@@ -60,6 +74,10 @@ _COMPONENTS = """
 .sr-hero .sr-range { font-size: 15px; color: var(--sr-secondary); font-variant-numeric: tabular-nums; }
 .sr-hero .sr-scale { font-size: 12px; color: var(--sr-secondary); }
 .sr-updated { margin: 10px 0 0; font-size: 12px; color: var(--sr-secondary); }
+
+/* Fraunces display serif on the signature numbers (mirrors the phone) */
+.sr-hero .sr-score, .sr-hole .sr-num, .sr-banner .sr-lead {
+  font-family: var(--sr-display); font-weight: 600; }
 
 /* honest abstention */
 .sr-abstain .sr-score { font-size: 24px; font-weight: 600; color: var(--sr-amber); }
@@ -114,17 +132,24 @@ _COMPONENTS = """
 .sr-mini .sr-k { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .sr-mini .sr-s { font-size: 12px; color: var(--sr-secondary); }
 
-/* next action */
-.sr-next { display: flex; align-items: center; gap: 14px; border-left: 3px solid var(--sr-accent); }
-.sr-next .sr-t { font-weight: 600; font-size: 15px; }
+/* next action — the single primary CTA of the panel, visually distinguished */
+.sr-next { display: flex; align-items: center; gap: 14px;
+  background: color-mix(in srgb, var(--sr-accent) 6%, var(--sr-surface));
+  border: 1px solid color-mix(in srgb, var(--sr-accent) 24%, var(--sr-hairline));
+  border-left: 3px solid var(--sr-accent); }
+.sr-next .sr-eyebrow { color: var(--sr-accent); }
+.sr-next .sr-t { font-weight: 600; font-size: 16px; }
 .sr-next .sr-d { font-size: 13px; color: var(--sr-secondary); margin-top: 3px; line-height: 1.5; }
 
 /* actions */
 .sr-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.sr-actions-spacer { flex: 1 1 auto; }
 .sr-btn { font: 500 13px var(--sr-font); color: var(--sr-ink); cursor: pointer;
   background: var(--sr-surface); border: 1px solid var(--sr-hairline); border-radius: 980px;
   padding: 7px 14px; transition: background .15s, border-color .15s; }
 .sr-btn:hover { border-color: var(--sr-accent); }
+.sr-btn.sr-icon { padding: 7px 11px; font-size: 15px; line-height: 1; color: var(--sr-secondary); }
+.sr-btn.sr-icon:hover { color: var(--sr-ink); }
 .sr-btn.sr-primary { background: var(--sr-ink); border-color: var(--sr-ink); color: var(--sr-surface); font-weight: 600; }
 .sr-btn.sr-primary:hover { opacity: .9; border-color: var(--sr-ink); }
 .sr-toggle { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--sr-secondary);
@@ -132,6 +157,21 @@ _COMPONENTS = """
 .sr-toggle[data-on="1"] { color: var(--sr-ink); border-color: var(--sr-accent); }
 .sr-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--sr-hairline); }
 .sr-toggle[data-on="1"] .sr-dot { background: var(--sr-perf); }
+
+/* dashboard header (toolbar window) */
+.sr-dash { margin-top: 28px; }
+.sr-dash-head { margin: 0 2px 4px; }
+.sr-dash-title { font-family: var(--sr-display); font-weight: 600; font-size: 34px;
+  letter-spacing: -.02em; margin: 0; color: var(--sr-ink); }
+.sr-dash-sub { margin: 4px 0 0; font-size: 14px; color: var(--sr-secondary); }
+
+/* themed finished-deck screen */
+.sr-finished { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.sr-finished-check { width: 52px; height: 52px; border-radius: 50%; margin-bottom: 6px;
+  background: color-mix(in srgb, var(--sr-perf) 16%, transparent); color: var(--sr-perf);
+  display: grid; place-items: center; font-size: 26px; font-weight: 700; }
+.sr-finished-title { font-family: var(--sr-display); font-weight: 600; font-size: 24px; color: var(--sr-ink); }
+.sr-finished-sub { margin: 4px 0 14px; font-size: 14px; color: var(--sr-secondary); line-height: 1.5; max-width: 46ch; }
 
 /* deck-home banner */
 .sr-banner { max-width: 760px; margin: 18px auto; background: var(--sr-surface);
@@ -204,6 +244,74 @@ def reskin_style(kind: str) -> str:
 def answer_buttons_css() -> str:
     """Color-coded Apple-style answer buttons for the reviewer bottom bar."""
     return f"<style>{_TOKENS}{_ANSWER_BUTTONS}</style>"
+
+
+# --- Qt dialog styling ------------------------------------------------------
+
+# Speedrun's Qt dialogs (self-explain, practice, exam target, library,
+# onboarding) are native QDialogs, so they can't use the webview CSS above.
+# ``dialog_qss`` renders the same token palette as a Qt style sheet so those
+# dialogs match the rest of the app instead of the default grey Qt chrome.
+# Colours mirror ``_TOKENS`` (light) and its ``.night-mode`` override (dark).
+_DIALOG_PALETTE = {
+    False: {
+        "canvas": "#F2F3F5", "surface": "#FFFFFF", "ink": "#16181D",
+        "secondary": "#6B7280", "hairline": "#E7EAEE", "accent": "#2E7BF6",
+        "field": "#FFFFFF",
+    },
+    True: {
+        "canvas": "#0C0D0F", "surface": "#17181B", "ink": "#F2F3F5",
+        "secondary": "#9AA0A8", "hairline": "#33363B", "accent": "#4B93FF",
+        "field": "#202226",
+    },
+}
+
+# Product sans, matching the mobile identity. Falls back to the system stack
+# when the bundled Geist face has not been registered with Qt.
+SR_QT_FONT = '"Geist", -apple-system, "SF Pro Text", "Segoe UI", Roboto, sans-serif'
+SR_QT_DISPLAY = '"Fraunces", "Geist", Georgia, serif'
+
+
+def dialog_qss(night: bool = False) -> str:
+    """Qt style sheet applying the Speedrun token palette to a QDialog tree.
+
+    Property selectors let callers opt into roles: set ``srRole`` to
+    ``"display"``/``"eyebrow"``/``"muted"`` on a QLabel, or ``srPrimary`` to
+    ``"1"`` on a QPushButton, to get the accented treatments.
+    """
+    p = _DIALOG_PALETTE[bool(night)]
+    return f"""
+    QDialog {{ background: {p['canvas']}; }}
+    QDialog, QLabel, QRadioButton, QCheckBox, QComboBox, QSpinBox, QDateEdit,
+    QPlainTextEdit, QPushButton {{
+        color: {p['ink']}; font-family: {SR_QT_FONT}; font-size: 13px;
+    }}
+    QLabel[srRole="display"] {{ font-family: {SR_QT_DISPLAY}; font-size: 22px; font-weight: 600; }}
+    QLabel[srRole="title"] {{ font-size: 16px; font-weight: 600; }}
+    QLabel[srRole="eyebrow"] {{ color: {p['secondary']}; font-size: 11px; font-weight: 600; }}
+    QLabel[srRole="muted"] {{ color: {p['secondary']}; }}
+    QRadioButton {{ padding: 7px 4px; }}
+    QComboBox, QSpinBox, QDateEdit, QPlainTextEdit {{
+        background: {p['field']}; border: 1px solid {p['hairline']};
+        border-radius: 8px; padding: 6px 8px; selection-background-color: {p['accent']};
+    }}
+    QPushButton {{
+        background: {p['surface']}; border: 1px solid {p['hairline']};
+        border-radius: 10px; padding: 8px 16px;
+    }}
+    QPushButton:hover {{ border-color: {p['accent']}; }}
+    QPushButton:disabled {{ color: {p['secondary']}; }}
+    QPushButton[srPrimary="1"] {{
+        background: {p['ink']}; color: {p['surface']}; border: none; font-weight: 600;
+    }}
+    QPushButton[srPrimary="1"]:hover {{ background: {p['accent']}; }}
+    QFrame[srCard="1"] {{
+        background: {p['surface']}; border: 1px solid {p['hairline']}; border-radius: 14px;
+    }}
+    QFrame[srRole="divider"] {{
+        background: {p['hairline']}; max-height: 1px; border: none;
+    }}
+    """
 
 
 # --- helpers ----------------------------------------------------------------
@@ -364,44 +472,28 @@ def _next_action(data: dict) -> str:
 
 
 def _actions(data: dict) -> str:
-    def toggle(cmd: str, label: str, on: bool, tip: str = "") -> str:
-        tip_attr = f' title="{escape(tip)}"' if tip else ""
-        return (
-            f'<span class="sr-toggle" data-on="{1 if on else 0}"{tip_attr} '
-            f"onclick=\"pycmd('{cmd}')\"><span class=\"sr-dot\"></span>{escape(label)}</span>"
-        )
-
+    """A secondary utility row. The single primary CTA is the Next Best Action
+    above; these are all secondary so they never compete with it, and Practice is
+    omitted here when it is already the recommended next step (no duplicate CTA).
+    Config toggles live behind Settings to keep the panel uncluttered."""
+    na_cmd = (data.get("next_action") or {}).get("cmd")
+    practice = ""
+    if na_cmd != "speedrun:practice":
+        practice = "<button class=\"sr-btn\" onclick=\"pycmd('speedrun:practice')\">Practice questions</button>"
     seed = ""
     if data.get("cov_total", 0) == 0:
         seed = "<button class=\"sr-btn\" onclick=\"pycmd('speedrun:seed')\">Seed MCAT topics</button>"
     exam_label = "Edit exam target" if (data.get("exam") or {}).get("has") else "Set exam target"
     return (
         '<div class="sr-actions">'
-        "<button class=\"sr-btn\" onclick=\"pycmd('speedrun:practice')\">Practice questions</button>"
+        f"{practice}"
+        "<button class=\"sr-btn\" onclick=\"pycmd('speedrun:library')\">Content library</button>"
         f"{seed}"
         f"<button class=\"sr-btn\" onclick=\"pycmd('speedrun:exam')\">{exam_label}</button>"
-        "<button class=\"sr-btn\" onclick=\"pycmd('speedrun:refresh')\">Refresh</button>"
-        + toggle(
-            "speedrun:toggle:points",
-            "Points-at-stake",
-            data.get("points_at_stake", False),
-            "Order due cards by weakness (points at stake).",
-        )
-        + toggle(
-            "speedrun:toggle:interleave",
-            "Spaced + interleaved practice",
-            data.get("interleave", False),
-            "Distributed practice is FSRS; this interleaves confusable sibling "
-            "topics (same parent tag) in reviews and new cards, keeping unrelated "
-            "concepts blocked.",
-        )
-        + toggle(
-            "speedrun:toggle:modern",
-            "Modern UI",
-            data.get("modern_ui", True),
-            "Apple-style reskin of Anki's deck list, overview, and toolbar.",
-        )
-        + "</div>"
+        '<span class="sr-actions-spacer"></span>'
+        "<button class=\"sr-btn sr-icon\" title=\"Refresh\" onclick=\"pycmd('speedrun:refresh')\">&#8635;</button>"
+        "<button class=\"sr-btn sr-icon\" title=\"Speedrun settings\" onclick=\"pycmd('speedrun:settings')\">&#9881;</button>"
+        "</div>"
     )
 
 
@@ -410,6 +502,60 @@ def panel_html(data: dict) -> str:
     return (
         component_style()
         + '<div class="sr-panel">'
+        + _hero(data)
+        + _signals(data)
+        + _bridge(data["memory"], data["performance"], data.get("gap", 0.0))
+        + _mini_grid(data)
+        + _next_action(data)
+        + _actions(data)
+        + "</div>"
+    )
+
+
+def dashboard_html(data: dict) -> str:
+    """The standalone Speedrun dashboard (top-toolbar window). Same panel with
+    a title header so it reads as a first-class screen, not a deck embed."""
+    header = (
+        '<div class="sr-dash-head">'
+        '<h1 class="sr-dash-title">Speedrun</h1>'
+        '<p class="sr-dash-sub">Memory, performance, and readiness \u2014 honest, '
+        "always up to date.</p></div>"
+    )
+    return (
+        component_style()
+        + '<div class="sr-panel sr-dash">'
+        + header
+        + _hero(data)
+        + _signals(data)
+        + _bridge(data["memory"], data["performance"], data.get("gap", 0.0))
+        + _mini_grid(data)
+        + _next_action(data)
+        + _actions(data)
+        + "</div>"
+    )
+
+
+def finished_html(data: dict, deck_name: str) -> str:
+    """Themed finished-deck screen: a calm congrats note + the readiness panel +
+    clear paths back, replacing Anki's default congrats page (which otherwise
+    hides the panel and dead-ends the user)."""
+    congrats = (
+        '<div class="sr-card sr-finished">'
+        '<div class="sr-finished-check">\u2713</div>'
+        f'<div class="sr-finished-title">{escape(deck_name)} \u2014 done for now</div>'
+        '<p class="sr-finished-sub">No more cards due right now. Here\u2019s where you '
+        "stand \u2014 pick your next move below.</p>"
+        '<div class="sr-actions" style="justify-content:center">'
+        "<button class=\"sr-btn sr-primary\" onclick=\"pycmd('speedrun:practice')\">Practice questions</button>"
+        "<button class=\"sr-btn\" onclick=\"pycmd('speedrun:dashboard')\">Open dashboard</button>"
+        "<button class=\"sr-btn\" onclick=\"pycmd('speedrun:decks')\">Back to decks</button>"
+        "<button class=\"sr-btn\" onclick=\"pycmd('speedrun:customstudy')\">Custom study</button>"
+        "</div></div>"
+    )
+    return (
+        component_style()
+        + '<div class="sr-panel">'
+        + congrats
         + _hero(data)
         + _signals(data)
         + _bridge(data["memory"], data["performance"], data.get("gap", 0.0))

@@ -293,6 +293,27 @@ object EngineRepository {
     }
 
     /**
+     * Curated end-to-end test: import the bundled biology deck (.apkg) plus its
+     * topic-matched held-out questions, so reviewing the deck and finishing it
+     * pulls a relevant reasoning round (not random). Mirrors the desktop e2e pack.
+     */
+    suspend fun importE2eBiology(context: Context): String = engine { b ->
+        val tmp = File(context.cacheDir, "speedrun_e2e_biology.apkg")
+        context.assets.open("speedrun_e2e_biology.apkg").use { input ->
+            tmp.outputStream().use { input.copyTo(it) }
+        }
+        val options = runCatching { b.getImportAnkiPackagePresets() }
+            .getOrDefault(ImportAnkiPackageOptions.getDefaultInstance())
+        val notes = runCatching { b.importAnkiPackage(tmp.absolutePath, options).log.foundNotes }
+            .getOrDefault(0)
+        runCatching { tmp.delete() }
+        val qtext = context.assets.open("speedrun_e2e_biology.json")
+            .bufferedReader().use { it.readText() }
+        val added = importPackText(b, qtext)
+        "Imported $notes biology cards + $added matched questions"
+    }
+
+    /**
      * Import a local file the user picked or downloaded: a `.json` question pack
      * (added to the bank) or a `.apkg`/`.colpkg` deck (imported via the engine).
      * Returns a short human summary.
@@ -335,23 +356,35 @@ object EngineRepository {
 
     /** Fetch a batch of held-out practice questions, parsed from their payloads. */
     suspend fun practiceQuestions(limit: Int, topic: String = ""): List<QuestionItemUi> = engine { b ->
-        b.getPracticeQuestions(limit, topic).mapNotNull { item ->
-            runCatching {
-                val o = JSONObject(item.payload)
-                val optsArr = o.getJSONArray("options")
-                val options = (0 until optsArr.length()).map { optsArr.getString(it) }
-                QuestionItemUi(
-                    id = item.id,
-                    cardId = item.cardId,
-                    topic = item.topic,
-                    stem = o.optString("stem"),
-                    options = options,
-                    correctIndex = o.optInt("correct_index", 0),
-                    explanation = o.optString("explanation", ""),
-                )
-            }.getOrNull()
-        }.filter { it.options.size >= 2 }
+        b.getPracticeQuestions(limit, topic).mapNotNull { it.toUi() }.filter { it.options.size >= 2 }
     }
+
+    /**
+     * The end-of-session reasoning round: held-out questions for the concepts
+     * just reviewed (card-linked -> topic-matched via the deck-name map ->
+     * unseen fallback). Selection runs in the shared engine, same as desktop.
+     */
+    suspend fun sessionReasoningRound(reviewedCardIds: List<Long>, limit: Int): List<QuestionItemUi> =
+        engine { b ->
+            b.getSessionReasoningRound(reviewedCardIds, limit)
+                .mapNotNull { it.toUi() }
+                .filter { it.options.size >= 2 }
+        }
+
+    private fun anki.speedrun.QuestionItem.toUi(): QuestionItemUi? = runCatching {
+        val o = JSONObject(payload)
+        val optsArr = o.getJSONArray("options")
+        val options = (0 until optsArr.length()).map { optsArr.getString(it) }
+        QuestionItemUi(
+            id = id,
+            cardId = cardId,
+            topic = topic,
+            stem = o.optString("stem"),
+            options = options,
+            correctIndex = o.optInt("correct_index", 0),
+            explanation = o.optString("explanation", ""),
+        )
+    }.getOrNull()
 
     /**
      * Record an answered practice question as an exam-style attempt

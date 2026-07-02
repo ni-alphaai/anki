@@ -39,6 +39,7 @@ impl crate::services::SpeedrunService for Collection {
             recall_failed: input.recall_failed,
             passage_evidence_missed: input.passage_evidence_missed,
             question_type: input.question_type as u8,
+            confidence: 0.0,
         });
         Ok(to_proto_diagnosis(diagnosis))
     }
@@ -54,6 +55,9 @@ impl crate::services::SpeedrunService for Collection {
             recall_failed: signals.recall_failed,
             passage_evidence_missed: signals.passage_evidence_missed,
             question_type: input.question_type as u8,
+            // The student's pre-answer confidence (0 when they skipped it), used
+            // to tell a confident careless miss (test-taking) from a reasoning gap.
+            confidence: input.predicted.unwrap_or(0.0),
         });
 
         // For SRS reviews, auto-capture the model's predicted recall from the
@@ -343,6 +347,72 @@ impl crate::services::SpeedrunService for Collection {
         let limit = if input.limit == 0 { 20 } else { input.limit };
         let topic = (!input.topic.is_empty()).then_some(input.topic.as_str());
         let items = self.storage.list_sr_question_items(limit, topic)?;
+        Ok(anki_proto::speedrun::QuestionItems {
+            items: items.into_iter().map(to_proto_question_item).collect(),
+        })
+    }
+
+    fn get_session_reasoning_round(
+        &mut self,
+        input: anki_proto::speedrun::SessionReasoningRoundRequest,
+    ) -> error::Result<anki_proto::speedrun::QuestionItems> {
+        use crate::speedrun::reasoning_round::deck_name_to_topic;
+        use crate::speedrun::reasoning_round::select_round;
+        use crate::speedrun::reasoning_round::DEFAULT_ROUND_SIZE;
+        use std::collections::HashSet;
+
+        let limit = if input.limit == 0 {
+            DEFAULT_ROUND_SIZE
+        } else {
+            input.limit
+        };
+
+        // Topics the student "touched" this session: note tags that are in the
+        // topic map, plus a deck-name -> topic heuristic (so real decks whose
+        // cards aren't outline-tagged still resolve to a relevant topic).
+        let outline: HashSet<String> = self
+            .storage
+            .get_sr_topic_map()?
+            .into_iter()
+            .map(|e| e.topic)
+            .collect();
+        let mut session_topics: HashSet<String> = HashSet::new();
+        for cid in &input.reviewed_card_ids {
+            let Some((deck_id, note_id)) = self
+                .storage
+                .get_card(CardId(*cid))?
+                .map(|c| (c.deck_id, c.note_id))
+            else {
+                continue;
+            };
+            if let Some(deck) = self.get_deck(deck_id)? {
+                if let Some(topic) = deck_name_to_topic(&deck.human_name()) {
+                    session_topics.insert(topic.to_string());
+                }
+            }
+            if let Some(note) = self.storage.get_note(note_id)? {
+                for tag in note.tags {
+                    if outline.contains(&tag) {
+                        session_topics.insert(tag);
+                    }
+                }
+            }
+        }
+
+        // Tier 1: questions linked to the exact cards just reviewed.
+        let mut card_linked = Vec::new();
+        for cid in &input.reviewed_card_ids {
+            card_linked.extend(self.storage.get_sr_question_items_for_card(CardId(*cid))?);
+        }
+        // Tier 2: questions on the session's topics.
+        let mut topic_matched = Vec::new();
+        for topic in &session_topics {
+            topic_matched.extend(self.storage.get_sr_question_items_for_topic(topic)?);
+        }
+        // Tier 3: fallback to any held-out questions so the round always runs.
+        let fallback = self.storage.list_sr_question_items(limit, None)?;
+
+        let items = select_round(card_linked, topic_matched, fallback, limit as usize);
         Ok(anki_proto::speedrun::QuestionItems {
             items: items.into_iter().map(to_proto_question_item).collect(),
         })

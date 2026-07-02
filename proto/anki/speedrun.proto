@@ -53,6 +53,10 @@ service SpeedrunService {
   // Fetch a batch of held-out questions for a practice session (optionally
   // filtered to one topic). Appended last to keep existing method indices stable.
   rpc GetPracticeQuestions(GetPracticeQuestionsRequest) returns (QuestionItems);
+  // Woven memory->reasoning: after a review session, pick held-out questions for
+  // the concepts just reviewed (card-linked, then topic-matched, then unseen).
+  // Appended last to keep existing method indices stable.
+  rpc GetSessionReasoningRound(SessionReasoningRoundRequest) returns (QuestionItems);
 }
 
 // Backend counterpart. The methods above are implemented on Collection and are
@@ -146,6 +150,13 @@ message GetPracticeQuestionsRequest {
   uint32 limit = 1;
   // Optional topic filter; empty = any topic.
   string topic = 2;
+}
+
+message SessionReasoningRoundRequest {
+  // Card ids reviewed in the session that just finished.
+  repeated int64 reviewed_card_ids = 1;
+  // Max questions in the round; 0 => default (5).
+  uint32 limit = 2;
 }
 
 // routed_action: 0=none,1=resurface,2=passage_practice,3=strategy,4=advance

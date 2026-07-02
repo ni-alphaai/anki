@@ -32,6 +32,7 @@ import anki.speedrun.QuestionItems
 import anki.speedrun.ReadinessSnapshot
 import anki.speedrun.RecordAttemptRequest
 import anki.speedrun.RecordAttemptResponse
+import anki.speedrun.SessionReasoningRoundRequest
 import anki.speedrun.TopicMap
 
 /** A backend RPC that returned an error instead of a response. */
@@ -152,6 +153,20 @@ class AnkiBackend private constructor(private var ptr: Long) {
         return QuestionItems.parseFrom(bytes).itemsList
     }
 
+    /**
+     * The end-of-session reasoning round: held-out questions for the concepts
+     * just reviewed (card-linked, then topic-matched via the deck-name map, then
+     * unseen fallback). Runs in the shared engine, identical to desktop.
+     */
+    fun getSessionReasoningRound(reviewedCardIds: List<Long>, limit: Int): List<QuestionItem> {
+        val req = SessionReasoningRoundRequest.newBuilder()
+            .addAllReviewedCardIds(reviewedCardIds)
+            .setLimit(limit)
+            .build()
+        val bytes = run(SVC_SPEEDRUN, M_GET_SESSION_REASONING_ROUND, req.toByteArray())
+        return QuestionItems.parseFrom(bytes).itemsList
+    }
+
     /** Register one held-out question item; returns its stored id. */
     fun addQuestionItem(item: QuestionItem): Long =
         QuestionItemId.parseFrom(run(SVC_SPEEDRUN, M_ADD_QUESTION_ITEM, item.toByteArray())).id
@@ -237,6 +252,7 @@ class AnkiBackend private constructor(private var ptr: Long) {
         private const val M_GET_EXAM_PROFILE = 15
         private const val M_GET_EXAM_PLAN = 16
         private const val M_GET_PRACTICE_QUESTIONS = 21
+        private const val M_GET_SESSION_REASONING_ROUND = 22
 
         /** Open the shared engine. Defaults are fine for an on-device client. */
         fun open(): AnkiBackend {

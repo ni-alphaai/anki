@@ -153,12 +153,19 @@ def main() -> int:
         check.ok("missed passage evidence -> passage gap", d.diagnosis.kind == PASSAGE)
         check.ok("passage gap routes to passage practice", d.diagnosis.routed_action == ACTION_PASSAGE)
 
-        # Rushed a question and got it wrong -> test-taking gap.
+        # Confident but rushed a question and got it wrong -> test-taking gap
+        # (sure + fast = careless/misread, not a missing concept).
         d = _attempt(col, card_id=card_of["fc2"], note_id=note_of["fc2"], correct=False,
-                     question_type=PASSAGE_MCQ, took_ms=3000)
+                     question_type=PASSAGE_MCQ, took_ms=3000, predicted=0.9)
         exam_total += 1
-        check.ok("rushed miss -> test-taking gap", d.diagnosis.kind == TEST_TAKING)
+        check.ok("confident rushed miss -> test-taking gap", d.diagnosis.kind == TEST_TAKING)
         check.ok("test-taking gap routes to strategy", d.diagnosis.routed_action == ACTION_STRATEGY)
+
+        # Rushed but NOT confident -> reasoning gap (they didn't actually have it).
+        d = _attempt(col, card_id=card_of["fc2"], note_id=note_of["fc2"], correct=False,
+                     question_type=PASSAGE_MCQ, took_ms=3000, predicted=0.3)
+        exam_total += 1
+        check.ok("unsure rushed miss -> reasoning gap", d.diagnosis.kind == REASONING)
 
         # Deliberated, knew the fact, still wrong -> reasoning gap.
         d = _attempt(col, card_id=card_of["fc2"], note_id=note_of["fc2"], correct=False,
@@ -178,7 +185,7 @@ def main() -> int:
         perf = col._backend.get_performance_report()
         check.ok("exam-style attempts counted", perf.exam_attempts == exam_total, f"{perf.exam_attempts}")
         check.ok("performance is evaluated on the 3 linked concept cards", perf.cards_evaluated == 3)
-        # Per-card mean, not per-attempt: fc1 0/1, fc2 0/2, fc3 1/1 -> (0 + 0 + 1) / 3.
+        # Per-card mean, not per-attempt: fc1 0/1, fc2 0/3, fc3 1/1 -> (0 + 0 + 1) / 3.
         check.ok(
             "performance rate is the per-card mean",
             abs(perf.performance_rate - (1.0 / 3.0)) < 1e-6,

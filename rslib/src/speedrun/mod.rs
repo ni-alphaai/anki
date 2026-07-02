@@ -17,6 +17,7 @@ pub mod leakage;
 pub mod performance;
 pub mod points_at_stake;
 pub mod readiness;
+pub mod reasoning_round;
 pub(crate) mod service;
 
 // Diagnosis kinds, mirroring sr_attempts.diagnosis_kind.
@@ -42,6 +43,10 @@ pub struct Diagnosis {
     pub routed_action: u8,
 }
 
+/// A wrong exam-style answer counts as a test-taking (careless/rushed) miss only
+/// when the student was this confident or more -- otherwise it is a reasoning gap.
+pub const TEST_TAKING_CONFIDENCE: f32 = 0.75;
+
 /// Inputs to the deterministic classifier.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct AttemptSignals {
@@ -53,6 +58,8 @@ pub struct AttemptSignals {
     pub passage_evidence_missed: bool,
     /// 0=srs review, 1=passage mcq, 2=discrete mcq.
     pub question_type: u8,
+    /// Pre-answer confidence the student reported, 0.0..=1.0 (0 = unknown).
+    pub confidence: f32,
 }
 
 /// Classify a miss into a root-cause failure mode and a routed repair action.
@@ -82,8 +89,15 @@ pub fn classify(signals: &AttemptSignals) -> Diagnosis {
             routed_action: ACTION_PASSAGE_PRACTICE,
         };
     }
-    // Rushed on a passage/discrete question suggests a test-taking issue.
-    if signals.question_type != 0 && signals.took_ms > 0 && signals.took_ms < 8_000 {
+    // Test-taking gap = a *confident* wrong answer given quickly on an exam-style
+    // question: the student was sure but careless/misread, not lacking the concept.
+    // A fast wrong answer with low/unknown confidence is treated as a reasoning gap
+    // (they didn't actually have it), which is the safer default.
+    if signals.question_type != 0
+        && signals.took_ms > 0
+        && signals.took_ms < 8_000
+        && signals.confidence >= TEST_TAKING_CONFIDENCE
+    {
         return Diagnosis {
             kind: DIAGNOSIS_TEST_TAKING,
             confidence: 0.5,
@@ -109,6 +123,7 @@ mod test {
             recall_failed,
             passage_evidence_missed: passage,
             question_type: 1,
+            confidence: 0.0,
         }
     }
 
@@ -123,10 +138,14 @@ mod test {
             classify(&signals(false, 5000, false, true)).kind,
             DIAGNOSIS_PASSAGE
         );
-        // rushed -> test-taking
+        // fast + confident but wrong -> test-taking (careless)
+        let mut confident_rush = signals(false, 3000, false, false);
+        confident_rush.confidence = 0.85;
+        assert_eq!(classify(&confident_rush).kind, DIAGNOSIS_TEST_TAKING);
+        // fast but NOT confident -> reasoning (didn't actually have it)
         assert_eq!(
             classify(&signals(false, 3000, false, false)).kind,
-            DIAGNOSIS_TEST_TAKING
+            DIAGNOSIS_REASONING
         );
         // slow but wrong, knew it -> reasoning
         assert_eq!(

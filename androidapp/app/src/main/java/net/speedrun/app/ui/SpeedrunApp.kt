@@ -58,6 +58,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import net.speedrun.app.EngineRepository
+import net.speedrun.app.AppSettings
 import net.speedrun.app.OpenState
 import net.speedrun.app.ui.screens.DeckOverviewScreen
 import net.speedrun.app.ui.screens.GetStartedScreen
@@ -121,10 +122,19 @@ fun SpeedrunApp() {
 
 @Composable
 private fun MainScaffold() {
+    val context = LocalContext.current
     // Route the first launch: import first if empty, then set the exam, then Today.
     var start by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
-        val hasContent = runCatching { EngineRepository.hasContent() }.getOrDefault(false)
+        var hasContent = runCatching { EngineRepository.hasContent() }.getOrDefault(false)
+        // Demo convenience: on a fresh install, seed the bundled biology example
+        // deck so there is something to review immediately (skipped if the user
+        // already has content, and only ever once).
+        if (!hasContent && !AppSettings.exampleLoaded) {
+            runCatching { EngineRepository.importE2eBiology(context) }
+            AppSettings.setExampleLoaded(context, true)
+            hasContent = runCatching { EngineRepository.hasContent() }.getOrDefault(false)
+        }
         val examSet = runCatching { EngineRepository.examProfile().isSet }.getOrDefault(false)
         start = when {
             !hasContent -> "getstarted"

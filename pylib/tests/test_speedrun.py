@@ -231,3 +231,43 @@ def test_get_practice_questions_batch():
     bio = col._backend.get_practice_questions(limit=100, topic="biology")
     assert len(bio) == 5
     assert all(q.topic == "biology" for q in bio)
+
+
+def test_session_reasoning_round_weaves_memory_and_reasoning():
+    col = getEmptyCol()
+
+    # a card in a deck whose name maps to the "biology" topic
+    did = col.decks.id("Biology")
+    model = col.models.by_name("Basic")
+    note = col.new_note(model)
+    note["Front"] = "a cell fact"
+    col.add_note(note, did)
+    card_id = note.cards()[0].id
+
+    # tier 1: a held-out question linked to the exact card just reviewed
+    col._backend.add_question_item(
+        speedrun_pb2.QuestionItem(card_id=card_id, topic="biology", payload='{"k":"cl"}')
+    )
+    # tier 2: a biology question reachable only via the deck-name -> topic map
+    col._backend.add_question_item(
+        speedrun_pb2.QuestionItem(topic="biology", payload='{"k":"bio"}')
+    )
+    # only reachable as the last-resort fallback
+    col._backend.add_question_item(
+        speedrun_pb2.QuestionItem(topic="physics", payload='{"k":"phys"}')
+    )
+
+    # full round: all three, with the card-linked question first
+    full = col._backend.get_session_reasoning_round(reviewed_card_ids=[card_id], limit=5)
+    payloads = [q.payload for q in full]
+    assert len(full) == 3
+    assert payloads[0] == '{"k":"cl"}'
+    assert set(payloads) == {'{"k":"cl"}', '{"k":"bio"}', '{"k":"phys"}'}
+
+    # capped at 2: card-linked + deck-topic-matched fill the round before the
+    # physics fallback is ever consulted (proves the deck-name -> topic path)
+    capped = col._backend.get_session_reasoning_round(reviewed_card_ids=[card_id], limit=2)
+    assert [q.payload for q in capped] == ['{"k":"cl"}', '{"k":"bio"}']
+
+    # an empty session still returns a round from the general bank (never errors)
+    assert len(col._backend.get_session_reasoning_round(reviewed_card_ids=[], limit=5)) == 3

@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -43,15 +44,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import net.speedrun.app.AppSettings
 import net.speedrun.app.Diagnosis
 import net.speedrun.app.EngineRepository
+import net.speedrun.app.QuestionItemUi
 import net.speedrun.app.Rating
 import net.speedrun.app.ui.PrimaryButton
+import net.speedrun.app.ui.SecondaryButton
 import net.speedrun.app.ui.VoiceExplainSheet
 import net.speedrun.app.ui.theme.Radius
 import net.speedrun.app.ui.theme.Space
@@ -72,6 +77,12 @@ fun ReviewScreen(onDone: () -> Unit) {
     var pendingExplanation by remember { mutableStateOf("") }
     var showVoice by remember { mutableStateOf(false) }
     var diagnosis by remember { mutableStateOf<Diagnosis?>(null) }
+
+    // End-of-session reasoning round (memory -> reasoning).
+    val reviewedIds = remember { mutableStateListOf<Long>() }
+    var round by remember { mutableStateOf<List<QuestionItemUi>?>(null) }
+    var roundChecked by remember { mutableStateOf(false) }
+    var showRound by remember { mutableStateOf(false) }
 
     suspend fun loadNext() {
         loading = true
@@ -94,9 +105,25 @@ fun ReviewScreen(onDone: () -> Unit) {
         }
     }
 
+    // When the deck's due cards run out, assemble a reasoning round on the
+    // concepts just reviewed. Auto-launch it, or offer it on the finish screen.
+    LaunchedEffect(finished) {
+        if (finished && !roundChecked) {
+            roundChecked = true
+            if (reviewedIds.isNotEmpty()) {
+                val q = runCatching {
+                    EngineRepository.sessionReasoningRound(reviewedIds.toList(), 5)
+                }.getOrDefault(emptyList())
+                round = q
+                if (q.isNotEmpty() && AppSettings.autoReasoningRound) showRound = true
+            }
+        }
+    }
+
     fun onRate(rating: Rating) {
         val current = card ?: return
         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        reviewedIds.add(current.cardId)
         val explanation = pendingExplanation
         val took = System.currentTimeMillis() - shownAt
         loading = true
@@ -108,6 +135,13 @@ fun ReviewScreen(onDone: () -> Unit) {
             diagnosis = diag?.takeIf { it.label != null }
             loadNext()
         }
+    }
+
+    // The reasoning round reuses the practice UI, seeded with the round we
+    // fetched; finishing it exits the reviewer entirely.
+    if (showRound) {
+        PracticeScreen(onDone = onDone, loader = { round.orEmpty() })
+        return
     }
 
     val remaining = card?.let { it.newCount + it.learnCount + it.reviewCount } ?: 0
@@ -145,7 +179,11 @@ fun ReviewScreen(onDone: () -> Unit) {
                 loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = c.accent)
                 }
-                finished -> CaughtUp(onDone)
+                finished -> CaughtUp(
+                    onDone = onDone,
+                    roundCount = round?.size ?: 0,
+                    onStartRound = { showRound = true },
+                )
                 card != null -> CardSurface(
                     html = cardHtml(
                         css = card!!.css,
@@ -297,7 +335,7 @@ private fun CardSurface(html: String, baseUrl: String) {
 }
 
 @Composable
-private fun CaughtUp(onDone: () -> Unit) {
+private fun CaughtUp(onDone: () -> Unit, roundCount: Int, onStartRound: () -> Unit) {
     val c = Speedrun.colors
     Column(
         Modifier.fillMaxSize(),
@@ -312,13 +350,26 @@ private fun CaughtUp(onDone: () -> Unit) {
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(top = Space.s),
         )
-        Text(
-            "No more cards due right now.",
-            color = c.textSecondary,
-            fontSize = 15.sp,
-            modifier = Modifier.padding(top = Space.xs, bottom = Space.xl),
-        )
-        PrimaryButton("Done", modifier = Modifier.padding(horizontal = Space.xxxl), onClick = onDone)
+        if (roundCount > 0) {
+            Text(
+                "Now test whether recall became application: $roundCount question(s) on today's concepts.",
+                color = c.textSecondary,
+                fontSize = 15.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = Space.xs, bottom = Space.xl, start = Space.xl, end = Space.xl),
+            )
+            PrimaryButton("Start reasoning check", modifier = Modifier.padding(horizontal = Space.xxxl), onClick = onStartRound)
+            Spacer(Modifier.height(Space.s))
+            SecondaryButton("Done", onClick = onDone)
+        } else {
+            Text(
+                "No more cards due right now.",
+                color = c.textSecondary,
+                fontSize = 15.sp,
+                modifier = Modifier.padding(top = Space.xs, bottom = Space.xl),
+            )
+            PrimaryButton("Done", modifier = Modifier.padding(horizontal = Space.xxxl), onClick = onDone)
+        }
     }
 }
 

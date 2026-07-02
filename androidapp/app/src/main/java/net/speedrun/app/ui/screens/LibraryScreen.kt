@@ -203,6 +203,22 @@ fun ImportPanel(onImported: () -> Unit) {
             Spacer(Modifier.height(Space.l))
         }
 
+        SectionLabel("Guided end-to-end test")
+        SpeedrunCard {
+            Text("Biology e2e test", color = c.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                "15 biology cards + 6 topic-matched questions. Review the deck, finish it, and the reasoning round pulls matched (not random) questions.",
+                color = c.textSecondary, fontSize = 15.sp, modifier = Modifier.padding(top = Space.xs),
+            )
+            Spacer(Modifier.height(Space.m))
+            PrimaryButton("Add e2e test", enabled = !busy) {
+                runImport("Adding biology e2e test\u2026") {
+                    EngineRepository.importE2eBiology(context)
+                }
+            }
+        }
+        Spacer(Modifier.height(Space.xxl))
+
         SectionLabel("Popular decks")
         POPULAR_DECKS.forEach { deck ->
             PopularDeckCard(deck = deck, enabled = !busy) {

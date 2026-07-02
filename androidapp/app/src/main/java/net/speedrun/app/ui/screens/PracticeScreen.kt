@@ -63,7 +63,12 @@ import net.speedrun.app.ui.theme.Speedrun
 private val confidenceLevels = listOf("Low" to 0.35f, "Medium" to 0.6f, "High" to 0.85f)
 
 @Composable
-fun PracticeScreen(onDone: () -> Unit) {
+fun PracticeScreen(
+    onDone: () -> Unit,
+    // When provided (e.g. the end-of-session reasoning round), load these
+    // questions instead of the general held-out bank.
+    loader: (suspend () -> List<QuestionItemUi>)? = null,
+) {
     val c = Speedrun.colors
     val scope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
@@ -82,7 +87,9 @@ fun PracticeScreen(onDone: () -> Unit) {
     val context = LocalContext.current
 
     suspend fun load() {
-        questions = runCatching { EngineRepository.practiceQuestions(limit = 20) }.getOrDefault(emptyList())
+        questions = runCatching {
+            loader?.invoke() ?: EngineRepository.practiceQuestions(limit = 20)
+        }.getOrDefault(emptyList())
         shownAt = System.currentTimeMillis()
     }
     LaunchedEffect(Unit) { load() }
