@@ -3,6 +3,8 @@ __pycache__
 .DS_Store
 anki.prof
 target
+.env
+.env.*
 /user.bazelrc
 .dmypy.json
 /.idea/

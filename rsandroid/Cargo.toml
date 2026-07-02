@@ -23,8 +23,10 @@ name = "rsandroid"
 crate-type = ["cdylib"]
 
 [dependencies]
-# No TLS backend for the offline MVP (see the TLS note at the top of this file).
-anki = { path = "../rslib", default-features = false }
+# Two-way sync (Friday): enable the rustls TLS backend so the on-device sync
+# client can talk to a self-hosted sync server. rslib's TLS paths are
+# feature-gated; this pulls in rustls (+ aws-lc-rs).
+anki = { path = "../rslib", default-features = false, features = ["rustls"] }
 jni = "0.21"
 # anki uses tokio's io-util extension traits; in the main workspace these are
 # enabled via cross-crate feature unification. As a detached crate we must

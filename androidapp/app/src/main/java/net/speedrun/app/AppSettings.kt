@@ -16,6 +16,8 @@ object AppSettings {
     private const val KEY_THEME = "theme_mode"
     private const val KEY_AUTO_ROUND = "auto_reasoning_round"
     private const val KEY_EXAMPLE_LOADED = "example_deck_loaded"
+    private const val KEY_SYNC_URL = "sync_url"
+    private const val KEY_SYNC_USER = "sync_username"
 
     var themeMode by mutableStateOf(ThemeMode.System)
         private set
@@ -28,6 +30,14 @@ object AppSettings {
     var exampleLoaded by mutableStateOf(false)
         private set
 
+    /** Self-hosted sync server URL (e.g. http://192.168.1.20:8080/). */
+    var syncUrl by mutableStateOf("")
+        private set
+
+    /** Sync username (the password is entered at sync time, never stored). */
+    var syncUsername by mutableStateOf("")
+        private set
+
     fun load(context: Context) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         themeMode = runCatching {
@@ -35,6 +45,8 @@ object AppSettings {
         }.getOrDefault(ThemeMode.System)
         autoReasoningRound = prefs.getBoolean(KEY_AUTO_ROUND, false)
         exampleLoaded = prefs.getBoolean(KEY_EXAMPLE_LOADED, false)
+        syncUrl = prefs.getString(KEY_SYNC_URL, "") ?: ""
+        syncUsername = prefs.getString(KEY_SYNC_USER, "") ?: ""
     }
 
     fun setExampleLoaded(context: Context, on: Boolean) {
@@ -53,5 +65,16 @@ object AppSettings {
         autoReasoningRound = on
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putBoolean(KEY_AUTO_ROUND, on).apply()
+    }
+
+    /** Persist the sync server URL + username (password is never stored). */
+    fun setSyncSettings(context: Context, url: String, username: String) {
+        syncUrl = url
+        syncUsername = username
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_SYNC_URL, url)
+            .putString(KEY_SYNC_USER, username)
+            .apply()
     }
 }

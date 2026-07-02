@@ -34,6 +34,7 @@ from anki import speedrun_pb2
 from anki.cards import Card
 from aqt import (
     gui_hooks,
+    speedrun_ai as srai,
     speedrun_library as library,
     speedrun_theme as theme,
     speedrun_voice as voice,
@@ -728,6 +729,11 @@ def _open_settings(mw: aqt.AnkiQt) -> None:
         _CFG_MODERN, True, "Modern UI",
         "Apple-style reskin of Anki's deck list, overview, and toolbar.",
     )
+    add_toggle(
+        srai._CFG_AI_DIAGNOSIS, False, "AI diagnosis (beta)",
+        "Explain misses with the source-grounded AI coach. Falls back to the "
+        "built-in classifier when off or unavailable; every AI diagnosis cites its source.",
+    )
 
     layout.addStretch(1)
     box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
@@ -1245,6 +1251,7 @@ class _PracticeDialog(QDialog):
         q = self.questions[self.index]
         self.answered = False
         self.pending_explanation = ""
+        self._ai_index = None
         self.shown_at = time.monotonic()
         self.progress.setText(
             f"Question {self.index + 1} of {len(self.questions)}"
@@ -1333,6 +1340,51 @@ class _PracticeDialog(QDialog):
         self.action_btn.setText(
             "Finish" if self.index + 1 >= len(self.questions) else "Next question"
         )
+        self._maybe_ai_diagnose(q, selected, took_ms, predicted, correct)
+
+    def _maybe_ai_diagnose(self, q, selected, took_ms, predicted, correct) -> None:
+        """Non-blocking: enrich a miss with the source-grounded AI coach if it's
+        enabled + available. The deterministic diagnosis is already shown; this
+        appends the AI call when it returns (or a soft note on abstain/error)."""
+        if correct or self.mw.col is None:
+            return
+        if not (srai.enabled(self.mw.col) and srai.available()):
+            return
+        item = {
+            "topic": q["topic"],
+            "stem": q["stem"],
+            "options": q["options"],
+            "correct_index": q["correct_index"],
+            "selected_index": selected,
+            "explanation": q["explanation"],
+        }
+        signals = {
+            "took_ms": took_ms,
+            "confidence": float(predicted or 0.0),
+            "question_type": 2,
+        }
+        self._ai_index = self.index
+        self._base_feedback = self.feedback.text()
+        self.feedback.setText(self._base_feedback + "\n\nAI coach: analyzing\u2026")
+        srai.diagnose_in_background(self.mw, item, signals, self._on_ai_diagnosis)
+
+    def _on_ai_diagnosis(self, result) -> None:
+        # Ignore stale callbacks (the user advanced or closed the dialog).
+        if getattr(self, "_ai_index", None) != self.index or not self.answered:
+            return
+        base = getattr(self, "_base_feedback", "") or self.feedback.text()
+        if not result or result.get("error"):
+            line = "AI coach unavailable \u2014 using the rule-based diagnosis."
+        elif result.get("abstained"):
+            line = "AI coach: not confident enough \u2014 deferring to the rule-based diagnosis."
+        else:
+            name = (result.get("kind_name") or "").replace("_", " ")
+            rationale = (result.get("rationale") or "").strip()
+            source = (result.get("source") or "").strip()
+            line = f"AI diagnosis \u2014 {name}: {rationale}"
+            if source:
+                line += f"\nSource: {source}"
+        self.feedback.setText(base + "\n\n" + line)
 
     def _next(self) -> None:
         self.index += 1

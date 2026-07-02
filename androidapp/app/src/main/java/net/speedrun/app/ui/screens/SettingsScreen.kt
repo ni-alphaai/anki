@@ -48,6 +48,13 @@ import net.speedrun.app.ui.theme.Display
 import net.speedrun.app.ui.theme.Radius
 import net.speedrun.app.ui.theme.Space
 import net.speedrun.app.ui.theme.Speedrun
+import android.content.Context
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import kotlinx.coroutines.launch
+import net.speedrun.app.SyncResult
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -158,6 +165,10 @@ fun SettingsScreen(onBack: () -> Unit, onEditExam: () -> Unit) {
         }
         Spacer(Modifier.height(Space.xxl))
 
+        SectionLabel("Sync")
+        SyncSection(context)
+        Spacer(Modifier.height(Space.xxl))
+
         SectionLabel("About")
         SpeedrunCard {
             AboutRow("Exam", "MCAT (472\u2013528)")
@@ -166,6 +177,81 @@ fun SettingsScreen(onBack: () -> Unit, onEditExam: () -> Unit) {
             AboutRow("License", "AGPL-3.0-or-later")
         }
         Spacer(Modifier.height(Space.xxl))
+    }
+}
+
+@Composable
+private fun SyncSection(context: Context) {
+    val c = Speedrun.colors
+    val scope = rememberCoroutineScope()
+    var url by remember { mutableStateOf(AppSettings.syncUrl) }
+    var username by remember { mutableStateOf(AppSettings.syncUsername) }
+    var password by remember { mutableStateOf("") }
+    var status by remember { mutableStateOf("") }
+    var syncing by remember { mutableStateOf(false) }
+
+    SpeedrunCard {
+        Text("Self-hosted sync", color = c.textPrimary, fontSize = 17.sp)
+        Text(
+            "Sync this device's collection with your desktop through a self-hosted Anki sync server. Reviews flow both ways.",
+            color = c.textSecondary,
+            fontSize = 15.sp,
+            modifier = Modifier.padding(top = Space.xs, bottom = Space.s),
+        )
+        OutlinedTextField(
+            value = url,
+            onValueChange = { url = it },
+            label = { Text("Server URL") },
+            placeholder = { Text("http://10.10.1.69:8080/") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(Space.s))
+        OutlinedTextField(
+            value = username,
+            onValueChange = { username = it },
+            label = { Text("Username") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(Space.s))
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("Password") },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(Space.m))
+        Button(
+            onClick = {
+                if (url.isBlank() || username.isBlank() || syncing) return@Button
+                AppSettings.setSyncSettings(context, url.trim(), username.trim())
+                syncing = true
+                status = "Syncing\u2026"
+                scope.launch {
+                    status = when (val r = EngineRepository.sync(url.trim(), username.trim(), password)) {
+                        is SyncResult.Ok -> r.message
+                        is SyncResult.Conflict -> r.message
+                        is SyncResult.Error -> "Sync failed: ${r.message}"
+                    }
+                    syncing = false
+                }
+            },
+            enabled = !syncing,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(if (syncing) "Syncing\u2026" else "Sync now")
+        }
+        if (status.isNotBlank()) {
+            Text(
+                status,
+                color = c.textSecondary,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(top = Space.s),
+            )
+        }
     }
 }
 

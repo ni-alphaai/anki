@@ -34,6 +34,11 @@ import anki.speedrun.RecordAttemptRequest
 import anki.speedrun.RecordAttemptResponse
 import anki.speedrun.SessionReasoningRoundRequest
 import anki.speedrun.TopicMap
+import anki.sync.FullUploadOrDownloadRequest
+import anki.sync.SyncAuth
+import anki.sync.SyncCollectionRequest
+import anki.sync.SyncCollectionResponse
+import anki.sync.SyncLoginRequest
 
 /** A backend RPC that returned an error instead of a response. */
 class BackendException(val kind: String, message: String) : Exception(message)
@@ -191,6 +196,38 @@ class AnkiBackend private constructor(private var ptr: Long) {
         run(SVC_SPEEDRUN, M_SEED_MCAT_OUTLINE, ByteArray(0))
     }
 
+    // --- Sync (self-hosted collection sync) -------------------------------
+
+    /** Log in to a sync server; returns auth (hkey + endpoint) for later calls. */
+    fun syncLogin(username: String, password: String, endpoint: String): SyncAuth {
+        val req = SyncLoginRequest.newBuilder()
+            .setUsername(username)
+            .setPassword(password)
+            .setEndpoint(endpoint)
+            .build()
+        return SyncAuth.parseFrom(run(SVC_SYNC, M_SYNC_LOGIN, req.toByteArray()))
+    }
+
+    /**
+     * Run a collection sync. The engine performs the incremental (normal) merge
+     * in-call; the response's `required` says whether a *full* up/download is
+     * still needed (e.g. on a first sync).
+     */
+    fun syncCollection(auth: SyncAuth): SyncCollectionResponse {
+        val req = SyncCollectionRequest.newBuilder().setAuth(auth).setSyncMedia(false).build()
+        return SyncCollectionResponse.parseFrom(run(SVC_SYNC, M_SYNC_COLLECTION, req.toByteArray()))
+    }
+
+    /** Whole-collection upload (seed the server) or download (mirror it). */
+    fun fullUploadOrDownload(auth: SyncAuth, upload: Boolean) {
+        val req = FullUploadOrDownloadRequest.newBuilder().setAuth(auth).setUpload(upload).build()
+        run(SVC_SYNC, M_FULL_UPLOAD_OR_DOWNLOAD, req.toByteArray())
+    }
+
+    fun abortSync() {
+        run(SVC_SYNC, M_ABORT_SYNC, ByteArray(0))
+    }
+
     // --- Lifecycle --------------------------------------------------------
 
     fun close() {
@@ -253,6 +290,13 @@ class AnkiBackend private constructor(private var ptr: Long) {
         private const val M_GET_EXAM_PLAN = 16
         private const val M_GET_PRACTICE_QUESTIONS = 21
         private const val M_GET_SESSION_REASONING_ROUND = 22
+
+        // BackendSyncService (service index 1) - see out/pylib/anki/_backend_generated.py.
+        private const val SVC_SYNC = 1
+        private const val M_SYNC_LOGIN = 3
+        private const val M_SYNC_COLLECTION = 5
+        private const val M_FULL_UPLOAD_OR_DOWNLOAD = 6
+        private const val M_ABORT_SYNC = 7
 
         /** Open the shared engine. Defaults are fine for an on-device client. */
         fun open(): AnkiBackend {

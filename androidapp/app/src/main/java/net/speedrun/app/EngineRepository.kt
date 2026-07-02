@@ -10,6 +10,7 @@ import anki.scheduler.CardAnswer
 import anki.speedrun.ClassifyAttemptRequest
 import anki.speedrun.QuestionItem
 import anki.speedrun.RecordAttemptRequest
+import anki.sync.SyncCollectionResponse
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -45,6 +46,11 @@ object EngineRepository {
     /** The collection's media folder (images etc.), set once the collection opens. */
     private var mediaDir: File? = null
 
+    // Paths kept so a full-download sync can reopen the (replaced) collection file.
+    private var colPath: String? = null
+    private var mediaPath: String? = null
+    private var mediaDbPath: String? = null
+
     /** Stable id for this study session (groups recorded attempts). */
     private val sessionId: String = UUID.randomUUID().toString()
 
@@ -68,6 +74,9 @@ object EngineRepository {
             b.openCollection(col.absolutePath, media.absolutePath, mediaDb.absolutePath)
             mediaDir = media
             mediaBaseUrl = "file://${media.absolutePath}/"
+            colPath = col.absolutePath
+            mediaPath = media.absolutePath
+            mediaDbPath = mediaDb.absolutePath
             runCatching {
                 if (b.getTopicMap().entriesList.isEmpty()) b.seedMcatTopicOutline()
             }
@@ -425,6 +434,57 @@ object EngineRepository {
         }.getOrNull()
     }
 
+    /**
+     * Two-way collection sync against a self-hosted anki-sync-server. Runs an
+     * incremental sync; on a first sync it resolves the required full
+     * upload/download, reopening the collection after a download (which replaces
+     * the local file). Media is skipped. Requires the native TLS/HTTP stack in
+     * rsandroid to be built (track A2); until then this will error at the network
+     * layer, and the flow degrades to the local-only experience.
+     */
+    suspend fun sync(url: String, username: String, password: String): SyncResult =
+        withContext(dispatcher) {
+            val b = backend ?: return@withContext SyncResult.Error("Collection is not open")
+            try {
+                val endpoint = normalizeEndpoint(url)
+                val auth = b.syncLogin(username, password, endpoint)
+                when (b.syncCollection(auth).required) {
+                    SyncCollectionResponse.ChangesRequired.NO_CHANGES,
+                    SyncCollectionResponse.ChangesRequired.NORMAL_SYNC ->
+                        SyncResult.Ok("In sync")
+                    SyncCollectionResponse.ChangesRequired.FULL_UPLOAD -> {
+                        b.fullUploadOrDownload(auth, upload = true)
+                        SyncResult.Ok("Uploaded this device's collection to the server")
+                    }
+                    SyncCollectionResponse.ChangesRequired.FULL_DOWNLOAD -> {
+                        b.fullUploadOrDownload(auth, upload = false)
+                        reopenCollection(b)
+                        SyncResult.Ok("Mirrored the server's collection to this device")
+                    }
+                    else ->
+                        SyncResult.Conflict(
+                            "Both sides changed since the last sync - choose upload or download to resolve.",
+                        )
+                }
+            } catch (e: Exception) {
+                SyncResult.Error(e.message ?: e.toString())
+            }
+        }
+
+    /** Reopen the collection after a full download replaced the local file. */
+    private fun reopenCollection(b: AnkiBackend) {
+        val col = colPath ?: return
+        runCatching { b.closeCollection() }
+        b.openCollection(col, mediaPath ?: "", mediaDbPath ?: "")
+    }
+
+    private fun normalizeEndpoint(url: String): String {
+        var u = url.trim()
+        if (!u.startsWith("http://") && !u.startsWith("https://")) u = "http://$u"
+        if (!u.endsWith("/")) u += "/"
+        return u
+    }
+
     fun shutdown() {
         backend?.close()
         backend = null
@@ -434,4 +494,11 @@ object EngineRepository {
         val b = backend ?: error("Collection is not open")
         block(b)
     }
+}
+
+/** Outcome of a collection sync attempt, for the UI to surface. */
+sealed class SyncResult {
+    data class Ok(val message: String) : SyncResult()
+    data class Conflict(val message: String) : SyncResult()
+    data class Error(val message: String) : SyncResult()
 }
