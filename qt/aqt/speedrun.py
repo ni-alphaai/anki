@@ -72,7 +72,22 @@ _CFG_MODERN = "speedrunModernUi"  # opt-in reskin (default on for Speedrun build
 # Client-only setting (plain JSON config): auto-launch the end-of-session
 # reasoning round instead of offering it. Default off.
 _CFG_AUTO_ROUND = "speedrunAutoReasoningRound"
+# Design 2 / D7 experiment (default off, explicitly not evidence-established):
+# for a proficient student, withhold immediate correctness on reasoning
+# questions and reveal it later in the feedback report.
+_CFG_DELAYED_FB = "speedrunDelayedFeedbackExperiment"
+# A student at/above this overall exam-style accuracy counts as proficient for
+# the withhold experiment (mirrors the engine's PROFICIENT_THRESHOLD).
+_PROFICIENT_THRESHOLD = 0.8
 _REASONING_ROUND_SIZE = 5
+
+
+def _should_withhold_feedback(performance: float, enabled: bool) -> bool:
+    """D7: withhold immediate correctness only when the experiment is enabled AND
+    the student is already proficient. Mirrors the engine's
+    ``should_withhold_correctness``; pure so it can be unit-tested."""
+    return enabled and performance >= _PROFICIENT_THRESHOLD
+
 
 _QUESTION_TYPE_SRS = 0
 
@@ -960,6 +975,13 @@ def _open_settings(mw: aqt.AnkiQt) -> None:
         "After you finish a deck's reviews, jump straight into a reasoning check (otherwise it's offered).",
     )
     add_toggle(
+        _CFG_DELAYED_FB,
+        False,
+        "Delayed feedback (experiment)",
+        "Experimental, not established: once you're proficient, reasoning questions "
+        "hold back whether you were right until your feedback report, so you re-derive it.",
+    )
+    add_toggle(
         _CFG_MODERN,
         True,
         "Modern UI",
@@ -1542,6 +1564,16 @@ class _PracticeDialog(QDialog):
         layout.addWidget(close_box)
         _style_dialog(self)
 
+        # D7 experiment: decide once whether to withhold immediate correctness
+        # (only when the flag is on AND the student is already proficient).
+        self._withhold_feedback = False
+        if bool(mw.col.get_config(_CFG_DELAYED_FB, False)):
+            try:
+                perf = mw.col._backend.get_performance_report().performance_rate
+                self._withhold_feedback = _should_withhold_feedback(perf, True)
+            except Exception:
+                self._withhold_feedback = False
+
         self._load()
 
     def _clear_options(self) -> None:
@@ -1654,6 +1686,23 @@ class _PracticeDialog(QDialog):
             button.setEnabled(False)
         self.confidence.setEnabled(False)
         self.explain_btn.setEnabled(False)
+
+        # D7 experiment: hold back correctness (and the answer/diagnosis) until the
+        # feedback report; the attempt is still recorded above so the report can
+        # reveal it later. Novices and the AI-off default are unaffected.
+        if self._withhold_feedback:
+            _mark(self.verdict, role="muted")
+            self.verdict.setText("Answer banked")
+            self.verdict.setVisible(True)
+            self._repolish(self.verdict)
+            self.feedback.setText(
+                "Delayed feedback is on. You'll find out whether you were right in "
+                "your feedback report \u2014 try to re-derive it before then."
+            )
+            self.action_btn.setText(
+                "Finish" if self.index + 1 >= len(self.questions) else "Next question"
+            )
+            return
 
         ci = q["correct_index"]
         # Highlight the correct option (green) and, on a miss, the user's pick (red).

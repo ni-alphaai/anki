@@ -206,3 +206,21 @@ class TestFeedbackLines:
         lines = speedrun._feedback_lines({"total": 1, "correct": 1, "weak_topics": []})
         # all-correct, no weak topics: only the summary line
         assert lines == ["Answered 1 exam-style question(s), 1 correct."]
+
+
+# --- D7: withhold-by-proficiency decision (pure) ----------------------------
+
+
+class TestShouldWithholdFeedback:
+    """``speedrun._should_withhold_feedback`` gates the delayed-feedback
+    experiment: only when enabled AND the student is proficient."""
+
+    def test_disabled_never_withholds(self) -> None:
+        assert speedrun._should_withhold_feedback(1.0, False) is False
+        assert speedrun._should_withhold_feedback(0.0, False) is False
+
+    def test_enabled_withholds_only_for_proficient(self) -> None:
+        assert speedrun._should_withhold_feedback(0.8, True) is True
+        assert speedrun._should_withhold_feedback(0.95, True) is True
+        assert speedrun._should_withhold_feedback(0.79, True) is False
+        assert speedrun._should_withhold_feedback(0.0, True) is False
