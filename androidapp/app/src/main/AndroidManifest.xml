@@ -4,6 +4,9 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- For download-by-URL deck/pack import on the Content screen. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Scan the desktop's QR to pair for sync (Sync with phone). -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
     <!-- So SpeechRecognizer can resolve an on-device recognition service. -->
     <queries>
         <intent>

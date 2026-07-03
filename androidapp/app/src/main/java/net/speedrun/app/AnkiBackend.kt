@@ -231,7 +231,9 @@ class AnkiBackend private constructor(private var ptr: Long) {
      * still needed (e.g. on a first sync).
      */
     fun syncCollection(auth: SyncAuth): SyncCollectionResponse {
-        val req = SyncCollectionRequest.newBuilder().setAuth(auth).setSyncMedia(false).build()
+        // Sync media too, so card images (e.g. the MCAT deck's diagrams) reach
+        // the phone. The media folder + DB are configured at openCollection.
+        val req = SyncCollectionRequest.newBuilder().setAuth(auth).setSyncMedia(true).build()
         return SyncCollectionResponse.parseFrom(run(SVC_SYNC, M_SYNC_COLLECTION, req.toByteArray()))
     }
 

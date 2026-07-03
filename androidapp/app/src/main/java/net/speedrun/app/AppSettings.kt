@@ -18,6 +18,7 @@ object AppSettings {
     private const val KEY_EXAMPLE_LOADED = "example_deck_loaded"
     private const val KEY_SYNC_URL = "sync_url"
     private const val KEY_SYNC_USER = "sync_username"
+    private const val KEY_SYNC_TOKEN = "sync_token"
     private const val KEY_LAST_SYNCED = "last_synced_ms"
 
     var themeMode by mutableStateOf(ThemeMode.System)
@@ -35,9 +36,20 @@ object AppSettings {
     var syncUrl by mutableStateOf("")
         private set
 
-    /** Sync username (the password is entered at sync time, never stored). */
+    /** Sync username (from QR pairing, or typed for manual sign-in). */
     var syncUsername by mutableStateOf("")
         private set
+
+    /**
+     * Sync token from QR pairing (the server "password"). Stored so a paired
+     * device syncs with one tap; blank when only a manual URL/user is set.
+     */
+    var syncToken by mutableStateOf("")
+        private set
+
+    /** True once the device has scanned a pairing QR (url + token present). */
+    val isPaired: Boolean
+        get() = syncUrl.isNotBlank() && syncToken.isNotBlank()
 
     /** Epoch millis of the last successful sync (0 = never). */
     var lastSyncedMs by mutableStateOf(0L)
@@ -52,6 +64,7 @@ object AppSettings {
         exampleLoaded = prefs.getBoolean(KEY_EXAMPLE_LOADED, false)
         syncUrl = prefs.getString(KEY_SYNC_URL, "") ?: ""
         syncUsername = prefs.getString(KEY_SYNC_USER, "") ?: ""
+        syncToken = prefs.getString(KEY_SYNC_TOKEN, "") ?: ""
         lastSyncedMs = prefs.getLong(KEY_LAST_SYNCED, 0L)
     }
 
@@ -88,6 +101,20 @@ object AppSettings {
             .edit()
             .putString(KEY_SYNC_URL, url)
             .putString(KEY_SYNC_USER, username)
+            .apply()
+    }
+
+    /** Persist a full QR pairing (url + user + token) so the device can sync
+     *  with one tap. */
+    fun setPairing(context: Context, url: String, username: String, token: String) {
+        syncUrl = url
+        syncUsername = username
+        syncToken = token
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_SYNC_URL, url)
+            .putString(KEY_SYNC_USER, username)
+            .putString(KEY_SYNC_TOKEN, token)
             .apply()
     }
 }

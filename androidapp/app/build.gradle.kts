@@ -91,8 +91,15 @@ dependencies {
     // Matches the protoc artifact above; the generated code needs the lite runtime.
     implementation("com.google.protobuf:protobuf-javalite:3.25.3")
 
+    // QR scanning for one-tap sync pairing (scan the desktop's code). Bundles a
+    // self-contained scanner Activity driven via the ActivityResult ScanContract.
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+
     // Pure-JVM unit tests (host, no device): plain JUnit4.
     testImplementation("junit:junit:4.13.2")
+    // Real org.json on the host test classpath (the android.jar one is a stub
+    // that throws in unit tests) so SyncPairing parsing can be tested off-device.
+    testImplementation("org.json:json:20240303")
 
     // Instrumented Compose UI tests (on-device): the compose test rule + AndroidX
     // JUnit runner, pinned via the same compose BOM as the app deps above.

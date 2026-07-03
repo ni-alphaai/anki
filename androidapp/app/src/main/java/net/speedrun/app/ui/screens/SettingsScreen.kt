@@ -49,9 +49,13 @@ import net.speedrun.app.ui.theme.body
 import net.speedrun.app.ui.theme.caption
 import net.speedrun.app.ui.theme.subhead
 import android.content.Context
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import kotlinx.coroutines.launch
+import net.speedrun.app.SyncPairing
 import net.speedrun.app.SyncResult
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -170,15 +174,15 @@ fun SettingsScreen(onBack: () -> Unit, onEditExam: () -> Unit) {
 private fun SyncSection(context: Context) {
     val c = Speedrun.colors
     val scope = rememberCoroutineScope()
+    var result by remember { mutableStateOf<SyncResult?>(null) }
+    var syncing by remember { mutableStateOf(false) }
+    var showManual by remember { mutableStateOf(false) }
     var url by remember { mutableStateOf(AppSettings.syncUrl) }
     var username by remember { mutableStateOf(AppSettings.syncUsername) }
     var password by remember { mutableStateOf("") }
-    var result by remember { mutableStateOf<SyncResult?>(null) }
-    var syncing by remember { mutableStateOf(false) }
 
-    fun startSync(block: suspend () -> SyncResult) {
-        if (url.isBlank() || username.isBlank() || syncing) return
-        AppSettings.setSyncSettings(context, url.trim(), username.trim())
+    fun runSync(u: String, user: String, pass: String, block: suspend () -> SyncResult) {
+        if (u.isBlank() || user.isBlank() || syncing) return
         syncing = true
         result = null
         scope.launch {
@@ -189,46 +193,93 @@ private fun SyncSection(context: Context) {
         }
     }
 
+    val scanLauncher = rememberLauncherForActivityResult(ScanContract()) { res ->
+        val contents = res.contents ?: return@rememberLauncherForActivityResult
+        val p = SyncPairing.parse(contents)
+        if (p == null) {
+            result = SyncResult.Error("That isn't a Speedrun pairing code.")
+            return@rememberLauncherForActivityResult
+        }
+        AppSettings.setPairing(context, p.url, p.user, p.token)
+        url = p.url
+        username = p.user
+        password = p.token
+        runSync(p.url, p.user, p.token) { EngineRepository.sync(p.url, p.user, p.token) }
+    }
+
+    fun launchScan() {
+        val opts = ScanOptions().apply {
+            setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+            setPrompt("Scan the code on your desktop's Sync screen")
+            setBeepEnabled(false)
+            setOrientationLocked(false)
+        }
+        scanLauncher.launch(opts)
+    }
+
     SpeedrunCard {
-        Text("Self-hosted sync", color = c.textPrimary, style = MaterialTheme.typography.subhead)
+        Text("Sync with desktop", color = c.textPrimary, style = MaterialTheme.typography.subhead)
         Text(
-            "Sync this device's collection with your desktop through a self-hosted Anki sync server. Reviews flow both ways.",
+            "Scan the QR on your desktop's Sync screen to pair. Cards and images flow both ways over your local network \u2014 no account, no typing.",
             color = c.textSecondary,
             style = MaterialTheme.typography.body,
             modifier = Modifier.padding(top = Space.xs, bottom = Space.s),
         )
-        AppTextField(
-            value = url,
-            onValueChange = { url = it },
-            label = "Server URL",
-            placeholder = "http://10.10.1.69:8080/",
-        )
-        Spacer(Modifier.height(Space.s))
-        AppTextField(
-            value = username,
-            onValueChange = { username = it },
-            label = "Username",
-        )
-        Spacer(Modifier.height(Space.s))
-        AppTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = "Password",
-            visualTransformation = PasswordVisualTransformation(),
-        )
-        Spacer(Modifier.height(Space.s))
-        Text(
-            "Last synced: ${lastSyncedLabel(AppSettings.lastSyncedMs)}",
-            color = c.textTertiary,
-            style = MaterialTheme.typography.caption,
-        )
-        Spacer(Modifier.height(Space.m))
-        PrimaryButton(
-            text = if (syncing) "Syncing\u2026" else "Sync now",
-            enabled = !syncing,
-        ) {
-            startSync { EngineRepository.sync(url.trim(), username.trim(), password) }
+
+        if (AppSettings.isPaired) {
+            Text(
+                "Paired with ${AppSettings.syncUrl}",
+                color = c.textPrimary,
+                style = MaterialTheme.typography.body,
+            )
+            Text(
+                "Last synced: ${lastSyncedLabel(AppSettings.lastSyncedMs)}",
+                color = c.textTertiary,
+                style = MaterialTheme.typography.caption,
+                modifier = Modifier.padding(top = Space.xs, bottom = Space.m),
+            )
+            PrimaryButton(text = if (syncing) "Syncing\u2026" else "Sync now", enabled = !syncing) {
+                runSync(AppSettings.syncUrl, AppSettings.syncUsername, AppSettings.syncToken) {
+                    EngineRepository.sync(
+                        AppSettings.syncUrl, AppSettings.syncUsername, AppSettings.syncToken,
+                    )
+                }
+            }
+            Spacer(Modifier.height(Space.xs))
+            SecondaryButton("Scan a new code", enabled = !syncing) { launchScan() }
+        } else {
+            PrimaryButton("Scan to pair", enabled = !syncing) { launchScan() }
+            Spacer(Modifier.height(Space.xs))
+            SecondaryButton(if (showManual) "Hide manual entry" else "Enter manually") {
+                showManual = !showManual
+            }
+            if (showManual) {
+                Spacer(Modifier.height(Space.s))
+                AppTextField(
+                    value = url,
+                    onValueChange = { url = it },
+                    label = "Server URL",
+                    placeholder = "http://10.10.1.69:8080/",
+                )
+                Spacer(Modifier.height(Space.s))
+                AppTextField(value = username, onValueChange = { username = it }, label = "Username")
+                Spacer(Modifier.height(Space.s))
+                AppTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = "Password",
+                    visualTransformation = PasswordVisualTransformation(),
+                )
+                Spacer(Modifier.height(Space.m))
+                PrimaryButton(text = if (syncing) "Syncing\u2026" else "Sync now", enabled = !syncing) {
+                    AppSettings.setSyncSettings(context, url.trim(), username.trim())
+                    runSync(url.trim(), username.trim(), password) {
+                        EngineRepository.sync(url.trim(), username.trim(), password)
+                    }
+                }
+            }
         }
+
         result?.let { r ->
             Spacer(Modifier.height(Space.s))
             val (msg, color) = when (r) {
@@ -239,16 +290,21 @@ private fun SyncSection(context: Context) {
             Text(msg, color = color, style = MaterialTheme.typography.body)
             if (r is SyncResult.Conflict) {
                 // Both sides changed: make the resolution explicit instead of failing.
+                val (cu, cuser, cpass) = if (AppSettings.isPaired) {
+                    Triple(AppSettings.syncUrl, AppSettings.syncUsername, AppSettings.syncToken)
+                } else {
+                    Triple(url.trim(), username.trim(), password)
+                }
                 Spacer(Modifier.height(Space.s))
                 PrimaryButton("Upload this device", enabled = !syncing) {
-                    startSync {
-                        EngineRepository.resolveSyncConflict(url.trim(), username.trim(), password, upload = true)
+                    runSync(cu, cuser, cpass) {
+                        EngineRepository.resolveSyncConflict(cu, cuser, cpass, upload = true)
                     }
                 }
                 Spacer(Modifier.height(Space.xs))
                 SecondaryButton("Use the server copy", enabled = !syncing) {
-                    startSync {
-                        EngineRepository.resolveSyncConflict(url.trim(), username.trim(), password, upload = false)
+                    runSync(cu, cuser, cpass) {
+                        EngineRepository.resolveSyncConflict(cu, cuser, cpass, upload = false)
                     }
                 }
             }
