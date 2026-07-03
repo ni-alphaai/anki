@@ -145,3 +145,64 @@ class TestNextActionRouting:
             }
         )
         assert na["title"] == "On track \u2014 keep going"
+
+
+# --- D1: reasoning-round top-up merge (pure) --------------------------------
+
+
+class TestMergeQuestions:
+    """``speedrun._merge_questions`` blends the session round with the engine's
+    scheduled due-reasoning items, de-duping by (card_id, stem) and capping."""
+
+    def test_dedupes_and_keeps_primary_first(self) -> None:
+        primary = [{"card_id": 1, "stem": "a"}]
+        extra = [
+            {"card_id": 1, "stem": "a"},  # dup of primary -> dropped
+            {"card_id": 2, "stem": "b"},
+        ]
+        merged = speedrun._merge_questions(primary, extra, 5)
+        assert [(q["card_id"], q["stem"]) for q in merged] == [(1, "a"), (2, "b")]
+
+    def test_respects_target_cap(self) -> None:
+        primary = [{"card_id": 1, "stem": "a"}]
+        extra = [{"card_id": 2, "stem": "b"}, {"card_id": 3, "stem": "c"}]
+        merged = speedrun._merge_questions(primary, extra, 2)
+        assert len(merged) == 2
+        assert merged[0]["stem"] == "a"
+
+    def test_empty_primary_uses_extra(self) -> None:
+        merged = speedrun._merge_questions([], [{"card_id": 9, "stem": "z"}], 5)
+        assert merged == [{"card_id": 9, "stem": "z"}]
+
+
+# --- D2: feedback-report formatting (pure) ----------------------------------
+
+
+class TestFeedbackLines:
+    """``speedrun._feedback_lines`` renders the D2 report dict for display."""
+
+    def test_empty_report(self) -> None:
+        assert speedrun._feedback_lines({"total": 0}) == [
+            "No exam-style attempts recorded yet."
+        ]
+
+    def test_counts_and_weak_topics(self) -> None:
+        lines = speedrun._feedback_lines(
+            {
+                "total": 4,
+                "correct": 2,
+                "memory": 1,
+                "reasoning": 1,
+                "passage": 0,
+                "test_taking": 0,
+                "weak_topics": ["biology", "physics"],
+            }
+        )
+        assert lines[0] == "Answered 4 exam-style question(s), 2 correct."
+        assert any("Memory: 1" in ln and "Reasoning: 1" in ln for ln in lines)
+        assert lines[-1] == "Weakest topics: biology, physics."
+
+    def test_omits_empty_sections(self) -> None:
+        lines = speedrun._feedback_lines({"total": 1, "correct": 1, "weak_topics": []})
+        # all-correct, no weak topics: only the summary line
+        assert lines == ["Answered 1 exam-style question(s), 1 correct."]

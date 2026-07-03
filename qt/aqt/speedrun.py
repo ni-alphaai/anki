@@ -526,6 +526,60 @@ def _fmt_ms(ms: int) -> str:
     return time.strftime("%Y-%m-%d %H:%M", time.localtime(ms / 1000))
 
 
+def _feedback_report(col) -> dict | None:
+    """The end-of-session feedback report (Design 2 / D2): miss counts by cause
+    plus weakest topics, from the engine's GetFeedbackReport. None on error."""
+    try:
+        r = col._backend.get_feedback_report()
+    except Exception:
+        return None
+    return {
+        "total": r.total,
+        "correct": r.correct,
+        "memory": r.memory_misses,
+        "reasoning": r.reasoning_misses,
+        "passage": r.passage_misses,
+        "test_taking": r.test_taking_misses,
+        "weak_topics": list(r.weak_topics),
+    }
+
+
+def _feedback_lines(fb: dict) -> list[str]:
+    """Human-readable feedback-report lines (pure; unit-tested)."""
+    total = fb.get("total", 0)
+    if total == 0:
+        return ["No exam-style attempts recorded yet."]
+    lines = [
+        f"Answered {total} exam-style question(s), {fb.get('correct', 0)} correct."
+    ]
+    kinds = [
+        ("Memory", fb.get("memory", 0)),
+        ("Reasoning", fb.get("reasoning", 0)),
+        ("Passage", fb.get("passage", 0)),
+        ("Test-taking", fb.get("test_taking", 0)),
+    ]
+    misses = [f"{name}: {n}" for name, n in kinds if n]
+    if misses:
+        lines.append("Misses by cause \u2014 " + ", ".join(misses) + ".")
+    weak = fb.get("weak_topics") or []
+    if weak:
+        lines.append("Weakest topics: " + ", ".join(weak[:5]) + ".")
+    return lines
+
+
+def _show_feedback_report(mw: aqt.AnkiQt) -> None:
+    """Show the end-of-session feedback report in a simple info dialog."""
+    if mw.col is None:
+        return
+    fb = _feedback_report(mw.col)
+    if fb is None:
+        tooltip("Feedback report unavailable.")
+        return
+    from aqt.utils import showInfo
+
+    showInfo("\n".join(_feedback_lines(fb)), title="Speedrun feedback report")
+
+
 def _collect(col, fresh: bool) -> dict:
     """Gather every Speedrun signal into a plain dict for the theme builders."""
     backend = col._backend
@@ -579,6 +633,7 @@ def _collect(col, fresh: bool) -> dict:
         "modern_ui": _modern_on(col),
         "auto_round": bool(col.get_config(_CFG_AUTO_ROUND, False)),
     }
+    data["feedback"] = _feedback_report(col)
     data["next_action"] = _next_action(data)
     return data
 
@@ -778,6 +833,8 @@ def _on_js_message(handled: tuple[bool, object], message: str, context: object):
         _set_exam_target(mw)
     elif message == "speedrun:practice":
         _start_practice(mw)
+    elif message == "speedrun:report":
+        _show_feedback_report(mw)
     elif message == "speedrun:library":
         library.open_library(mw)
     elif message == "speedrun:settings":
@@ -1259,6 +1316,22 @@ def _parse_question_items(raw) -> list[dict]:
     return questions
 
 
+def _merge_questions(primary: list[dict], extra: list[dict], target: int) -> list[dict]:
+    """Blend the session round with the engine's scheduled due-reasoning items,
+    de-duplicating by (card_id, stem) and capping at ``target``. Pure so it can
+    be unit-tested without Qt/backend."""
+    seen = {(q.get("card_id", 0), q.get("stem", "")) for q in primary}
+    merged = list(primary)
+    for q in extra:
+        if len(merged) >= target:
+            break
+        key = (q.get("card_id", 0), q.get("stem", ""))
+        if key not in seen:
+            seen.add(key)
+            merged.append(q)
+    return merged[:target]
+
+
 def _start_practice(mw: aqt.AnkiQt) -> None:
     """Open the held-out question-practice dialog (performance signal loop)."""
     if mw.col is None:
@@ -1313,6 +1386,18 @@ def _launch_reasoning_round(mw: aqt.AnkiQt, card_ids: list[int]) -> None:
         print(f"speedrun: reasoning round fetch failed: {exc}")
         return
     questions = _parse_question_items(raw)
+    # Top up the session round with the engine's scheduled reasoning-due queue
+    # (Design 2 / D1): weak-bridge topics the student hasn't practiced recently.
+    if len(questions) < _REASONING_ROUND_SIZE:
+        try:
+            due_raw = list(
+                mw.col._backend.get_due_reasoning(limit=_REASONING_ROUND_SIZE)
+            )
+            questions = _merge_questions(
+                questions, _parse_question_items(due_raw), _REASONING_ROUND_SIZE
+            )
+        except Exception as exc:  # pragma: no cover - never break the review flow
+            print(f"speedrun: due-reasoning top-up failed: {exc}")
     if not questions:
         return
     if bool(mw.col.get_config(_CFG_AUTO_ROUND, False)):
