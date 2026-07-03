@@ -437,9 +437,10 @@ def diagnosis_cue_js(
 
     Colours are baked in (light/dark resolved in Python) so the cue is correct
     even when the reskin/tokens aren't present on the card page. It is a
-    ``position:fixed`` overlay -> it never shifts card layout, and it does not
-    auto-dismiss (removed on the next question or when dismissed), so it can be
-    read. Offers an inline "Practice this" action routed via pycmd.
+    ``position:fixed`` overlay -> it never shifts card layout; it clears on the
+    next question, on dismiss, or after a readable 12s timeout. "Practice later"
+    queues the miss for the end-of-session round (via pycmd) rather than
+    abandoning the review mid-card.
     """
     p = _DARK if night else _LIGHT
     accent = p[kind_key]
@@ -483,7 +484,7 @@ def diagnosis_cue_js(
         f'<div class="sr-diag-title">{escape(title)}</div>'
         f"{action_html}"
         '<div class="sr-diag-actions">'
-        '<button class="sr-diag-btn" data-sr-practice>Practice this</button>'
+        '<button class="sr-diag-btn" data-sr-practice>Practice later</button>'
         "</div></div>"
         '<button class="sr-diag-x" data-sr-dismiss aria-label="Dismiss">&times;</button>'
     )
@@ -498,9 +499,12 @@ def diagnosis_cue_js(
         f"d.innerHTML={json.dumps(inner)};"
         "document.body.appendChild(d);"
         "var pb=d.querySelector('[data-sr-practice]');"
-        "if(pb){pb.addEventListener('click',function(){pycmd('speedrun:practice'); d.remove();});}"
+        "if(pb){pb.addEventListener('click',function(){pycmd('speedrun:practicelater'); d.remove();});}"
         "var cb=d.querySelector('[data-sr-dismiss]');"
         "if(cb){cb.addEventListener('click',function(){d.remove();});}"
+        # Auto-dismiss after a readable delay so the cue never lingers over the
+        # next card if the student sits on the answer for a while.
+        "setTimeout(function(){if(document.getElementById('speedrun-diagnosis')===d){d.remove();}},12000);"
         "})();"
     )
 
@@ -1116,6 +1120,18 @@ _WORKSPACE_CSS = """
   border-radius:var(--sr-radius-input); padding:12px 14px; margin-top:6px; word-break:break-all;
   line-height:1.7; }
 .sr-creds b { color:var(--sr-ink); }
+/* feedback report */
+.sr-fb-score { display:flex; align-items:baseline; gap:10px; }
+.sr-fb-sub { color:var(--sr-secondary); font-size:15px; }
+.sr-fb-row { display:flex; align-items:center; gap:12px; padding:12px 2px;
+  border-bottom:1px solid var(--sr-hairline); }
+.sr-fb-row:last-child { border-bottom:none; }
+.sr-fb-dot { width:10px; height:10px; border-radius:50%; flex:none; }
+.sr-fb-name { flex:1; color:var(--sr-ink); font-weight:600; font-size:15px; }
+.sr-fb-count { color:var(--sr-secondary); font-variant-numeric:tabular-nums; font-size:15px; }
+.sr-chip { display:inline-block; background:var(--sr-canvas); border:1px solid var(--sr-hairline);
+  border-radius:var(--sr-radius-pill); padding:6px 12px; margin:6px 6px 0 0; font-size:13px;
+  color:var(--sr-ink); }
 """
 
 
@@ -1260,6 +1276,56 @@ def sidebar_html(active: str, sync: dict | None = None) -> str:
         f'<nav class="sr-sb-nav">{items}</nav>'
         f'<div class="sr-sb-spacer"></div>{chip}</div>'
     )
+
+
+def feedback_report_body(fb: dict) -> str:
+    """The end-of-session feedback report as tokened cards (replacing the plain
+    text info box): a correct/total headline, misses grouped by cause with a
+    color per dimension, and the weakest topics as chips."""
+    header = (
+        '<div class="sr-dash-head"><h1 class="sr-dash-title">Feedback report</h1>'
+        '<p class="sr-dash-sub">Where your exam-style misses came from, so you '
+        "know what to repair next.</p></div>"
+    )
+    total = int(fb.get("total", 0) or 0)
+    if total == 0:
+        empty = (
+            '<div class="sr-card"><p style="color:var(--sr-secondary);line-height:1.6">'
+            "No exam-style attempts recorded yet. Answer some held-out questions in "
+            "Practice to build your report.</p></div>"
+        )
+        return f'<div class="sr-panel sr-dash">{header}{empty}</div>'
+    correct = int(fb.get("correct", 0) or 0)
+    pct = round(correct / total * 100) if total else 0
+    summary = (
+        '<div class="sr-card"><div class="sr-fb-score">'
+        f'<span class="sr-readout" style="font-size:40px">{correct}/{total}</span>'
+        f'<span class="sr-fb-sub">correct · {pct}%</span></div></div>'
+    )
+    kinds = (
+        ("Memory", int(fb.get("memory", 0) or 0), "var(--sr-memory)"),
+        ("Reasoning", int(fb.get("reasoning", 0) or 0), "var(--sr-reasoning)"),
+        ("Passage", int(fb.get("passage", 0) or 0), "var(--sr-passage)"),
+        ("Test-taking", int(fb.get("test_taking", 0) or 0), "var(--sr-amber)"),
+    )
+    rows = "".join(
+        f'<div class="sr-fb-row"><span class="sr-fb-dot" style="background:{color}"></span>'
+        f'<span class="sr-fb-name">{name}</span>'
+        f'<span class="sr-fb-count">{cnt}</span></div>'
+        for name, cnt, color in kinds
+        if cnt
+    )
+    misses = (
+        f'<div class="sr-card"><div class="sr-eyebrow">Misses by cause</div>{rows}</div>'
+        if rows
+        else ""
+    )
+    weak = [escape(str(t)) for t in (fb.get("weak_topics") or [])[:8]]
+    weak_card = ""
+    if weak:
+        chips = "".join(f'<span class="sr-chip">{t}</span>' for t in weak)
+        weak_card = f'<div class="sr-card"><div class="sr-eyebrow">Weakest topics</div>{chips}</div>'
+    return f'<div class="sr-panel sr-dash">{header}{summary}{misses}{weak_card}</div>'
 
 
 def sync_pair_body(data: dict) -> str:

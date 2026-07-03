@@ -24,7 +24,7 @@ import os
 import re
 import tempfile
 import urllib.request
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import TypeVar
 
@@ -32,6 +32,8 @@ import aqt
 from anki import import_export_pb2, speedrun_pb2
 from aqt import speedrun_theme as theme
 from aqt.qt import (
+    QDate,
+    QDateEdit,
     QDialog,
     QDialogButtonBox,
     QFrame,
@@ -39,7 +41,6 @@ from aqt.qt import (
     QInputDialog,
     QLabel,
     QPushButton,
-    QSpinBox,
     QVBoxLayout,
     QWidget,
     qconnect,
@@ -598,39 +599,43 @@ _TIERS = [
 ]
 
 
-class OnboardingDialog(QDialog):
-    """Friendly first-run setup: weeks-to-exam + target tier -> exam profile."""
+class ExamProfileDialog(QDialog):
+    """Shared exam-profile editor used by BOTH first-run onboarding and 'Edit
+    exam target', so the target you set is edited later with the same controls
+    (an exam date + a target tier) - no more weeks-vs-date / tiers-vs-spinbox
+    mismatch between the two entry points."""
 
-    def __init__(self, mw: aqt.AnkiQt) -> None:
+    def __init__(
+        self,
+        mw: aqt.AnkiQt,
+        *,
+        heading: str,
+        subtitle: str,
+        ok_text: str,
+        mark_onboarded: bool,
+    ) -> None:
         super().__init__(mw)
         self.mw = mw
-        self.setWindowTitle("Welcome to Speedrun")
+        self._mark_onboarded = mark_onboarded
+        self.setWindowTitle("Speedrun")
         disable_help_button(self)
-        self.resize(480, 360)
+        self.resize(480, 440)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(*_DIALOG_MARGINS)
         layout.setSpacing(12)
+        layout.addWidget(_mark(QLabel(heading), role="display"))
+        layout.addWidget(_mark(QLabel(subtitle), role="muted"))
 
-        layout.addWidget(_mark(QLabel("Let's set your target"), role="display"))
-        layout.addWidget(
-            _mark(
-                QLabel(
-                    "Speedrun anchors your plan to a date and a target score, then "
-                    "keeps three honest signals: memory, performance, and readiness."
-                ),
-                role="muted",
-            )
-        )
+        layout.addWidget(_mark(QLabel("EXAM DATE"), role="eyebrow"))
+        self.date = QDateEdit()
+        self.date.setCalendarPopup(True)
+        self.date.setDisplayFormat("yyyy-MM-dd")
+        self.date.setDate(QDate.currentDate().addDays(90))
+        layout.addWidget(self.date)
 
-        layout.addWidget(_mark(QLabel("WEEKS UNTIL YOUR EXAM"), role="eyebrow"))
-        self.weeks = QSpinBox()
-        self.weeks.setRange(1, 104)
-        self.weeks.setValue(12)
-        self.weeks.setSuffix(" weeks")
-        layout.addWidget(self.weeks)
-
-        layout.addWidget(_mark(QLabel("TARGET"), role="eyebrow"))
+        layout.addWidget(_mark(QLabel("TARGET SCORE"), role="eyebrow"))
+        self._target = 508
         self._tier_buttons: list[tuple[QPushButton, int]] = []
         for label, score in _TIERS:
             btn = QPushButton(label)
@@ -638,20 +643,35 @@ class OnboardingDialog(QDialog):
             qconnect(btn.clicked, lambda _=False, s=score: self._select_tier(s))
             layout.addWidget(btn)
             self._tier_buttons.append((btn, score))
-        self._target = 508
+
+        self._prefill()
         self._sync_tier_buttons()
 
         layout.addStretch(1)
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
-        buttons.button(QDialogButtonBox.StandardButton.Ok).setText("Start studying")
-        _mark(buttons.button(QDialogButtonBox.StandardButton.Ok), primary=True)
+        ok = buttons.button(QDialogButtonBox.StandardButton.Ok)
+        ok.setText(ok_text)
+        _mark(ok, primary=True)
         qconnect(buttons.accepted, self._save)
         qconnect(buttons.rejected, self.reject)
         layout.addWidget(buttons)
 
         self.setStyleSheet(theme.dialog_qss(_night()))
+
+    def _prefill(self) -> None:
+        try:
+            profile = self.mw.col._backend.get_exam_profile()
+            if profile.exam_date_ms > 0:
+                dt = datetime.fromtimestamp(
+                    profile.exam_date_ms / 1000, tz=timezone.utc
+                )
+                self.date.setDate(QDate(dt.year, dt.month, dt.day))
+            if profile.target_score > 0:
+                self._target = profile.target_score
+        except Exception:
+            pass
 
     def _select_tier(self, score: int) -> None:
         self._target = score
@@ -665,26 +685,63 @@ class OnboardingDialog(QDialog):
             btn.style().polish(btn)
 
     def _save(self) -> None:
-        exam_dt = datetime.now(timezone.utc) + timedelta(weeks=self.weeks.value())
-        exam_ms = int(exam_dt.timestamp() * 1000)
+        qd = self.date.date()
+        dt = datetime(qd.year(), qd.month(), qd.day(), tzinfo=timezone.utc)
+        exam_ms = int(dt.timestamp() * 1000)
         try:
             self.mw.col._backend.set_exam_profile(
                 speedrun_pb2.ExamProfile(
                     exam_date_ms=exam_ms, target_score=self._target
                 )
             )
-            self.mw.col.set_config(_CFG_ONBOARDED, True)
+            if self._mark_onboarded:
+                self.mw.col.set_config(_CFG_ONBOARDED, True)
             _refresh(self.mw)
-            tooltip("Target saved. Your Speedrun plan is set.")
+            tooltip(
+                "Target saved. Your Speedrun plan is set."
+                if self._mark_onboarded
+                else "Exam target saved."
+            )
         except Exception as exc:
             showWarning(f"Speedrun: could not save your target: {exc}")
         self.accept()
 
 
+_ONBOARD_SUBTITLE = (
+    "Speedrun anchors your plan to a date and a target score, then keeps three "
+    "honest signals: memory, performance, and readiness."
+)
+
+
+def _exam_dialog(mw: aqt.AnkiQt, *, onboarding: bool) -> ExamProfileDialog:
+    if onboarding:
+        return ExamProfileDialog(
+            mw,
+            heading="Let's set your target",
+            subtitle=_ONBOARD_SUBTITLE,
+            ok_text="Start studying",
+            mark_onboarded=True,
+        )
+    return ExamProfileDialog(
+        mw,
+        heading="Exam target",
+        subtitle="Anchor your plan to a date and a target score.",
+        ok_text="Save",
+        mark_onboarded=False,
+    )
+
+
 def open_onboarding(mw: aqt.AnkiQt) -> None:
     if mw.col is None:
         return
-    OnboardingDialog(mw).exec()
+    _exam_dialog(mw, onboarding=True).exec()
+
+
+def open_exam_target(mw: aqt.AnkiQt) -> None:
+    """Edit the exam profile with the same dialog onboarding uses."""
+    if mw.col is None:
+        return
+    _exam_dialog(mw, onboarding=False).exec()
 
 
 def maybe_show_onboarding(mw: aqt.AnkiQt) -> None:
@@ -701,4 +758,4 @@ def maybe_show_onboarding(mw: aqt.AnkiQt) -> None:
             return
     except Exception:
         return
-    OnboardingDialog(mw).exec()
+    _exam_dialog(mw, onboarding=True).exec()

@@ -27,7 +27,6 @@ import json
 import os
 import time
 import uuid
-from datetime import datetime, timezone
 from typing import Any, TypeVar
 
 import aqt
@@ -43,8 +42,6 @@ from aqt.qt import (
     QAction,
     QButtonGroup,
     QComboBox,
-    QDate,
-    QDateEdit,
     QDialog,
     QDialogButtonBox,
     QFrame,
@@ -56,7 +53,6 @@ from aqt.qt import (
     QProgressBar,
     QPushButton,
     QRadioButton,
-    QSpinBox,
     QTextCursor,
     QVBoxLayout,
     QWidget,
@@ -125,7 +121,7 @@ _EXPLAIN_BUTTON_TMPL = r"""
   btn.textContent = "\uD83C\uDF99 Speak your reasoning";
   btn.title = "Say your reasoning out loud before revealing (Ctrl+Shift+E)";
   btn.style.cssText =
-    "position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:2147483647;" +
+    "position:fixed;bottom:16px;right:16px;z-index:2147483647;" +
     "padding:10px 18px;border-radius:999px;border:none;" +
     "background:__ACCENT__;color:#fff;box-shadow:0 6px 18px rgba(0,0,0,.18);" +
     "font:600 14px __FONT__;cursor:pointer;";
@@ -161,6 +157,11 @@ class _SessionState:
         # Cards reviewed in the current session, for the end-of-session
         # reasoning round (memory -> reasoning). Cleared when the reviewer ends.
         self.reviewed_card_ids: list[int] = []
+        # The most recently answered card (the one a diagnosis cue refers to).
+        self.last_answered_card_id: int | None = None
+        # Cards the user flagged via the cue's "Practice later" to practice at
+        # the end of the session (instead of abandoning the review mid-card).
+        self.flagged_card_ids: list[int] = []
 
 
 _state = _SessionState()
@@ -414,10 +415,13 @@ def _on_answer_buttons(buttons, reviewer, card):
     col = reviewer.mw.col
     if col is None or not _modern_on(col):
         return buttons
+    # A single consistent scale from a lapse to an easy recall: "Forgot" for the
+    # Again lapse, then Anki's Hard / Good / Easy difficulty words (the old mix of
+    # "Forgot"/"Got it" with "Hard"/"Easy" read as two different vocabularies).
     remap = {
         tr.studying_again(): "Forgot",
         tr.studying_hard(): "Hard",
-        tr.studying_good(): "Got it",
+        tr.studying_good(): "Good",
         tr.studying_easy(): "Easy",
     }
     return tuple((ease, remap.get(label, label)) for ease, label in buttons)
@@ -566,16 +570,18 @@ def _feedback_lines(fb: dict) -> list[str]:
 
 
 def _show_feedback_report(mw: aqt.AnkiQt) -> None:
-    """Show the end-of-session feedback report in a simple info dialog."""
+    """Render the end-of-session feedback report as a Speedrun screen (tokened
+    cards) in the main webview, so it matches the rest of the app shell."""
+    global _ws_active
     if mw.col is None:
         return
     fb = _feedback_report(mw.col)
     if fb is None:
         tooltip("Feedback report unavailable.")
         return
-    from aqt.utils import showInfo
-
-    showInfo("\n".join(_feedback_lines(fb)), title="Speedrun feedback report")
+    _ws_active = "report"
+    _render_ws(mw, theme.feedback_report_body(fb))
+    _render_sidebar(mw)
 
 
 def _collect(col, fresh: bool) -> dict:
@@ -745,6 +751,7 @@ def _on_answer_card(reviewer, card: Card, ease: int) -> None:
     recall_failed = ease == 1
 
     _state.reviewed_card_ids.append(card.id)
+    _state.last_answered_card_id = card.id
 
     req = speedrun_pb2.RecordAttemptRequest(
         card_id=card.id,
@@ -808,6 +815,16 @@ def _surface_diagnosis(diagnosis, correct: bool) -> None:
     tooltip(msg, period=4000)
 
 
+def _flag_practice(mw: aqt.AnkiQt) -> None:
+    """The diagnosis cue's "Practice later": queue the just-missed card for the
+    end-of-session reasoning round, instead of navigating away and abandoning the
+    review mid-card (the old "Practice this" jumped straight to the Practice tab)."""
+    cid = _state.last_answered_card_id
+    if cid is not None and cid not in _state.flagged_card_ids:
+        _state.flagged_card_ids.append(cid)
+    tooltip("Queued — you'll get exam-style questions on this after your session.")
+
+
 # --- pycmd bridge -----------------------------------------------------------
 
 
@@ -831,6 +848,8 @@ def _on_js_message(handled: tuple[bool, object], message: str, context: object):
         _set_exam_target(mw)
     elif message == "speedrun:practice":
         _show_workspace(mw, "practice")
+    elif message == "speedrun:practicelater":
+        _flag_practice(mw)
     elif message == "speedrun:report":
         _show_feedback_report(mw)
     elif message == "speedrun:library":
@@ -991,7 +1010,9 @@ _SECTION_FOR_WS = {
     "dashboard": "home",
     "practice": "practice",
     "settings": "settings",
-    "sync": "sync",  # the sync screen; no nav item matches, so none highlights
+    # These screens have no matching nav item, so no sidebar item highlights.
+    "sync": "sync",
+    "report": "report",
 }
 
 
@@ -1856,18 +1877,25 @@ def _on_reviewer_will_end() -> None:
     if mw is None or mw.col is None:
         return
     card_ids = list(_state.reviewed_card_ids)
+    flagged = list(_state.flagged_card_ids)
     _state.reviewed_card_ids = []
-    if not card_ids:
+    _state.flagged_card_ids = []
+    if not card_ids and not flagged:
         return
     try:
         finished = sum(mw.col.sched.counts()) == 0
     except Exception:
         finished = False
-    if not finished:
+    # Offer the round when the deck's due cards ran out, or whenever the user
+    # explicitly flagged a miss for practice via the diagnosis cue (honor it even
+    # on a manual mid-session exit).
+    if not finished and not flagged:
         return
+    # Practice the flagged concepts first, then the rest of the session.
+    ordered = flagged + [c for c in card_ids if c not in flagged]
     from aqt.qt import QTimer
 
-    QTimer.singleShot(500, lambda: _launch_reasoning_round(mw, card_ids))
+    QTimer.singleShot(500, lambda: _launch_reasoning_round(mw, ordered))
 
 
 def _launch_reasoning_round(mw: aqt.AnkiQt, card_ids: list[int]) -> None:
@@ -2285,65 +2313,6 @@ class _PracticeDialog(QDialog):
 
 
 def _set_exam_target(mw: aqt.AnkiQt) -> None:
-    if mw.col is None:
-        return
-    dialog = QDialog(mw)
-    dialog.setWindowTitle("Speedrun exam target")
-    disable_help_button(dialog)
-
-    date_edit = QDateEdit()
-    date_edit.setCalendarPopup(True)
-    date_edit.setDisplayFormat("yyyy-MM-dd")
-    date_edit.setDate(QDate.currentDate().addDays(90))
-
-    score_spin = QSpinBox()
-    score_spin.setRange(472, 528)
-    score_spin.setValue(508)
-
-    try:
-        profile = mw.col._backend.get_exam_profile()
-        if profile.exam_date_ms > 0:
-            dt = datetime.fromtimestamp(profile.exam_date_ms / 1000, tz=timezone.utc)
-            date_edit.setDate(QDate(dt.year, dt.month, dt.day))
-        if profile.target_score > 0:
-            score_spin.setValue(profile.target_score)
-    except Exception:
-        pass
-
-    buttons = QDialogButtonBox(
-        QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
-    )
-    qconnect(buttons.accepted, dialog.accept)
-    qconnect(buttons.rejected, dialog.reject)
-    ok_btn = buttons.button(QDialogButtonBox.StandardButton.Ok)
-    if ok_btn is not None:
-        _mark(ok_btn, primary=True)
-
-    layout = QVBoxLayout(dialog)
-    layout.setContentsMargins(*_DIALOG_MARGINS)
-    layout.setSpacing(10)
-    layout.addWidget(_mark(QLabel("Exam target"), role="display"))
-    layout.addWidget(
-        _mark(QLabel("Anchor your plan to a date and a target score."), role="muted")
-    )
-    layout.addWidget(_mark(QLabel("Exam date"), role="eyebrow"))
-    layout.addWidget(date_edit)
-    layout.addWidget(_mark(QLabel("Target score (472–528)"), role="eyebrow"))
-    layout.addWidget(score_spin)
-    layout.addWidget(buttons)
-    _style_dialog(dialog)
-
-    if not dialog.exec():
-        return
-    qd = date_edit.date()
-    dt = datetime(qd.year(), qd.month(), qd.day(), tzinfo=timezone.utc)
-    exam_ms = int(dt.timestamp() * 1000)
-    try:
-        mw.col._backend.set_exam_profile(
-            speedrun_pb2.ExamProfile(
-                exam_date_ms=exam_ms, target_score=score_spin.value()
-            )
-        )
-        _refresh(mw, "Exam target saved.")
-    except Exception as exc:
-        tooltip(f"Could not save exam target: {exc}")
+    """Edit the exam profile via the shared editor (the same dialog onboarding
+    uses), so setting and editing a target look identical."""
+    library.open_exam_target(mw)
