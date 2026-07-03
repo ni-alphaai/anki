@@ -28,6 +28,7 @@ import os
 import time
 import uuid
 from datetime import datetime, timezone
+from typing import TypeVar
 
 import aqt
 from anki import speedrun_pb2
@@ -296,7 +297,7 @@ def _install_finished_screen_override() -> None:
             print(f"speedrun: finished-screen override fell back: {exc}")
             return original(self)
 
-    Overview._show_finished_screen = patched
+    Overview._show_finished_screen = patched  # type: ignore[method-assign]
 
 
 def _modern_on(col) -> bool:
@@ -326,9 +327,10 @@ def _style_dialog(dialog: QDialog) -> None:
     dialog.setStyleSheet(theme.dialog_qss(_night()))
 
 
-def _mark(
-    widget: QWidget, *, role: str | None = None, primary: bool = False
-) -> QWidget:
+_W = TypeVar("_W", bound=QWidget)
+
+
+def _mark(widget: _W, *, role: str | None = None, primary: bool = False) -> _W:
     """Tag a widget with Speedrun QSS roles (see ``theme.dialog_qss``)."""
     if role is not None:
         widget.setProperty("srRole", role)
@@ -1011,7 +1013,7 @@ class _DashboardDialog(QDialog):
         self.web.set_bridge_command(self._on_cmd, self)
         self.render()
 
-    def render(self) -> None:
+    def render(self) -> None:  # type: ignore[override]
         if self.mw.col is None:
             return
         try:
@@ -1575,7 +1577,7 @@ class _PracticeDialog(QDialog):
         q = self.questions[self.index]
         self.answered = False
         self.pending_explanation = ""
-        self._ai_index = None
+        self._ai_index: int | None = None
         self.shown_at = time.monotonic()
         self.progress.setText(
             f"Question {self.index + 1} of {len(self.questions)}"

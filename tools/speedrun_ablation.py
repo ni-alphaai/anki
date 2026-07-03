@@ -102,10 +102,10 @@ def _make_review_card(
     note["Front"] = front
     if tag is not None:
         note.tags = [tag]
-    col.add_note(note, did)
+    col.add_note(note, did)  # type: ignore[arg-type]
     card = note.cards()[0]
-    card.type = _CARD_TYPE_REVIEW
-    card.queue = _QUEUE_REVIEW
+    card.type = _CARD_TYPE_REVIEW  # type: ignore[assignment]
+    card.queue = _QUEUE_REVIEW  # type: ignore[assignment]
     card.ivl = 10
     card.due = due
     col.update_card(card)
@@ -367,9 +367,9 @@ def run_experiment(
     n = records[0]["n"]
     k = max(1, round(n * budget_fraction))
 
-    gains = {key: [] for key in _ARM_KEYS}
-    weak = {key: [] for key in _ARM_KEYS}
-    frac_captured = {key: [] for key in _ARM_KEYS}
+    gains: dict[str, list[float]] = {key: [] for key in _ARM_KEYS}
+    weak: dict[str, list[float]] = {key: [] for key in _ARM_KEYS}
+    frac_captured: dict[str, list[float]] = {key: [] for key in _ARM_KEYS}
     oracle_gains: list[float] = []
     positions_changed_points: list[float] = []
     positions_changed_interleave: list[float] = []

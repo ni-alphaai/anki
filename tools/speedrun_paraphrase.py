@@ -133,8 +133,8 @@ def build_collection(col: Collection, cards: list[dict]) -> list[dict]:
         col.add_note(note, did)
 
         c = note.cards()[0]
-        c.type = CARD_TYPE_REVIEW
-        c.queue = QUEUE_REVIEW
+        c.type = CARD_TYPE_REVIEW  # type: ignore[assignment]
+        c.queue = QUEUE_REVIEW  # type: ignore[assignment]
         c.ivl = MATURE_IVL
         c.due = 0
         col.update_card(c)

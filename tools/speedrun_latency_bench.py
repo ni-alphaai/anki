@@ -287,9 +287,9 @@ def run_benchmark(col: Collection, n_cards: int, iterations: int) -> dict:
     )
     # vanilla Anki's raw next-card fetch (idempotent); include if available
     try:
-        col.sched.get_queued_cards(fetch_limit=1)
+        col.sched.get_queued_cards(fetch_limit=1)  # type: ignore[union-attr]
         actions["sched_get_queued_cards"] = summarize(
-            _bench(lambda: col.sched.get_queued_cards(fetch_limit=1), iterations)
+            _bench(lambda: col.sched.get_queued_cards(fetch_limit=1), iterations)  # type: ignore[union-attr]
         )
     except Exception as exc:  # pragma: no cover - scheduler variant differences
         actions["sched_get_queued_cards"] = {"skipped": str(exc)}

@@ -26,6 +26,7 @@ import tempfile
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import TypeVar
 
 import aqt
 from anki import import_export_pb2, speedrun_pb2
@@ -82,9 +83,10 @@ def _night() -> bool:
         return False
 
 
-def _mark(
-    widget: QWidget, *, role: str | None = None, primary: bool = False
-) -> QWidget:
+_W = TypeVar("_W", bound=QWidget)
+
+
+def _mark(widget: _W, *, role: str | None = None, primary: bool = False) -> _W:
     if role is not None:
         widget.setProperty("srRole", role)
     if primary:
@@ -285,7 +287,11 @@ def import_local_file(mw: aqt.AnkiQt, path: str) -> None:
             return f"Imported {n} practice questions."
         return _import_package_file(mw, path)
 
-    _run_with_progress(mw, "Importing…", task, lambda msg: (_refresh(mw), tooltip(msg)))
+    def on_done(msg: str) -> None:
+        _refresh(mw)
+        tooltip(msg)
+
+    _run_with_progress(mw, "Importing…", task, on_done)
 
 
 _CFG_EXAMPLE = "speedrunExampleLoaded"
@@ -468,7 +474,7 @@ class LibraryDialog(QDialog):
                 role="muted",
             )
         )
-        e2e_meta.itemAt(1).widget().setWordWrap(True)
+        e2e_meta.itemAt(1).widget().setWordWrap(True)  # type: ignore[attr-defined]
         e2e_row.addLayout(e2e_meta, 1)
         add_e2e = _mark(QPushButton("Add e2e test"), primary=True)
         qconnect(add_e2e.clicked, lambda: import_e2e_pack(self.mw))

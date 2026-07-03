@@ -119,7 +119,7 @@ def _advance_days(col: Collection, days: int) -> None:
 def _lift_daily_limits(col: Collection, did: int) -> None:
     """Raise the deck's new/review per-day caps so the maturation loop can flow
     every card through the real scheduler in a single day."""
-    conf = col.decks.config_dict_for_deck_id(did)
+    conf = col.decks.config_dict_for_deck_id(did)  # type: ignore[arg-type]
     conf["new"]["perDay"] = 9999
     conf["rev"]["perDay"] = 9999
     col.decks.update_config(conf)
@@ -169,7 +169,7 @@ def _build_deck(
             note["Front"] = f"{t['id']} fact {i}"
             note["Back"] = "the answer"
             note.tags = [key]
-            col.add_note(note, did)
+            col.add_note(note, did)  # type: ignore[arg-type]
             card = note.cards()[0]
             by_topic[key].append((card.id, note.id))
     return by_topic

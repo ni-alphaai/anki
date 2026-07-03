@@ -159,7 +159,7 @@ def _crash_worker(path: str, n_commit: int) -> int:
     col.db.execute("pragma cache_size = 50")
     col._backend.db_begin()
     row = [cid, nid, "crash-inflight", 1, 0, 0, 0, 0, 0.0, 0, -1, "x" * 100]
-    col.db.executemany(_INSERT_INFLIGHT, [row] * INFLIGHT_ROWS)
+    col.db.executemany(_INSERT_INFLIGHT, [row] * INFLIGHT_ROWS)  # type: ignore[list-item]
     # Dirty a core table too, so the interrupted transaction spans engine + core.
     col.db.execute("update col set mod = ?", int(time.time() * 1000))
 
@@ -368,7 +368,7 @@ class _NetworkPulled:
         self._create_connection = socket.create_connection
         guard = self
 
-        class _Blackhole(self._socket_cls):  # type: ignore[misc, valid-type]
+        class _Blackhole(self._socket_cls):  # type: ignore[misc, valid-type, name-defined]
             def connect(self, *a, **k):  # noqa: ANN001, ANN002, ANN003
                 guard.attempts += 1
                 raise OSError("offline: outbound network disabled (AI-off test)")
@@ -449,7 +449,7 @@ def run_offline_test() -> dict:
             all_valid = True
             all_expected = True
             for label, signals, expected_kind in cases:
-                resp = _record(col, card_id=cid, note_id=nid, **signals)
+                resp = _record(col, card_id=cid, note_id=nid, **signals)  # type: ignore[arg-type]
                 kind = resp.diagnosis.kind
                 valid = kind in VALID_KINDS
                 matched = kind == expected_kind

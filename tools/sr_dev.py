@@ -60,10 +60,10 @@ def main() -> int:
             col.add_note(n, col.decks.id("Default"))
             print(f"added note: {text}")
         elif cmd == "review":
-            n = int(sys.argv[3])
+            count = int(sys.argv[3])
             done = 0
-            for _ in range(n):
-                q = col.sched.get_queued_cards(fetch_limit=1)
+            for _ in range(count):
+                q = col.sched.get_queued_cards(fetch_limit=1)  # type: ignore[union-attr]
                 if not q.cards:
                     break
                 qc = q.cards[0]
@@ -75,7 +75,7 @@ def main() -> int:
                     answered_at_millis=int(time.time() * 1000),
                     milliseconds_taken=3000,
                 )
-                col.sched.answer_card(ans)
+                col.sched.answer_card(ans)  # type: ignore[union-attr]
                 done += 1
             print(f"reviewed: {done}")
         print(f"counts: {counts(col)}")

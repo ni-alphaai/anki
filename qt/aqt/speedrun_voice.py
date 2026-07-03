@@ -162,10 +162,11 @@ class LiveTranscriber:
                 with self._lock:
                     self._buf.append(indata.copy().reshape(-1))
 
-            self._stream = sd.InputStream(
+            stream = sd.InputStream(
                 samplerate=_SAMPLE_RATE, channels=1, dtype="float32", callback=callback
             )
-            self._stream.start()
+            self._stream = stream
+            stream.start()
         except Exception as exc:
             self._running = False
             if self._on_error:

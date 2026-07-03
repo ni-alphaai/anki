@@ -72,11 +72,13 @@ class LLM:
         if key in self.cache:
             return json.loads(self.cache[key])
         _load_env()
-        if self._client is None:
-            from openai import OpenAI
+        client = self._client
+        if client is None:
+            from openai import OpenAI  # type: ignore[import-not-found]
 
-            self._client = OpenAI()
-        resp = self._client.chat.completions.create(
+            client = OpenAI()
+            self._client = client
+        resp = client.chat.completions.create(
             model=self.model,
             temperature=self.temperature,
             seed=self.seed,
