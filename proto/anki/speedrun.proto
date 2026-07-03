@@ -62,6 +62,14 @@ service SpeedrunService {
   // unseen). Appended last to keep existing method indices stable.
   rpc GetSessionReasoningRound(SessionReasoningRoundRequest)
       returns (QuestionItems);
+  // Engine-anchored reasoning-due queue (Design 2 / D1): rank topics by
+  // reasoning debt (recall-vs-performance gap + uncovered + recency) and return
+  // held-out questions for the most-due topics. Appended last for index
+  // stability.
+  rpc GetDueReasoning(GetDueReasoningRequest) returns (QuestionItems);
+  // End-of-session / periodic feedback report (Design 2 / D2): counts by
+  // diagnosis kind + weakest topics over exam-style attempts.
+  rpc GetFeedbackReport(generic.Empty) returns (FeedbackReport);
 }
 
 // Backend counterpart. The methods above are implemented on Collection and are
@@ -162,6 +170,23 @@ message SessionReasoningRoundRequest {
   repeated int64 reviewed_card_ids = 1;
   // Max questions in the round; 0 => default (5).
   uint32 limit = 2;
+}
+
+message GetDueReasoningRequest {
+  // Max questions to return; 0 => default (5).
+  uint32 limit = 1;
+}
+
+// Aggregated end-of-session / periodic feedback report over exam-style attempts.
+message FeedbackReport {
+  uint32 total = 1;
+  uint32 correct = 2;
+  uint32 memory_misses = 3;
+  uint32 reasoning_misses = 4;
+  uint32 passage_misses = 5;
+  uint32 test_taking_misses = 6;
+  // Topics with at least one miss, ordered weakest (most misses) first.
+  repeated string weak_topics = 7;
 }
 
 // routed_action: 0=none,1=resurface,2=passage_practice,3=strategy,4=advance

@@ -540,6 +540,34 @@ impl SqliteStorage {
             .collect()
     }
 
+    /// Exam-style attempts (question_type != 0) as (card id, diagnosis kind,
+    /// correct, answered-at ms). Feeds the feedback report + reasoning-due
+    /// recency, attributed to topics in the service layer.
+    pub(crate) fn sr_exam_attempts_brief(&self) -> Result<Vec<(i64, u8, bool, i64)>> {
+        self.db
+            .prepare_cached(
+                "select cid, diagnosis_kind, correct, answered_at_ms \
+                 from sr_attempts where question_type != 0 order by id",
+            )?
+            .query_and_then([], |row| -> Result<(i64, u8, bool, i64)> {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
+            })?
+            .collect()
+    }
+
+    /// (topic, number of held-out question items) per topic. The universe of
+    /// topics the reasoning-due queue can actually schedule practice for.
+    pub(crate) fn sr_question_item_topic_counts(&self) -> Result<Vec<(String, u32)>> {
+        self.db
+            .prepare_cached(
+                "select topic, count(*) from sr_question_items group by topic order by topic",
+            )?
+            .query_and_then([], |row| -> Result<(String, u32)> {
+                Ok((row.get(0)?, row.get(1)?))
+            })?
+            .collect()
+    }
+
     /// Replace the entire topic outline with the provided entries. Returns the
     /// number of topics stored.
     pub(crate) fn replace_sr_topic_map(&self, entries: &[SrTopicMapEntry]) -> Result<u32> {

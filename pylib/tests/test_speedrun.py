@@ -284,3 +284,47 @@ def test_session_reasoning_round_weaves_memory_and_reasoning():
         len(col._backend.get_session_reasoning_round(reviewed_card_ids=[], limit=5))
         == 3
     )
+
+
+def test_due_reasoning_and_feedback_report():
+    col = getEmptyCol()
+
+    # a card in a deck whose name maps to the "biology" topic
+    did = col.decks.id("Biology")
+    model = col.models.by_name("Basic")
+    note = col.new_note(model)
+    note["Front"] = "a cell fact"
+    col.add_note(note, did)
+    card_id = note.cards()[0].id
+
+    # two held-out biology questions to schedule
+    for i in range(2):
+        col._backend.add_question_item(
+            speedrun_pb2.QuestionItem(topic="biology", payload='{"k":"q%d"}' % i)
+        )
+
+    # two exam-style attempts on the card: one correct, one wrong (reasoning)
+    for correct in (True, False):
+        col._backend.record_attempt(
+            speedrun_pb2.RecordAttemptRequest(
+                card_id=card_id,
+                note_id=note.id,
+                question_type=1,
+                took_ms=12000,
+                correct=correct,
+                data="{}",
+            )
+        )
+
+    # feedback report: attributed to "biology" via the deck-name heuristic
+    report = col._backend.get_feedback_report()
+    assert report.total == 2
+    assert report.correct == 1
+    assert report.reasoning_misses == 1
+    assert list(report.weak_topics) == ["biology"]
+
+    # due-reasoning: "biology" is uncovered (not in the outline) so it is due,
+    # returning its held-out questions
+    due = col._backend.get_due_reasoning(limit=5)
+    assert len(due) == 2
+    assert all(q.topic == "biology" for q in due)

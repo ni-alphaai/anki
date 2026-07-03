@@ -416,6 +416,144 @@ impl crate::services::SpeedrunService for Collection {
         })
     }
 
+    fn get_due_reasoning(
+        &mut self,
+        input: anki_proto::speedrun::GetDueReasoningRequest,
+    ) -> error::Result<anki_proto::speedrun::QuestionItems> {
+        let limit = if input.limit == 0 {
+            crate::speedrun::reasoning_round::DEFAULT_ROUND_SIZE
+        } else {
+            input.limit
+        };
+        let outline = self.outline_topic_set()?;
+        let mut cache: std::collections::HashMap<i64, Vec<String>> = std::collections::HashMap::new();
+
+        // Per-topic performance rows, attributed to topics via the card->topic
+        // heuristic, so the recall-vs-performance gap is measured per topic.
+        let mut perf_by_topic: std::collections::HashMap<String, Vec<PerfCardRow>> =
+            std::collections::HashMap::new();
+        for (cid, attempts, correct, ivl) in self.storage.sr_performance_rows()? {
+            for topic in self.topics_for_card_cached(CardId(cid), &outline, &mut cache)? {
+                perf_by_topic.entry(topic).or_default().push(PerfCardRow {
+                    attempts,
+                    correct,
+                    interval_days: ivl,
+                });
+            }
+        }
+
+        // Per-topic most-recent reasoning attempt (drives the recency term).
+        let mut last_reasoning_ms: std::collections::HashMap<String, i64> =
+            std::collections::HashMap::new();
+        for (cid, _kind, _correct, ms) in self.storage.sr_exam_attempts_brief()? {
+            for topic in self.topics_for_card_cached(CardId(cid), &outline, &mut cache)? {
+                let entry = last_reasoning_ms.entry(topic).or_insert(ms);
+                if ms > *entry {
+                    *entry = ms;
+                }
+            }
+        }
+
+        // Per-topic coverage (binary: covered if any note is tagged with it).
+        let coverage: std::collections::HashMap<String, u32> = self
+            .storage
+            .sr_topic_coverage_detail()?
+            .into_iter()
+            .map(|(topic, _label, _weight, cards)| (topic, cards))
+            .collect();
+
+        let now_ms = TimestampMillis::now().0;
+        let states: Vec<crate::speedrun::reasoning_schedule::TopicReasoningState> = self
+            .storage
+            .sr_question_item_topic_counts()?
+            .into_iter()
+            .filter(|(_, count)| *count > 0)
+            .map(|(topic, count)| {
+                let recall_perf_gap = perf_by_topic
+                    .get(&topic)
+                    .map(|rows| summarize_performance(rows).recall_perf_gap)
+                    .unwrap_or(0.0);
+                let cov = if coverage.get(&topic).copied().unwrap_or(0) > 0 {
+                    1.0
+                } else {
+                    0.0
+                };
+                let days_since_last_reasoning = match last_reasoning_ms.get(&topic) {
+                    Some(ms) => ((now_ms - ms).max(0) as f32) / 86_400_000.0,
+                    None => crate::speedrun::reasoning_schedule::RECENCY_SATURATION_DAYS,
+                };
+                crate::speedrun::reasoning_schedule::TopicReasoningState {
+                    topic,
+                    recall_perf_gap,
+                    coverage: cov,
+                    days_since_last_reasoning,
+                    open_questions: count,
+                }
+            })
+            .collect();
+
+        let ranked = crate::speedrun::reasoning_schedule::rank_due_topics(
+            &states,
+            crate::speedrun::reasoning_schedule::MIN_REASONING_DEBT,
+        );
+
+        // Pull held-out questions for the most-due topics in order, deduped and
+        // capped. Empty when nothing is due (honest abstain).
+        let mut seen: std::collections::HashSet<i64> = std::collections::HashSet::new();
+        let mut items: Vec<SrQuestionItem> = Vec::new();
+        for due in ranked {
+            if items.len() >= limit as usize {
+                break;
+            }
+            for item in self.storage.get_sr_question_items_for_topic(&due.topic)? {
+                if items.len() >= limit as usize {
+                    break;
+                }
+                if seen.insert(item.id) {
+                    items.push(item);
+                }
+            }
+        }
+        Ok(anki_proto::speedrun::QuestionItems {
+            items: items.into_iter().map(to_proto_question_item).collect(),
+        })
+    }
+
+    fn get_feedback_report(&mut self) -> error::Result<anki_proto::speedrun::FeedbackReport> {
+        let outline = self.outline_topic_set()?;
+        let mut cache: std::collections::HashMap<i64, Vec<String>> = std::collections::HashMap::new();
+        let mut rows: Vec<crate::speedrun::feedback::ReportRow> = Vec::new();
+        for (cid, kind, correct, _ms) in self.storage.sr_exam_attempts_brief()? {
+            // A single primary topic per attempt keeps the totals honest; the
+            // per-topic weak list uses the same primary attribution.
+            let topic = self
+                .topics_for_card_cached(CardId(cid), &outline, &mut cache)?
+                .into_iter()
+                .next()
+                .unwrap_or_default();
+            rows.push(crate::speedrun::feedback::ReportRow {
+                topic,
+                diagnosis_kind: kind,
+                correct,
+            });
+        }
+        let report = crate::speedrun::feedback::aggregate_report(&rows);
+        let weak_topics = report
+            .weak_topics
+            .into_iter()
+            .filter(|t| !t.is_empty())
+            .collect();
+        Ok(anki_proto::speedrun::FeedbackReport {
+            total: report.total,
+            correct: report.correct,
+            memory_misses: report.memory_misses,
+            reasoning_misses: report.reasoning_misses,
+            passage_misses: report.passage_misses,
+            test_taking_misses: report.test_taking_misses,
+            weak_topics,
+        })
+    }
+
     fn update_attempt_diagnosis(
         &mut self,
         input: anki_proto::speedrun::UpdateAttemptDiagnosisRequest,
@@ -506,6 +644,51 @@ impl Collection {
             decay,
         );
         Ok(Some(retrievability))
+    }
+
+    /// The set of outline (topic-map) topics, used for tag-based attribution.
+    fn outline_topic_set(&self) -> error::Result<std::collections::HashSet<String>> {
+        Ok(self
+            .storage
+            .get_sr_topic_map()?
+            .into_iter()
+            .map(|e| e.topic)
+            .collect())
+    }
+
+    /// The topics a card belongs to, via the deck-name heuristic plus note tags
+    /// that are in the outline (mirrors `get_session_reasoning_round`). Cached by
+    /// card id because the reasoning-due / feedback aggregations revisit cards.
+    fn topics_for_card_cached(
+        &mut self,
+        cid: CardId,
+        outline: &std::collections::HashSet<String>,
+        cache: &mut std::collections::HashMap<i64, Vec<String>>,
+    ) -> error::Result<Vec<String>> {
+        if let Some(hit) = cache.get(&cid.0) {
+            return Ok(hit.clone());
+        }
+        let mut topics: Vec<String> = Vec::new();
+        if let Some((deck_id, note_id)) =
+            self.storage.get_card(cid)?.map(|c| (c.deck_id, c.note_id))
+        {
+            if let Some(deck) = self.get_deck(deck_id)? {
+                if let Some(topic) =
+                    crate::speedrun::reasoning_round::deck_name_to_topic(&deck.human_name())
+                {
+                    topics.push(topic.to_string());
+                }
+            }
+            if let Some(note) = self.storage.get_note(note_id)? {
+                for tag in note.tags {
+                    if outline.contains(&tag) && !topics.contains(&tag) {
+                        topics.push(tag);
+                    }
+                }
+            }
+        }
+        cache.insert(cid.0, topics.clone());
+        Ok(topics)
     }
 
     /// Gather raw evidence from the collection + Speedrun tables and compute
@@ -936,6 +1119,78 @@ mod test {
         assert_eq!(report.flagged, 1);
         assert_eq!(report.flagged_item_ids, vec![leaked]);
         assert!(!report.clean);
+        Ok(())
+    }
+
+    #[test]
+    fn due_reasoning_and_feedback_report() -> Result<()> {
+        use crate::card::CardQueue;
+        use crate::card::CardType;
+        use crate::prelude::DeckId;
+
+        let tempfile = new_tempfile()?;
+        let mut col = CollectionBuilder::default()
+            .set_collection_path(tempfile.path())
+            .build()?;
+
+        // Outline contains "biology" so a note tagged "biology" attributes to it.
+        let _ = col.set_topic_map(anki_proto::speedrun::TopicMap {
+            entries: vec![anki_proto::speedrun::TopicMapEntry {
+                topic: "biology".to_string(),
+                label: "Biology".to_string(),
+                weight: 1.0,
+            }],
+        })?;
+
+        // A mature card tagged "biology" (recall proxy = 1.0).
+        let nt = col.get_notetype_by_name("Basic")?.unwrap();
+        let mut note = nt.new_note();
+        note.set_field(0, "photosynthesis fact")?;
+        note.tags = vec!["biology".to_string()];
+        col.add_note(&mut note, DeckId(1))?;
+        let mut card = col.storage.get_card_by_ordinal(note.id, 0)?.unwrap();
+        card.ctype = CardType::Review;
+        card.queue = CardQueue::Review;
+        card.interval = 30;
+        col.update_cards_maybe_undoable(vec![card.clone()], false)?;
+
+        // Two held-out biology questions to schedule.
+        for n in 0..2 {
+            let _ = col.add_question_item(anki_proto::speedrun::QuestionItem {
+                card_id: card.id.0,
+                topic: "biology".to_string(),
+                payload: format!("{{\"stem\":\"q{n}\"}}"),
+                ..Default::default()
+            })?;
+        }
+
+        // Two exam-style attempts on the card: one correct, one wrong (reasoning).
+        for (i, correct) in [(1i64, true), (2i64, false)] {
+            let _ = col.record_attempt(anki_proto::speedrun::RecordAttemptRequest {
+                card_id: card.id.0,
+                note_id: note.id.0,
+                answered_at_ms: 1_700_000_000_000 + i,
+                took_ms: 12000,
+                question_type: 1,
+                correct,
+                ..Default::default()
+            })?;
+        }
+
+        // Feedback report: mature recall (1.0) vs 0.5 performance -> a gap; the
+        // wrong exam attempt is a reasoning miss attributed to "biology".
+        let report = col.get_feedback_report()?;
+        assert_eq!(report.total, 2);
+        assert_eq!(report.correct, 1);
+        assert_eq!(report.reasoning_misses, 1);
+        assert_eq!(report.weak_topics, vec!["biology".to_string()]);
+
+        // Due-reasoning: the positive recall-vs-performance gap makes "biology"
+        // due, so its held-out questions are returned.
+        let due = col.get_due_reasoning(anki_proto::speedrun::GetDueReasoningRequest { limit: 5 })?;
+        assert_eq!(due.items.len(), 2);
+        assert!(due.items.iter().all(|q| q.topic == "biology"));
+
         Ok(())
     }
 
