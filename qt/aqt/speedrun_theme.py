@@ -1051,18 +1051,6 @@ def finished_html(data: dict, deck_name: str) -> str:
 _WORKSPACE_CSS = """
 .sr-ws { max-width: 940px; margin: 0 auto; padding: 18px 20px 72px;
   font-family: var(--sr-font); color: var(--sr-ink); }
-.sr-ws-head { display:flex; align-items:center; gap:12px; margin-bottom:20px; }
-.sr-ws-back { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--sr-hairline);
-  background:var(--sr-surface); color:var(--sr-ink); border-radius:var(--sr-radius-pill);
-  padding:9px 16px; font-family:var(--sr-font); font-size:14px; font-weight:600; cursor:pointer; }
-.sr-ws-back:hover { box-shadow:var(--sr-shadow-sm); border-color:var(--sr-accent); }
-.sr-ws-spacer { flex:1; }
-.sr-ws-tabs { display:flex; gap:4px; background:var(--sr-elevated); border:1px solid var(--sr-hairline);
-  border-radius:var(--sr-radius-pill); padding:4px; }
-.sr-ws-tab { border:none; background:transparent; color:var(--sr-secondary); font-family:var(--sr-font);
-  font-size:14px; font-weight:600; padding:8px 20px; border-radius:var(--sr-radius-pill); cursor:pointer; }
-.sr-ws-tab:hover { color:var(--sr-ink); }
-.sr-ws-tab.active { background:var(--sr-accent); color:#fff; }
 /* settings */
 .sr-set-item { display:flex; align-items:flex-start; gap:20px; padding:18px 4px;
   border-bottom:1px solid var(--sr-hairline); }
@@ -1132,29 +1120,134 @@ function srSync(){
 """
 
 
-def workspace_html(active: str, body: str) -> str:
-    """Wrap a Speedrun screen in the in-place workspace shell: a header with a
-    'Decks' back button and Dashboard/Practice/Settings tabs, so the surfaces
-    switch inside the main window instead of opening separate dialogs."""
-    tabs = (
-        ("dashboard", "Dashboard"),
-        ("practice", "Practice"),
-        ("settings", "Settings"),
+def screen_html(body: str) -> str:
+    """Wrap a Speedrun screen (Home / Practice / Settings) for the main content
+    area. Navigation lives in the persistent left sidebar, so the screen carries
+    no tab bar or back button - just the centered content column."""
+    return f'<style>{_WORKSPACE_CSS}</style><div class="sr-ws">{body}</div>'
+
+
+def _sb_icon(paths: str) -> str:
+    """A 24x24 line icon that inherits the nav item's color via currentColor."""
+    return (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'
+        f"{paths}</svg>"
     )
-    tabs_html = "".join(
-        f'<button class="sr-ws-tab{" active" if key == active else ""}" '
-        f"onclick=\"pycmd('speedrun:ws:{key}')\">{label}</button>"
-        for key, label in tabs
+
+
+# (section key, label, icon). "study" hands off to Anki's native deck flow; the
+# rest render as Speedrun screens in the main webview.
+_SB_NAV = (
+    (
+        "home",
+        "Home",
+        _sb_icon('<path d="M3 10.6 12 3l9 7.6"/><path d="M5 9.4V21h14V9.4"/>'),
+    ),
+    (
+        "study",
+        "Study",
+        _sb_icon(
+            '<rect x="3" y="4.5" width="13" height="10" rx="2"/>'
+            '<path d="M8 19h11a2 2 0 0 0 2-2V8.5"/>'
+        ),
+    ),
+    (
+        "practice",
+        "Practice",
+        _sb_icon('<circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="3.1"/>'),
+    ),
+    (
+        "library",
+        "Library",
+        _sb_icon(
+            '<path d="M5 4.2h10.5a1 1 0 0 1 1 1V20H6a1 1 0 0 1-1-1z"/>'
+            '<path d="M16.5 5.2a2 2 0 0 1 2 2V20"/>'
+        ),
+    ),
+    (
+        "settings",
+        "Settings",
+        _sb_icon(
+            '<line x1="4" y1="8.5" x2="20" y2="8.5"/>'
+            '<circle cx="9" cy="8.5" r="2.4" fill="var(--sr-surface)"/>'
+            '<line x1="4" y1="15.5" x2="20" y2="15.5"/>'
+            '<circle cx="15" cy="15.5" r="2.4" fill="var(--sr-surface)"/>'
+        ),
+    ),
+)
+
+
+_SIDEBAR_CSS = """
+* { box-sizing:border-box; }
+html,body { height:100%; margin:0; background:var(--sr-surface); }
+.sr-sb { display:flex; flex-direction:column; height:100%; padding:16px 12px;
+  font-family:var(--sr-font); border-right:1px solid var(--sr-hairline); }
+.sr-sb-brand { display:flex; align-items:center; gap:9px; padding:6px 10px 20px; }
+.sr-sb-logo { width:22px; height:22px; border-radius:7px; flex:none;
+  background:linear-gradient(135deg,var(--sr-accent),var(--sr-reasoning)); }
+.sr-sb-word { font-family:var(--sr-display); font-size:19px; font-weight:600;
+  color:var(--sr-ink); letter-spacing:-.01em; }
+.sr-sb-nav { display:flex; flex-direction:column; gap:2px; }
+.sr-sb-item { display:flex; align-items:center; gap:11px; width:100%; text-align:left;
+  border:none; background:transparent; color:var(--sr-secondary); font-family:var(--sr-font);
+  font-size:14.5px; font-weight:600; padding:10px 12px; border-radius:var(--sr-radius-input);
+  cursor:pointer; transition:background .12s, color .12s; }
+.sr-sb-item:hover { background:color-mix(in srgb, var(--sr-ink) 6%, transparent);
+  color:var(--sr-ink); }
+.sr-sb-item.active { background:color-mix(in srgb, var(--sr-accent) 14%, transparent);
+  color:var(--sr-accent); }
+.sr-sb-item svg { flex:none; width:18px; height:18px; }
+.sr-sb-spacer { flex:1; }
+.sr-sb-sync { display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+  border:1px solid var(--sr-hairline); background:var(--sr-surface); color:var(--sr-ink);
+  border-radius:var(--sr-radius-input); padding:10px 12px; cursor:pointer; font-family:var(--sr-font);
+  transition:border-color .12s, box-shadow .12s; }
+.sr-sb-sync:hover { border-color:var(--sr-accent); box-shadow:var(--sr-shadow-sm); }
+.sr-sb-sync-dot { flex:none; width:9px; height:9px; border-radius:50%; background:var(--sr-tertiary); }
+.sr-sb-sync.ok .sr-sb-sync-dot { background:var(--sr-perf); }
+.sr-sb-sync.syncing .sr-sb-sync-dot { background:var(--sr-amber);
+  animation:sr-sb-pulse 1s ease-in-out infinite; }
+.sr-sb-sync.error .sr-sb-sync-dot { background:var(--sr-danger); }
+@keyframes sr-sb-pulse { 0%,100%{opacity:1;} 50%{opacity:.35;} }
+.sr-sb-sync-txt { display:flex; flex-direction:column; min-width:0; line-height:1.25; }
+.sr-sb-sync-label { font-size:13.5px; font-weight:600; color:var(--sr-ink);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sr-sb-sync-detail { font-size:11.5px; color:var(--sr-secondary);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+"""
+
+
+def sidebar_html(active: str, sync: dict | None = None) -> str:
+    """The persistent left-rail app shell: brand, primary navigation, and a live
+    sync status chip. Rendered into its own webview so it survives every Anki
+    state change (unlike content painted into the main webview)."""
+    sync = sync or {}
+    items = "".join(
+        f'<button class="sr-sb-item{" active" if key == active else ""}" '
+        f"onclick=\"pycmd('speedrun:nav:{key}')\">{icon}<span>{label}</span></button>"
+        for key, label, icon in _SB_NAV
     )
-    head = (
-        '<div class="sr-ws-head">'
-        '<button class="sr-ws-back" onclick="pycmd(\'speedrun:back\')">'
-        "\u2190 Decks</button>"
-        '<div class="sr-ws-spacer"></div>'
-        f'<div class="sr-ws-tabs">{tabs_html}</div>'
-        "</div>"
+    state = escape(str(sync.get("state") or "idle"))
+    label = escape(str(sync.get("label") or "Sync with phone"))
+    detail = escape(str(sync.get("detail") or ""))
+    detail_html = f'<span class="sr-sb-sync-detail">{detail}</span>' if detail else ""
+    chip = (
+        f'<button class="sr-sb-sync {state}" onclick="pycmd(\'speedrun:nav:settings\')">'
+        '<span class="sr-sb-sync-dot"></span>'
+        f'<span class="sr-sb-sync-txt"><span class="sr-sb-sync-label">{label}</span>'
+        f"{detail_html}</span></button>"
     )
-    return f'<style>{_WORKSPACE_CSS}</style><div class="sr-ws">{head}{body}</div>'
+    brand = (
+        '<div class="sr-sb-brand"><span class="sr-sb-logo"></span>'
+        '<span class="sr-sb-word">Speedrun</span></div>'
+    )
+    return (
+        f"<style>{_SIDEBAR_CSS}</style>"
+        f'<div class="sr-sb">{brand}'
+        f'<nav class="sr-sb-nav">{items}</nav>'
+        f'<div class="sr-sb-spacer"></div>{chip}</div>'
+    )
 
 
 def settings_body(items: list[dict], sync: dict | None = None) -> str:

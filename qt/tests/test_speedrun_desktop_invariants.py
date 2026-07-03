@@ -1,18 +1,17 @@
 # Copyright: Ankitects Pty Ltd and contributors
 # License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-"""Code-level invariant tests for the in-place Speedrun desktop integration.
+"""Code-level invariant tests for the Speedrun desktop integration.
 
-These assert the two design guarantees of the desktop reskin without a live GUI:
+These assert design guarantees of the desktop reskin without a live GUI:
 
 1. The deck-browser home carries **no** injected readiness banner (its white
    block clashed with the deck list, so the banner was removed).
-2. The Speedrun **Dashboard** toolbar link is inserted at the FRONT of the link
-   list, so it renders leftmost among the primary destinations.
+2. The app-shell sidebar renders all primary destinations (Home / Study /
+   Practice / Library / Settings) and marks exactly one active.
 
-They import ``aqt.speedrun`` (which pulls in Qt) but never construct a
-QApplication, so they run headlessly like ``test_mediasrv.py``. ``aqt.mw`` and
-``toolbar.create_link`` are stubbed minimally.
+They import ``aqt.speedrun`` / ``aqt.speedrun_theme`` (which pull in Qt) but
+never construct a QApplication, so they run headlessly like ``test_mediasrv.py``.
 """
 
 from __future__ import annotations
@@ -20,40 +19,6 @@ from __future__ import annotations
 import inspect
 
 from aqt import speedrun
-
-# --- fakes ------------------------------------------------------------------
-
-
-class _FakeBackend:
-    """Snapshot lookup fails in tests; ``_on_toolbar_links`` swallows it and
-    falls back to the default tooltip, which is fine for this invariant."""
-
-    def get_readiness_snapshot(self):
-        raise RuntimeError("no backend in a headless test")
-
-
-class _FakeCol:
-    def __init__(self) -> None:
-        self._backend = _FakeBackend()
-
-
-class _FakeMw:
-    def __init__(self) -> None:
-        self.col = _FakeCol()
-
-
-class _FakeToolbar:
-    """Records create_link calls and returns a distinguishable sentinel."""
-
-    def create_link(self, cmd, label, func, tip=None, id=None):  # noqa: A002
-        return {
-            "cmd": cmd,
-            "label": label,
-            "tip": tip,
-            "id": id,
-            "sentinel": "dashboard-link",
-        }
-
 
 # --- invariant 1: no deck-browser banner ------------------------------------
 
@@ -71,36 +36,42 @@ class TestNoDeckBrowserBanner:
         assert "deck_browser_will_render_content.append" not in src
 
 
-# --- invariant 2: Dashboard is the leftmost toolbar link --------------------
+# --- invariant 2: app-shell sidebar navigation -----------------------------
 
 
-class TestToolbarDashboardLeftmost:
-    def test_dashboard_inserted_at_front(self, monkeypatch) -> None:
-        import aqt
+class TestSidebar:
+    """The persistent left rail renders every primary destination, highlights
+    exactly one, and maps cleanly from the active-screen state."""
 
-        monkeypatch.setattr(aqt, "mw", _FakeMw())
+    def test_renders_all_nav_items(self) -> None:
+        from aqt import speedrun_theme as theme
 
-        # The default primary destinations, already in order when the hook fires.
-        links = ["decks", "add", "browse", "stats", "sync"]
-        speedrun._on_toolbar_links(links, _FakeToolbar())
+        html = theme.sidebar_html("home")
+        for label in ("Home", "Study", "Practice", "Library", "Settings"):
+            assert f"<span>{label}</span>" in html
+        # brand wordmark + sync chip are present
+        assert "Speedrun" in html
+        assert "sr-sb-sync" in html
 
-        assert len(links) == 6
-        assert links[0]["sentinel"] == "dashboard-link"
-        assert links[0]["id"] == "speedrun"
-        assert links[0]["label"] == "Dashboard"
-        # The pre-existing links keep their relative order behind Dashboard.
-        assert links[1:] == ["decks", "add", "browse", "stats", "sync"]
+    def test_exactly_one_active_item(self) -> None:
+        from aqt import speedrun_theme as theme
 
-    def test_noop_without_collection(self, monkeypatch) -> None:
-        import aqt
+        html = theme.sidebar_html("practice")
+        # only the active nav button carries the "active" modifier in its class
+        assert html.count('class="sr-sb-item active"') == 1
+        assert "speedrun:nav:practice" in html
 
-        class _NoColMw:
-            col = None
+    def test_active_section_maps_from_ws_state(self, monkeypatch) -> None:
+        monkeypatch.setattr(speedrun, "_ws_active", "dashboard")
+        assert speedrun._shell_active_section() == "home"
+        monkeypatch.setattr(speedrun, "_ws_active", "settings")
+        assert speedrun._shell_active_section() == "settings"
+        # no Speedrun screen showing -> a native Anki state is active = Study
+        monkeypatch.setattr(speedrun, "_ws_active", None)
+        assert speedrun._shell_active_section() == "study"
 
-        monkeypatch.setattr(aqt, "mw", _NoColMw())
-        links: list = []
-        speedrun._on_toolbar_links(links, _FakeToolbar())
-        assert links == []
+    def test_install_app_shell_is_exposed(self) -> None:
+        assert callable(speedrun.install_app_shell)
 
 
 # --- next-action routing (pure dict-in/dict-out) ----------------------------

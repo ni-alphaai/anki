@@ -28,7 +28,7 @@ import os
 import time
 import uuid
 from datetime import datetime, timezone
-from typing import TypeVar
+from typing import Any, TypeVar
 
 import aqt
 from anki import speedrun_pb2
@@ -221,10 +221,8 @@ def setup(mw: aqt.AnkiQt) -> None:
     gui_hooks.webview_will_set_content.append(_on_will_set_content)
     # The deck-browser home intentionally carries no readiness banner: its white
     # block clashed with the deck UI below it. Readiness now lives in the per-deck
-    # overview panel and the toolbar Dashboard, so we no longer inject anything
-    # into deck_browser_will_render_content.
+    # overview panel and the Home screen in the app-shell sidebar.
     gui_hooks.overview_will_render_content.append(_on_overview_content)
-    gui_hooks.top_toolbar_did_init_links.append(_on_toolbar_links)
     gui_hooks.reviewer_will_init_answer_buttons.append(_on_answer_buttons)
     # Theme Anki's Svelte pages (graphs, deck options, congrats fallback) and the
     # global Qt chrome (menus, tables, inputs) from the same tokens, re-applying
@@ -232,27 +230,13 @@ def setup(mw: aqt.AnkiQt) -> None:
     gui_hooks.webview_did_inject_style_into_page.append(_on_style_injected)
     gui_hooks.style_did_init.append(_on_style_did_init)
     gui_hooks.theme_did_change.append(_on_theme_did_change)
-    # The toolbar's first draw (finish_ui_setup) fires top_toolbar_did_init_links
-    # BEFORE this setup() registers our handler, so the Dashboard link is missed.
-    # Redraw once after the window is fully initialized to include it.
-    gui_hooks.main_window_did_init.append(_redraw_toolbar)
 
     gui_hooks.collection_did_load.append(_on_collection_loaded)
 
+    # Home / Practice / Library are primary destinations in the app-shell
+    # sidebar, so the Tools menu keeps only the card-context and setup actions.
     menu = QMenu("&Speedrun", mw)
     mw.form.menuTools.addMenu(menu)
-
-    home = QAction("Speedrun home", mw)
-    qconnect(home.triggered, lambda: _open_home())
-    menu.addAction(home)
-
-    practice = QAction("Practice questions", mw)
-    qconnect(practice.triggered, lambda: _show_workspace(mw, "practice"))
-    menu.addAction(practice)
-
-    lib = QAction("Content library…", mw)
-    qconnect(lib.triggered, lambda: library.open_library(mw))
-    menu.addAction(lib)
 
     explain = QAction("Self-explain current card", mw)
     explain.setShortcut("Ctrl+Shift+E")
@@ -284,6 +268,13 @@ def _on_collection_loaded(_col) -> None:
     def first_run() -> None:
         library.maybe_load_example_deck(mw)
         library.maybe_show_onboarding(mw)
+        # Reveal the app-shell sidebar and land on Home (the readiness
+        # dashboard), so the app opens on its value surface rather than a bare
+        # deck list. Deferred with the rest of first-run so Anki's own startup
+        # state has settled first.
+        _apply_shell_visibility(mw)
+        if mw.col is not None and _modern_on(mw.col):
+            _show_workspace(mw, "dashboard")
 
     QTimer.singleShot(600, first_run)
 
@@ -435,36 +426,6 @@ def _on_overview_content(overview, content) -> None:
         print(f"speedrun: overview render failed: {exc}")
 
 
-def _on_toolbar_links(links, toolbar) -> None:
-    """Add a top-toolbar Dashboard entry (a primary destination, alongside Decks/
-    Add/Browse/Stats/Sync) so the readiness view is reachable without opening a
-    specific deck. Readiness is surfaced in the tooltip to keep the label clean."""
-    mw = aqt.mw
-    if mw is None or mw.col is None:
-        return
-    tip = "Speedrun readiness dashboard"
-    try:
-        snap = mw.col._backend.get_readiness_snapshot()
-        if snap.sufficient:
-            tip = f"Speedrun dashboard \u2014 projected MCAT {snap.readiness_scaled}"
-    except Exception:
-        pass
-    # Place Dashboard at the FRONT of the link list so it renders immediately to
-    # the left of Decks. The default links (Decks/Add/Browse/Stats/Sync) are
-    # already present in order when this hook fires, and the toolbar joins them
-    # left-to-right, so index 0 is the leftmost primary destination.
-    links.insert(
-        0,
-        toolbar.create_link(
-            "speedrun",
-            "Dashboard",
-            lambda: _show_workspace(mw, "dashboard"),
-            tip=tip,
-            id="speedrun",
-        ),
-    )
-
-
 # --- Svelte pages + global Qt chrome ----------------------------------------
 
 
@@ -543,6 +504,7 @@ def _on_theme_did_change() -> None:
     """Re-apply the global chrome on a night-mode toggle so already-open
     Speedrun surfaces track the theme."""
     _reapply_app_style()
+    _render_sidebar(aqt.mw)
 
 
 # --- data collection --------------------------------------------------------
@@ -873,6 +835,8 @@ def _on_js_message(handled: tuple[bool, object], message: str, context: object):
         _leave_workspace(mw)
     elif message.startswith("speedrun:ws:"):
         _show_workspace(mw, message.rsplit(":", 1)[-1])
+    elif message.startswith("speedrun:nav:"):
+        _navigate(mw, message.rsplit(":", 1)[-1])
     elif message == "speedrun:back":
         _leave_workspace(mw)
     elif message.startswith("speedrun:set:"):
@@ -920,8 +884,9 @@ def _toggle(mw: aqt.AnkiQt, key: str) -> None:
     # Config affects the queue and/or the reskin, so rebuild + re-render.
     mw.reset()
     if cfg == _CFG_MODERN:
-        # The global Qt chrome is gated on the toggle, so re-apply it now.
+        # The global Qt chrome + the app-shell sidebar are gated on the toggle.
         _reapply_app_style()
+        _apply_shell_visibility(mw)
     tooltip("On." if not current else "Off.")
 
 
@@ -952,23 +917,12 @@ def _refresh(mw: aqt.AnkiQt, msg: str | None = None) -> None:
         tooltip(msg)
 
 
-def _redraw_toolbar() -> None:
-    """Re-render the top toolbar so the Dashboard link (registered after the
-    initial draw) appears. Safe no-op if the toolbar isn't ready."""
-    mw = aqt.mw
-    if mw is None:
-        return
-    try:
-        mw.toolbar.draw()
-    except Exception:  # pragma: no cover - never block startup
-        pass
-
-
-# --- in-place workspace router (Dashboard / Practice / Settings tabs) --------
+# --- Speedrun screens rendered into the main webview ------------------------
 #
-# Instead of each Speedrun surface opening its own dialog window, they render
-# into Anki's main webview as tabs of one workspace with a "Decks" back button,
-# so navigation switches in place (matching the mobile bottom-nav model).
+# Home (dashboard), Practice, and Settings render into Anki's main webview as
+# full screens. Navigation is driven by the persistent app-shell sidebar (see
+# above); _ws_active tracks which screen (if any) currently owns the webview so
+# a refresh re-renders it instead of letting Anki paint the deck list over it.
 
 _ws_active: str | None = None
 _ws_practice: "_WsPractice | None" = None
@@ -991,15 +945,151 @@ class _WsContext:
 _ws_ctx = _WsContext()
 
 
-def _render_ws(mw: aqt.AnkiQt, tab: str, body: str) -> None:
-    """Render a workspace tab into the main webview and empty the deck-list
-    bottom bar, so it reads as an in-window screen with a way back to Decks."""
-    html = theme.workspace_html(tab, body)
-    mw.web.stdHtml(html, head=theme.page_style(), context=_ws_ctx)
+def _render_ws(mw: aqt.AnkiQt, body: str) -> None:
+    """Render a Speedrun screen into the main webview and empty the deck-list
+    bottom bar, so it reads as a full in-window screen. Navigation lives in the
+    persistent left sidebar (see the app-shell section below)."""
+    mw.web.stdHtml(theme.screen_html(body), head=theme.page_style(), context=_ws_ctx)
     try:
         mw.bottomWeb.stdHtml("")
     except Exception:
         pass
+
+
+# --- app shell: persistent left sidebar -------------------------------------
+#
+# Speedrun's primary chrome is a persistent left rail (Home / Study / Practice /
+# Library / Settings) rendered into its own webview, so it is never clobbered by
+# an Anki state change the way content painted into the main webview is. Home /
+# Practice / Settings render as Speedrun screens in mw.web; Study hands off to
+# Anki's native deck -> overview -> reviewer flow.
+
+_shell_web: Any = None
+_shell_holder: Any = None
+
+
+class _ShellContext:
+    """Render/bridge context for the sidebar webview, so the will_set_content
+    hook doesn't treat it as the deck browser."""
+
+
+_shell_ctx = _ShellContext()
+
+# Map the active Speedrun screen (_ws_active) to the sidebar item to highlight.
+# None (no Speedrun screen showing) means a native Anki state is active = Study.
+_SECTION_FOR_WS = {"dashboard": "home", "practice": "practice", "settings": "settings"}
+
+
+def install_app_shell(mw: aqt.AnkiQt) -> bool:
+    """Wrap the main window's vertical stack (toolbar / web / bottom) in a
+    horizontal layout with a persistent left sidebar. Called from
+    setupMainWindow before the plain layout is applied; returns True if the shell
+    took over the layout, or False on any failure so the caller falls back to the
+    vanilla vertical layout. The sidebar starts hidden and is shown once a
+    collection is loaded and the modern UI is enabled."""
+    global _shell_web, _shell_holder
+    try:
+        from aqt.qt import QHBoxLayout, QVBoxLayout, QWidget
+        from aqt.webview import AnkiWebView
+
+        holder = QWidget()
+        holder.setObjectName("speedrunSidebar")
+        holder.setFixedWidth(216)
+        hlay = QVBoxLayout(holder)
+        hlay.setContentsMargins(0, 0, 0, 0)
+        hlay.setSpacing(0)
+        web = AnkiWebView(mw)
+        web.set_bridge_command(_sidebar_bridge, _shell_ctx)
+        hlay.addWidget(web)
+        holder.setVisible(False)
+
+        inner = QWidget()
+        inner.setLayout(mw.mainLayout)
+        outer = QHBoxLayout()
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+        outer.addWidget(holder)
+        outer.addWidget(inner, 1)
+        mw.form.centralwidget.setLayout(outer)
+
+        _shell_web = web
+        _shell_holder = holder
+        return True
+    except Exception as exc:  # pragma: no cover - never block window setup
+        print(f"speedrun: app shell install failed: {exc}")
+        return False
+
+
+def _sidebar_bridge(message: object) -> object:
+    """Route a pycmd from the sidebar webview through the shared handler."""
+    _on_js_message((False, None), str(message), _shell_ctx)
+    return None
+
+
+def _shell_active_section() -> str:
+    return _SECTION_FOR_WS.get(_ws_active or "", "study")
+
+
+def _sync_chip_state(mw: aqt.AnkiQt) -> dict:
+    """Status for the sidebar's sync chip. (One-button pairing arrives in a
+    later phase; for now it reflects whether a self-hosted server is signed in
+    and the chip routes to the Settings sync section.)"""
+    try:
+        signed_in = mw.pm.sync_auth() is not None
+    except Exception:
+        signed_in = False
+    if signed_in:
+        user = ""
+        try:
+            if mw.col is not None:
+                user = str(mw.col.get_config("speedrunSyncUser", "") or "")
+        except Exception:
+            user = ""
+        return {"state": "ok", "label": "Synced", "detail": user or "self-hosted"}
+    return {"state": "idle", "label": "Sync with phone", "detail": "Not connected"}
+
+
+def _render_sidebar(mw: aqt.AnkiQt | None) -> None:
+    """Re-render the sidebar to reflect the active section + sync state. Safe
+    no-op before the shell is installed or a collection is loaded."""
+    web = _shell_web
+    if web is None or mw is None or mw.col is None:
+        return
+    try:
+        html = theme.sidebar_html(_shell_active_section(), _sync_chip_state(mw))
+        web.stdHtml(html, head=theme.page_style(), context=_shell_ctx)
+    except Exception as exc:  # pragma: no cover - never break navigation
+        print(f"speedrun: sidebar render failed: {exc}")
+
+
+def _apply_shell_visibility(mw: aqt.AnkiQt) -> None:
+    """Show the sidebar when the modern UI is on, hide it otherwise (reverting to
+    vanilla Anki chrome). Re-renders it when shown."""
+    holder = _shell_holder
+    if holder is None:
+        return
+    on = _modern_on(mw.col) if mw.col is not None else False
+    holder.setVisible(on)
+    if on:
+        _render_sidebar(mw)
+
+
+def _navigate(mw: aqt.AnkiQt, section: str) -> None:
+    """Handle a sidebar nav click. Study hands off to Anki's native flow, the
+    Speedrun screens render in the main webview, and Library opens its dialog."""
+    global _ws_active
+    if mw.col is None:
+        return
+    if section == "study":
+        _ws_active = None
+        mw.moveToState("deckBrowser")
+        _render_sidebar(mw)
+    elif section == "library":
+        library.open_library(mw)
+    elif section in ("practice", "settings"):
+        _show_workspace(mw, section)
+    else:  # home / dashboard / anything unrecognized
+        _show_workspace(mw, "dashboard")
 
 
 def _settings_items(col) -> list[dict]:
@@ -1148,6 +1238,7 @@ def _ws_set(mw: aqt.AnkiQt, key: str) -> None:
     col.set_config(key, not bool(col.get_config(key, default)))
     if key == _CFG_MODERN:
         _reapply_app_style()
+        _apply_shell_visibility(mw)
     _show_workspace(mw, "settings")
 
 
@@ -1161,7 +1252,8 @@ def _fetch_practice_questions(mw: aqt.AnkiQt) -> list[dict]:
 
 
 def _show_workspace(mw: aqt.AnkiQt, tab: str) -> None:
-    """Show a Speedrun workspace tab in place in the main window."""
+    """Render a Speedrun screen (home/dashboard, practice, or settings) into the
+    main webview and sync the sidebar highlight."""
     global _ws_active, _ws_practice
     if mw.col is None:
         return
@@ -1170,29 +1262,28 @@ def _show_workspace(mw: aqt.AnkiQt, tab: str) -> None:
         if _ws_practice is None or _ws_practice.done():
             _ws_practice = _WsPractice(mw, _fetch_practice_questions(mw))
         _ws_practice.render()
-        return
-    if tab == "settings":
+    elif tab == "settings":
         _ws_active = "settings"
-        _render_ws(
-            mw,
-            "settings",
-            theme.settings_body(_settings_items(mw.col), _sync_info(mw)),
-        )
-        return
-    _ws_active = "dashboard"
-    _render_ws(mw, "dashboard", theme._stack(_collect(mw.col, fresh=True)))
+        _render_ws(mw, theme.settings_body(_settings_items(mw.col), _sync_info(mw)))
+    else:
+        _ws_active = "dashboard"
+        _render_ws(mw, theme._stack(_collect(mw.col, fresh=True)))
+    _render_sidebar(mw)
 
 
 def _leave_workspace(mw: aqt.AnkiQt) -> None:
     global _ws_active
     _ws_active = None
     _open_home()
+    _render_sidebar(mw)
 
 
 def _on_state_changed(new_state: str, old_state: str) -> None:
-    """Any real Anki state move (Decks/overview/review) exits the workspace."""
+    """A native Anki state move (Decks/overview/review) leaves the Speedrun
+    screen; reflect that as the Study section in the sidebar."""
     global _ws_active
     _ws_active = None
+    _render_sidebar(aqt.mw)
 
 
 def _ws_practice_submit(raw: str) -> None:
@@ -1259,7 +1350,7 @@ class _WsPractice:
         }
 
     def render(self) -> None:
-        _render_ws(self.mw, "practice", theme.practice_body(self._view()))
+        _render_ws(self.mw, theme.practice_body(self._view()))
 
     def submit(self, sel: int, conf_index: int, explanation: str) -> None:
         if self.answered or self.done():

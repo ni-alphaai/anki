@@ -963,7 +963,13 @@ title="{}" {}>{}</button>""".format(
         self.mainLayout.addWidget(tweb)
         self.mainLayout.addWidget(self.web)
         self.mainLayout.addWidget(sweb)
-        self.form.centralwidget.setLayout(self.mainLayout)
+        # Speedrun app-shell: wrap the vertical stack (toolbar / web / bottom) in
+        # a horizontal layout with a persistent left sidebar. Falls back to the
+        # plain vertical layout if the shell can't be installed.
+        from aqt import speedrun as _speedrun
+
+        if not _speedrun.install_app_shell(self):
+            self.form.centralwidget.setLayout(self.mainLayout)
 
         # force webengine processes to load before cwd is changed
         if is_win:
