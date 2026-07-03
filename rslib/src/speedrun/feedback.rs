@@ -48,6 +48,23 @@ pub fn feedback_richness(topic_proficiency: f32) -> FeedbackRichness {
     }
 }
 
+/// Whether to withhold immediate correctness on a reasoning question, deferring
+/// it to the delayed report (Design 2 / D7 experiment). Only when the
+/// experiment is explicitly enabled AND the student is already proficient on
+/// the topic: proficient learners can tolerate delayed knowledge-of-results,
+/// which prompts them to re-derive "why was I wrong?" on the spaced re-test.
+/// This is an explicitly experimental, NOT evidence-established behaviour
+/// (skill-gated feedback *timing* is unsupported in the literature), gated off
+/// by default and measured via the ablation harness. Novices always get prompt
+/// correctness.
+pub fn should_withhold_correctness(topic_proficiency: f32, experiment_enabled: bool) -> bool {
+    experiment_enabled
+        && matches!(
+            feedback_richness(topic_proficiency),
+            FeedbackRichness::Brief
+        )
+}
+
 /// Spaced delay (days) before the next paraphrase re-test, given how many
 /// re-tests the concept has already had. Clamps to the last schedule entry.
 pub fn next_retest_delay_days(prior_retests: u32) -> f32 {
@@ -160,6 +177,21 @@ mod test {
             FeedbackRichness::Brief
         );
         assert_eq!(feedback_richness(1.0), FeedbackRichness::Brief);
+    }
+
+    #[test]
+    fn withhold_only_when_experiment_on_and_proficient() {
+        // experiment off: never withhold, even for a proficient student
+        assert!(!should_withhold_correctness(1.0, false));
+        assert!(!should_withhold_correctness(0.0, false));
+        // experiment on: withhold only for proficient (>= threshold) students
+        assert!(should_withhold_correctness(PROFICIENT_THRESHOLD, true));
+        assert!(should_withhold_correctness(0.95, true));
+        assert!(!should_withhold_correctness(
+            PROFICIENT_THRESHOLD - 0.01,
+            true
+        ));
+        assert!(!should_withhold_correctness(0.0, true));
     }
 
     #[test]
