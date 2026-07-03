@@ -18,6 +18,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,15 +31,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import net.speedrun.app.EngineRepository
 import net.speedrun.app.ui.PrimaryButton
+import net.speedrun.app.ui.ScreenHeader
 import net.speedrun.app.ui.SectionLabel
 import net.speedrun.app.ui.SpeedrunCard
-import net.speedrun.app.ui.theme.Display
 import net.speedrun.app.ui.theme.Space
 import net.speedrun.app.ui.theme.Speedrun
+import net.speedrun.app.ui.theme.body
+import net.speedrun.app.ui.theme.bodyLg
+import net.speedrun.app.ui.theme.caption
 
 private val weekOptions = listOf(
     "In 4 weeks" to 4,
@@ -70,12 +73,10 @@ fun OnboardingScreen(onDone: () -> Unit) {
             .padding(horizontal = Space.l),
     ) {
         Spacer(Modifier.height(Space.xxl))
-        Text("Set your exam", color = c.textPrimary, fontFamily = Display, fontSize = 34.sp, fontWeight = FontWeight.Bold)
-        Text(
-            "Speedrun anchors your plan to a date and a target tier \u2014 not an abstract retention rate.",
-            color = c.textSecondary,
-            fontSize = 15.sp,
-            modifier = Modifier.padding(top = Space.s),
+        ScreenHeader(
+            title = "Set your exam",
+            subtitle = "Speedrun anchors your plan to a date and a target tier \u2014 not an " +
+                "abstract retention rate.",
         )
         Spacer(Modifier.height(Space.xl))
 
@@ -111,7 +112,7 @@ fun OnboardingScreen(onDone: () -> Unit) {
             Text(
                 "Skip for now",
                 color = c.accent,
-                fontSize = 15.sp,
+                style = MaterialTheme.typography.body,
                 fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.clickable { onDone() }.padding(Space.s),
@@ -129,9 +130,9 @@ private fun SelectRow(title: String, subtitle: String?, selected: Boolean, onCli
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, color = c.textPrimary, fontSize = 17.sp)
+            Text(title, color = c.textPrimary, style = MaterialTheme.typography.bodyLg)
             if (subtitle != null) {
-                Text(subtitle, color = c.textSecondary, fontSize = 13.sp)
+                Text(subtitle, color = c.textSecondary, style = MaterialTheme.typography.caption)
             }
         }
         if (selected) {

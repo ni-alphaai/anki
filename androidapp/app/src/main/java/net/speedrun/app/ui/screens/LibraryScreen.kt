@@ -25,7 +25,7 @@ import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,30 +39,36 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import net.speedrun.app.AppSettings
 import net.speedrun.app.CatalogDeck
 import net.speedrun.app.EngineRepository
 import net.speedrun.app.POPULAR_DECKS
+import net.speedrun.app.ui.AppTextField
 import net.speedrun.app.ui.KeyValueRow
 import net.speedrun.app.ui.PrimaryButton
+import net.speedrun.app.ui.ScreenHeader
 import net.speedrun.app.ui.SecondaryButton
 import net.speedrun.app.ui.SectionLabel
 import net.speedrun.app.ui.SpeedrunCard
-import net.speedrun.app.ui.theme.Display
 import net.speedrun.app.ui.theme.Radius
 import net.speedrun.app.ui.theme.Space
 import net.speedrun.app.ui.theme.Speedrun
+import net.speedrun.app.ui.theme.body
+import net.speedrun.app.ui.theme.caption
+import net.speedrun.app.ui.theme.subhead
 import java.io.File
 import java.net.CookieHandler
 import java.net.CookieManager
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * Library: the one place to get content onto the phone. Pick a popular deck for a
@@ -90,11 +96,9 @@ fun LibraryScreen() {
             .verticalScroll(rememberScrollState())
             .padding(horizontal = Space.l),
     ) {
-        Spacer(Modifier.height(Space.s))
-        Text("Library", color = c.textPrimary, fontFamily = Display, fontSize = 34.sp, fontWeight = FontWeight.Bold)
-        Text(
-            "Add your deck and practice questions \u2014 right here, no computer needed.",
-            color = c.textSecondary, fontSize = 15.sp, modifier = Modifier.padding(top = Space.xs),
+        ScreenHeader(
+            title = "Library",
+            subtitle = "Add your deck and practice questions \u2014 right here, no computer needed.",
         )
         Spacer(Modifier.height(Space.l))
 
@@ -107,10 +111,11 @@ fun LibraryScreen() {
                 if (media > 0) "$media files" else "None yet",
                 valueColor = if (media > 0) c.readinessGood else c.readinessWarn,
             )
+            KeyValueRow("Last synced", lastSyncedLabel(AppSettings.lastSyncedMs))
             if (media == 0) {
                 Text(
                     "No images yet \u2014 import a deck below to restore card pictures.",
-                    color = c.textTertiary, fontSize = 13.sp, modifier = Modifier.padding(top = Space.s),
+                    color = c.textTertiary, style = MaterialTheme.typography.caption, modifier = Modifier.padding(top = Space.s),
                 )
             }
         }
@@ -183,7 +188,7 @@ fun ImportPanel(onImported: () -> Unit) {
                             modifier = Modifier.size(18.dp).padding(end = Space.s),
                         )
                     }
-                    Text(status.ifBlank { "Working\u2026" }, color = c.textPrimary, fontSize = 15.sp)
+                    Text(status.ifBlank { "Working\u2026" }, color = c.textPrimary, style = MaterialTheme.typography.body)
                 }
                 progress?.let { p ->
                     Spacer(Modifier.height(Space.s))
@@ -195,7 +200,7 @@ fun ImportPanel(onImported: () -> Unit) {
                     )
                     Text(
                         "${(p * 100).toInt()}%",
-                        color = c.textTertiary, fontSize = 13.sp,
+                        color = c.textTertiary, style = MaterialTheme.typography.caption,
                         modifier = Modifier.padding(top = Space.xs),
                     )
                 }
@@ -205,10 +210,10 @@ fun ImportPanel(onImported: () -> Unit) {
 
         SectionLabel("Guided end-to-end test")
         SpeedrunCard {
-            Text("Biology e2e test", color = c.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+            Text("Biology e2e test", color = c.textPrimary, style = MaterialTheme.typography.subhead)
             Text(
                 "15 biology cards + 6 topic-matched questions. Review the deck, finish it, and the reasoning round pulls matched (not random) questions.",
-                color = c.textSecondary, fontSize = 15.sp, modifier = Modifier.padding(top = Space.xs),
+                color = c.textSecondary, style = MaterialTheme.typography.body, modifier = Modifier.padding(top = Space.xs),
             )
             Spacer(Modifier.height(Space.m))
             PrimaryButton("Add e2e test", enabled = !busy) {
@@ -232,7 +237,7 @@ fun ImportPanel(onImported: () -> Unit) {
         SpeedrunCard {
             Text(
                 "Open-licensed college science + medicine MCQs (MMLU, MIT). Feeds the performance signal separately from recall.",
-                color = c.textSecondary, fontSize = 15.sp,
+                color = c.textSecondary, style = MaterialTheme.typography.body,
             )
             Spacer(Modifier.height(Space.m))
             PrimaryButton("Add MMLU pack", enabled = !busy) {
@@ -248,15 +253,13 @@ fun ImportPanel(onImported: () -> Unit) {
         SpeedrunCard {
             Text(
                 "Paste a direct link to any Anki deck (.apkg / .colpkg) or question pack (.json). Google Drive share links work.",
-                color = c.textSecondary, fontSize = 15.sp,
+                color = c.textSecondary, style = MaterialTheme.typography.body,
             )
             Spacer(Modifier.height(Space.m))
-            OutlinedTextField(
+            AppTextField(
                 value = link,
                 onValueChange = { link = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Deck or pack link") },
-                singleLine = true,
+                label = "Deck or pack link",
             )
             Spacer(Modifier.height(Space.s))
             PrimaryButton("Download & import", enabled = !busy && link.startsWith("http")) {
@@ -282,9 +285,9 @@ private fun PopularDeckCard(deck: CatalogDeck, enabled: Boolean, onImport: () ->
                 modifier = Modifier.size(28.dp).padding(end = Space.m),
             )
             Column(Modifier.weight(1f)) {
-                Text(deck.name, color = c.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                Text(deck.section, color = c.textSecondary, fontSize = 14.sp)
-                Text(deck.sizeLabel, color = c.textTertiary, fontSize = 13.sp, modifier = Modifier.padding(top = Space.xs))
+                Text(deck.name, color = c.textPrimary, style = MaterialTheme.typography.subhead)
+                Text(deck.section, color = c.textSecondary, style = MaterialTheme.typography.body)
+                Text(deck.sizeLabel, color = c.textTertiary, style = MaterialTheme.typography.caption, modifier = Modifier.padding(top = Space.xs))
             }
         }
         Spacer(Modifier.height(Space.m))
@@ -411,3 +414,6 @@ private fun displayName(context: Context, uri: Uri): String {
     }
     return name
 }
+
+private fun lastSyncedLabel(ms: Long): String =
+    if (ms <= 0L) "Never" else SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()).format(Date(ms))

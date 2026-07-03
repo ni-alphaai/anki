@@ -17,6 +17,7 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "0.1"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // v1 targets arm64 devices/emulators; add more ABIs as needed.
         ndk {
             abiFilters += listOf("arm64-v8a")
@@ -89,4 +90,14 @@ dependencies {
 
     // Matches the protoc artifact above; the generated code needs the lite runtime.
     implementation("com.google.protobuf:protobuf-javalite:3.25.3")
+
+    // Pure-JVM unit tests (host, no device): plain JUnit4.
+    testImplementation("junit:junit:4.13.2")
+
+    // Instrumented Compose UI tests (on-device): the compose test rule + AndroidX
+    // JUnit runner, pinned via the same compose BOM as the app deps above.
+    androidTestImplementation(composeBom)
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

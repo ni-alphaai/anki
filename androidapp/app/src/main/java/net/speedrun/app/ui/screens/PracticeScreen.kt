@@ -21,12 +21,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,26 +38,33 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import net.speedrun.app.Diagnosis
 import net.speedrun.app.EngineRepository
 import net.speedrun.app.QuestionItemUi
+import net.speedrun.app.ui.CompletionState
+import net.speedrun.app.ui.DiagnosisView
 import net.speedrun.app.ui.PrimaryButton
 import net.speedrun.app.ui.SecondaryButton
 import net.speedrun.app.ui.SectionLabel
+import net.speedrun.app.ui.SegmentedControl
+import net.speedrun.app.ui.SessionTopBar
 import net.speedrun.app.ui.SpeedrunCard
 import net.speedrun.app.ui.VoiceExplainSheet
 import net.speedrun.app.ui.theme.Radius
 import net.speedrun.app.ui.theme.Space
 import net.speedrun.app.ui.theme.Speedrun
+import net.speedrun.app.ui.theme.body
+import net.speedrun.app.ui.theme.bodyLg
+import net.speedrun.app.ui.theme.caption
+import net.speedrun.app.ui.theme.heading
+import net.speedrun.app.ui.theme.subhead
 
 private val confidenceLevels = listOf("Low" to 0.35f, "Medium" to 0.6f, "High" to 0.85f)
 
@@ -112,23 +118,11 @@ fun PracticeScreen(
     val list = questions
 
     Column(Modifier.fillMaxSize().background(c.background)) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = Space.s, vertical = Space.xs),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onDone) {
-                Icon(Icons.Filled.Close, contentDescription = "Close", tint = c.textSecondary)
-            }
-            Spacer(Modifier.weight(1f))
-            if (list != null && list.isNotEmpty() && index < list.size) {
-                Text(
-                    "Question ${index + 1} of ${list.size}",
-                    color = c.textSecondary,
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(end = Space.m),
-                )
-            }
-        }
+        SessionTopBar(
+            onClose = onDone,
+            counter = list?.takeIf { it.isNotEmpty() && index < it.size }
+                ?.let { "Question ${index + 1} of ${it.size}" },
+        )
         if (list != null && list.isNotEmpty()) {
             LinearProgressIndicator(
                 progress = { (index.toFloat() / list.size).coerceIn(0f, 1f) },
@@ -143,7 +137,17 @@ fun PracticeScreen(
                 CircularProgressIndicator(color = c.accent)
             }
             list.isEmpty() -> EmptyPractice(importing, onAddMmlu, onDone)
-            index >= list.size -> Summary(correctCount, list.size, onDone)
+            index >= list.size -> {
+                val pctVal = if (list.isEmpty()) 0 else (correctCount * 100 / list.size)
+                CompletionState(
+                    headline = "$correctCount / ${list.size}",
+                    headlineColor = c.performance,
+                    title = "Practice complete ($pctVal%)",
+                    message = "These answers now feed your performance signal and calibration on the Progress tab.",
+                    primaryLabel = "Done",
+                    onPrimary = onDone,
+                )
+            }
             else -> {
                 val q = list[index]
                 Column(
@@ -154,7 +158,7 @@ fun PracticeScreen(
                     Spacer(Modifier.height(Space.m))
                     SectionLabel(q.topic.replace('_', ' '))
                     SpeedrunCard {
-                        Text(q.stem, color = c.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                        Text(q.stem, color = c.textPrimary, style = MaterialTheme.typography.subhead)
                     }
                     Spacer(Modifier.height(Space.l))
                     q.options.forEachIndexed { i, opt ->
@@ -169,14 +173,18 @@ fun PracticeScreen(
                     }
                     if (answered) {
                         Spacer(Modifier.height(Space.s))
-                        AnswerFeedback(q, diagnosis)
+                        AnswerFeedback(q)
+                        diagnosis?.let {
+                            Spacer(Modifier.height(Space.s))
+                            DiagnosisView(it)
+                        }
                     }
                     Spacer(Modifier.height(Space.l))
                 }
 
                 Column(Modifier.padding(horizontal = Space.l).padding(bottom = Space.l)) {
                     if (!answered) {
-                        ConfidenceRow(confidence) { confidence = it }
+                        ConfidencePicker(confidence) { confidence = it }
                         Spacer(Modifier.height(Space.s))
                         SelfExplainRow(pendingExplanation.isNotBlank()) { showVoice = true }
                         Spacer(Modifier.height(Space.s))
@@ -237,9 +245,9 @@ private fun OptionRow(
     }
     Row(
         Modifier.fillMaxWidth()
-            .clip(RoundedCornerShape(Radius.button))
+            .clip(RoundedCornerShape(Radius.control))
             .background(bg)
-            .border(1.dp, border, RoundedCornerShape(Radius.button))
+            .border(1.dp, border, RoundedCornerShape(Radius.control))
             .clickable(enabled = !answered) { onClick() }
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -247,11 +255,11 @@ private fun OptionRow(
         Text(
             "$letter",
             color = c.textSecondary,
-            fontSize = 15.sp,
+            style = MaterialTheme.typography.body,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(end = Space.m),
         )
-        Text(label, color = c.textPrimary, fontSize = 16.sp, modifier = Modifier.weight(1f))
+        Text(label, color = c.textPrimary, style = MaterialTheme.typography.bodyLg, modifier = Modifier.weight(1f))
         if (answered && isCorrect) {
             Icon(Icons.Filled.Check, contentDescription = "Correct", tint = c.good)
         }
@@ -259,55 +267,37 @@ private fun OptionRow(
 }
 
 @Composable
-private fun AnswerFeedback(q: QuestionItemUi, diagnosis: Diagnosis?) {
+private fun AnswerFeedback(q: QuestionItemUi) {
     val c = Speedrun.colors
     SpeedrunCard {
         val correctText = q.options.getOrNull(q.correctIndex).orEmpty()
         Text(
             "Answer: ${('A' + q.correctIndex)}. $correctText",
             color = c.good,
-            fontSize = 15.sp,
+            style = MaterialTheme.typography.body,
             fontWeight = FontWeight.SemiBold,
         )
         if (q.explanation.isNotBlank()) {
             Text(
                 q.explanation,
                 color = c.textSecondary,
-                fontSize = 15.sp,
+                style = MaterialTheme.typography.body,
                 modifier = Modifier.padding(top = Space.xs),
             )
-        }
-        diagnosis?.label?.let { label ->
-            Spacer(Modifier.height(Space.s))
-            Text(label, color = c.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-            if (diagnosis.action.isNotBlank()) {
-                Text(diagnosis.action, color = c.textSecondary, fontSize = 13.sp)
-            }
         }
     }
 }
 
 @Composable
-private fun ConfidenceRow(confidence: Float?, onSelect: (Float) -> Unit) {
+private fun ConfidencePicker(confidence: Float?, onSelect: (Float) -> Unit) {
     val c = Speedrun.colors
     Column {
-        Text("How confident?", color = c.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(bottom = Space.xs))
-        Row(horizontalArrangement = Arrangement.spacedBy(Space.s)) {
-            confidenceLevels.forEach { (label, value) ->
-                val on = confidence == value
-                Box(
-                    Modifier.weight(1f)
-                        .clip(RoundedCornerShape(Radius.button))
-                        .background(if (on) c.accent.copy(alpha = 0.15f) else c.surface)
-                        .border(1.dp, if (on) c.accent else c.separator, RoundedCornerShape(Radius.button))
-                        .clickable { onSelect(value) }
-                        .padding(vertical = 10.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(label, color = if (on) c.accent else c.textSecondary, fontSize = 14.sp)
-                }
-            }
-        }
+        Text("How confident?", color = c.textSecondary, style = MaterialTheme.typography.caption, modifier = Modifier.padding(bottom = Space.xs))
+        SegmentedControl(
+            options = confidenceLevels.map { it.first },
+            selectedIndex = confidenceLevels.indexOfFirst { it.second == confidence },
+            onSelect = { i -> onSelect(confidenceLevels[i].second) },
+        )
     }
 }
 
@@ -316,7 +306,7 @@ private fun SelfExplainRow(captured: Boolean, onClick: () -> Unit) {
     val c = Speedrun.colors
     Row(
         Modifier.fillMaxWidth()
-            .clip(RoundedCornerShape(Radius.button))
+            .clip(RoundedCornerShape(Radius.control))
             .background(c.accent.copy(alpha = 0.12f))
             .clickable { onClick() }
             .padding(vertical = 13.dp),
@@ -332,7 +322,7 @@ private fun SelfExplainRow(captured: Boolean, onClick: () -> Unit) {
         Text(
             if (captured) "Reasoning captured \u2014 edit" else "Self-explain before answering (optional)",
             color = c.accent,
-            fontSize = 15.sp,
+            style = MaterialTheme.typography.body,
             fontWeight = FontWeight.SemiBold,
         )
     }
@@ -346,11 +336,11 @@ private fun EmptyPractice(importing: Boolean, onAddMmlu: () -> Unit, onDone: () 
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("No practice questions yet", color = c.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+        Text("No practice questions yet", color = c.textPrimary, style = MaterialTheme.typography.heading)
         Text(
             "Add the open-licensed MMLU pack (2,231 college science + medicine MCQs) to start building your performance signal.",
             color = c.textSecondary,
-            fontSize = 15.sp,
+            style = MaterialTheme.typography.body,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = Space.s, bottom = Space.xl),
         )
@@ -361,26 +351,5 @@ private fun EmptyPractice(importing: Boolean, onAddMmlu: () -> Unit, onDone: () 
         )
         Spacer(Modifier.height(Space.s))
         SecondaryButton("Not now", onClick = onDone)
-    }
-}
-
-@Composable
-private fun Summary(correct: Int, total: Int, onDone: () -> Unit) {
-    val c = Speedrun.colors
-    val pct = if (total == 0) 0 else (correct * 100 / total)
-    Column(
-        Modifier.fillMaxSize().padding(Space.xxl),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text("$correct / $total", color = c.performance, fontSize = 44.sp, fontWeight = FontWeight.Bold)
-        Text("Practice complete ($pct%)", color = c.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = Space.s))
-        Text(
-            "These answers now feed your performance signal and calibration on the Progress tab.",
-            color = c.textSecondary,
-            fontSize = 15.sp,
-            modifier = Modifier.padding(top = Space.xs, bottom = Space.xl),
-        )
-        PrimaryButton("Done", onClick = onDone)
     }
 }

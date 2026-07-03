@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -27,21 +28,21 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import net.speedrun.app.CalibrationUi
 import net.speedrun.app.CoverageUi
 import net.speedrun.app.EngineRepository
 import net.speedrun.app.PerformanceUi
 import net.speedrun.app.ui.KeyValueRow
+import net.speedrun.app.ui.ScreenHeader
 import net.speedrun.app.ui.SectionLabel
 import net.speedrun.app.ui.SignalBar
 import net.speedrun.app.ui.SpeedrunCard
 import net.speedrun.app.ui.pct
-import net.speedrun.app.ui.theme.Display
 import net.speedrun.app.ui.theme.Space
 import net.speedrun.app.ui.theme.Speedrun
+import net.speedrun.app.ui.theme.body
+import net.speedrun.app.ui.theme.caption
+import net.speedrun.app.ui.theme.subhead
 
 @Composable
 fun StatsScreen() {
@@ -64,8 +65,7 @@ fun StatsScreen() {
             .verticalScroll(rememberScrollState())
             .padding(horizontal = Space.l),
     ) {
-        Spacer(Modifier.height(Space.s))
-        Text("Progress", color = c.textPrimary, fontFamily = Display, fontSize = 34.sp, fontWeight = FontWeight.Bold)
+        ScreenHeader("Progress")
         Spacer(Modifier.height(Space.l))
 
         SectionLabel("Coverage")
@@ -87,7 +87,7 @@ private fun CoverageCard(cov: CoverageUi?) {
     val c = Speedrun.colors
     SpeedrunCard {
         if (cov == null) {
-            Text("Loading\u2026", color = c.textSecondary, fontSize = 15.sp)
+            Text("Loading\u2026", color = c.textSecondary, style = MaterialTheme.typography.body)
             return@SpeedrunCard
         }
         SignalBar("Outline covered", cov.coverage, pct(cov.coverage), c.readinessGood)
@@ -97,7 +97,7 @@ private fun CoverageCard(cov: CoverageUi?) {
         Text(
             "Coverage gates the score: readiness abstains when high-weight topics are missing.",
             color = c.textSecondary,
-            fontSize = 13.sp,
+            style = MaterialTheme.typography.caption,
             modifier = Modifier.padding(top = Space.s),
         )
     }
@@ -108,17 +108,17 @@ private fun CalibrationCard(cal: CalibrationUi?) {
     val c = Speedrun.colors
     SpeedrunCard {
         if (cal == null) {
-            Text("Loading\u2026", color = c.textSecondary, fontSize = 15.sp)
+            Text("Loading\u2026", color = c.textSecondary, style = MaterialTheme.typography.body)
             return@SpeedrunCard
         }
         if (!cal.sufficient || cal.bins.isEmpty()) {
-            Text("Not enough predictions yet", color = c.textPrimary, fontWeight = FontWeight.SemiBold)
+            Text("Not enough predictions yet", color = c.textPrimary, style = MaterialTheme.typography.subhead)
             Text(
                 cal.note.ifBlank {
                     "A reliability curve appears once there are enough graded predictions to score honestly."
                 },
                 color = c.textSecondary,
-                fontSize = 15.sp,
+                style = MaterialTheme.typography.body,
                 modifier = Modifier.padding(top = Space.xs),
             )
             if (cal.n > 0) {
@@ -136,7 +136,7 @@ private fun CalibrationCard(cal: CalibrationUi?) {
         Text(
             "Dots on the diagonal mean predicted probability matched reality.",
             color = c.textSecondary,
-            fontSize = 13.sp,
+            style = MaterialTheme.typography.caption,
             modifier = Modifier.padding(top = Space.s),
         )
     }
@@ -178,7 +178,7 @@ private fun PerformanceCard(perf: PerformanceUi?) {
     val c = Speedrun.colors
     SpeedrunCard {
         if (perf == null) {
-            Text("Loading\u2026", color = c.textSecondary, fontSize = 15.sp)
+            Text("Loading\u2026", color = c.textSecondary, style = MaterialTheme.typography.body)
             return@SpeedrunCard
         }
         SignalBar("Recall", perf.recallRate, pct(perf.recallRate), c.memory)
@@ -198,7 +198,7 @@ private fun PerformanceCard(perf: PerformanceUi?) {
                 perf.note.ifBlank { "Add held-out exam-style questions to measure applied performance." }
             },
             color = c.textSecondary,
-            fontSize = 13.sp,
+            style = MaterialTheme.typography.caption,
         )
     }
 }

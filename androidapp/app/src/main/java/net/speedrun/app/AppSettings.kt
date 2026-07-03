@@ -18,6 +18,7 @@ object AppSettings {
     private const val KEY_EXAMPLE_LOADED = "example_deck_loaded"
     private const val KEY_SYNC_URL = "sync_url"
     private const val KEY_SYNC_USER = "sync_username"
+    private const val KEY_LAST_SYNCED = "last_synced_ms"
 
     var themeMode by mutableStateOf(ThemeMode.System)
         private set
@@ -38,6 +39,10 @@ object AppSettings {
     var syncUsername by mutableStateOf("")
         private set
 
+    /** Epoch millis of the last successful sync (0 = never). */
+    var lastSyncedMs by mutableStateOf(0L)
+        private set
+
     fun load(context: Context) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         themeMode = runCatching {
@@ -47,6 +52,14 @@ object AppSettings {
         exampleLoaded = prefs.getBoolean(KEY_EXAMPLE_LOADED, false)
         syncUrl = prefs.getString(KEY_SYNC_URL, "") ?: ""
         syncUsername = prefs.getString(KEY_SYNC_USER, "") ?: ""
+        lastSyncedMs = prefs.getLong(KEY_LAST_SYNCED, 0L)
+    }
+
+    /** Record the time of a successful sync (drives the "last synced" affordance). */
+    fun setLastSynced(context: Context, ms: Long) {
+        lastSyncedMs = ms
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putLong(KEY_LAST_SYNCED, ms).apply()
     }
 
     fun setExampleLoaded(context: Context, on: Boolean) {

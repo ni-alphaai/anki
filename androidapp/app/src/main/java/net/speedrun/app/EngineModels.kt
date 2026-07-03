@@ -21,6 +21,19 @@ data class DeckNode(
     val hasChildren: Boolean get() = children.isNotEmpty()
 }
 
+/**
+ * The MCAT scaled-score band (472-528). Kept in the domain so UI components
+ * (the readiness gauge, the "MCAT (472-528)" label) never hardcode the scale.
+ */
+object McatScale {
+    const val MIN = 472
+    const val MAX = 528
+    const val RANGE = MAX - MIN // 56
+
+    /** Position of a scaled score on the 0..1 gauge sweep. */
+    fun fraction(score: Int): Float = ((score - MIN).toFloat() / RANGE).coerceIn(0f, 1f)
+}
+
 /** The three separate signals + the honest give-up state. */
 data class Readiness(
     val memory: Float,
@@ -35,7 +48,21 @@ data class Readiness(
     val performanceSufficient: Boolean,
     val blockingDimension: String,
     val reason: String,
-)
+) {
+    /** Composite score as a 0..1 gauge position (and its low-high range band). */
+    val scoreFraction: Float get() = McatScale.fraction(readinessScaled)
+    val lowFraction: Float get() = McatScale.fraction(low)
+    val highFraction: Float get() = McatScale.fraction(high)
+
+    /** Human label for the weakest dimension shown in the abstain state. */
+    val weakestLabel: String
+        get() = when (blockingDimension.lowercase()) {
+            "memory" -> "Memory"
+            "performance" -> "Performance"
+            "coverage" -> "Coverage"
+            else -> blockingDimension.replaceFirstChar { it.uppercase() }
+        }
+}
 
 data class ExamPlanUi(
     val hasProfile: Boolean,

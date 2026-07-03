@@ -10,6 +10,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -25,12 +26,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.School
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,10 +51,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -60,9 +62,10 @@ import kotlinx.coroutines.launch
 import net.speedrun.app.EngineRepository
 import net.speedrun.app.AppSettings
 import net.speedrun.app.OpenState
+import net.speedrun.app.ui.screens.DashboardScreen
 import net.speedrun.app.ui.screens.DeckOverviewScreen
+import net.speedrun.app.ui.screens.DecksScreen
 import net.speedrun.app.ui.screens.GetStartedScreen
-import net.speedrun.app.ui.screens.HomeScreen
 import net.speedrun.app.ui.screens.LibraryScreen
 import net.speedrun.app.ui.screens.OnboardingScreen
 import net.speedrun.app.ui.screens.PracticeScreen
@@ -72,6 +75,8 @@ import net.speedrun.app.ui.screens.StatsScreen
 import net.speedrun.app.ui.theme.Radius
 import net.speedrun.app.ui.theme.Space
 import net.speedrun.app.ui.theme.Speedrun
+import net.speedrun.app.ui.theme.body
+import net.speedrun.app.ui.theme.heading
 
 /** Which deck the user tapped into; readiness/plan are collection-wide. */
 object Selection {
@@ -87,7 +92,8 @@ private data class Tab(
 )
 
 private val tabs = listOf(
-    Tab("today", "Today", Icons.Filled.School, Icons.Outlined.School),
+    Tab("decks", "Decks", Icons.Filled.School, Icons.Outlined.School),
+    Tab("dashboard", "Dashboard", Icons.Filled.Dashboard, Icons.Outlined.Dashboard),
     Tab("progress", "Progress", Icons.Filled.Insights, Icons.Outlined.Insights),
     Tab("library", "Library", Icons.AutoMirrored.Filled.MenuBook, Icons.AutoMirrored.Outlined.MenuBook),
 )
@@ -139,7 +145,7 @@ private fun MainScaffold() {
         start = when {
             !hasContent -> "getstarted"
             !examSet -> "onboarding"
-            else -> "today"
+            else -> "decks"
         }
     }
     val startRoute = start ?: run {
@@ -151,7 +157,7 @@ private fun MainScaffold() {
     val scope = rememberCoroutineScope()
     val backStack by nav.currentBackStackEntryAsState()
     val route = backStack?.destination?.route
-    val showBar = route in setOf("today", "progress", "library")
+    val showBar = route in setOf("decks", "dashboard", "progress", "library")
 
     Scaffold(
         containerColor = Speedrun.colors.background,
@@ -174,11 +180,11 @@ private fun MainScaffold() {
             }
             composable("onboarding") {
                 OnboardingScreen(onDone = {
-                    nav.navigate("today") { popUpTo("onboarding") { inclusive = true } }
+                    nav.navigate("decks") { popUpTo("onboarding") { inclusive = true } }
                 })
             }
-            composable("today") {
-                HomeScreen(
+            composable("decks") {
+                DecksScreen(
                     onOpenDeck = { id, name ->
                         Selection.deckId = id
                         Selection.deckName = name
@@ -196,6 +202,7 @@ private fun MainScaffold() {
                     onOpenSettings = { nav.navigate("settings") },
                 )
             }
+            composable("dashboard") { DashboardScreen() }
             composable("progress") { StatsScreen() }
             composable("library") { LibraryScreen() }
             composable(
@@ -224,7 +231,10 @@ private fun MainScaffold() {
                 enterTransition = pushEnter,
                 popExitTransition = pushPopExit,
             ) {
-                ReviewScreen(onDone = { nav.popBackStack() })
+                ReviewScreen(
+                    onDone = { nav.popBackStack() },
+                    onPractice = { nav.navigate("practice") },
+                )
             }
             composable(
                 "practice",
@@ -239,8 +249,8 @@ private fun MainScaffold() {
 
 private fun navigateTab(nav: androidx.navigation.NavController, route: String) {
     nav.navigate(route) {
-        // Today is the home base for the tab bar; switch tabs while saving state.
-        popUpTo("today") { saveState = true }
+        // Decks is the home base for the tab bar; switch tabs while saving state.
+        popUpTo("decks") { saveState = true }
         launchSingleTop = true
         restoreState = true
     }
@@ -249,13 +259,21 @@ private fun navigateTab(nav: androidx.navigation.NavController, route: String) {
 @Composable
 private fun BottomBar(current: String?, onSelect: (String) -> Unit) {
     val c = Speedrun.colors
-    // A floating ink pill; the active tab's icon sits in a light circle.
+    // A floating surface pill (cohesive with the warm canvas, not a stark black
+    // slab); the active tab sits in an accent-tinted circle with an accent icon.
     Box(Modifier.fillMaxWidth().padding(horizontal = Space.xxl, vertical = Space.m)) {
         Row(
             Modifier.fillMaxWidth()
-                .shadow(16.dp, RoundedCornerShape(Radius.pill), clip = false, spotColor = Color.Black.copy(alpha = 0.25f))
+                .shadow(
+                    elevation = 12.dp,
+                    shape = RoundedCornerShape(Radius.pill),
+                    clip = false,
+                    ambientColor = Color.Black.copy(alpha = 0.05f),
+                    spotColor = Color.Black.copy(alpha = 0.12f),
+                )
                 .clip(RoundedCornerShape(Radius.pill))
-                .background(c.textPrimary)
+                .background(c.surface)
+                .border(1.dp, c.separator, RoundedCornerShape(Radius.pill))
                 .padding(Space.s),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
@@ -264,7 +282,7 @@ private fun BottomBar(current: String?, onSelect: (String) -> Unit) {
                 val selected = current == tab.route
                 Box(
                     Modifier.size(48.dp).clip(CircleShape)
-                        .background(if (selected) c.background else Color.Transparent)
+                        .background(if (selected) c.accent.copy(alpha = 0.12f) else Color.Transparent)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -274,7 +292,7 @@ private fun BottomBar(current: String?, onSelect: (String) -> Unit) {
                     Icon(
                         if (selected) tab.selected else tab.unselected,
                         contentDescription = tab.label,
-                        tint = if (selected) c.textPrimary else c.background.copy(alpha = 0.6f),
+                        tint = if (selected) c.accent else c.textTertiary,
                         modifier = Modifier.size(24.dp),
                     )
                 }
@@ -300,14 +318,13 @@ private fun CenteredMessage(
                 Text(
                     title,
                     color = Speedrun.colors.textPrimary,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.heading,
                     textAlign = TextAlign.Center,
                 )
                 Text(
                     body,
                     color = Speedrun.colors.textSecondary,
-                    fontSize = 15.sp,
+                    style = MaterialTheme.typography.body,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(top = Space.s),
                 )

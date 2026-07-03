@@ -32,8 +32,8 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -47,13 +47,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import net.speedrun.app.ui.theme.Radius
 import net.speedrun.app.ui.theme.Space
 import net.speedrun.app.ui.theme.Speedrun
+import net.speedrun.app.ui.theme.body
+import net.speedrun.app.ui.theme.bodyLg
+import net.speedrun.app.ui.theme.caption
+import net.speedrun.app.ui.theme.heading
 import java.util.Locale
 
 /** Thin wrapper over Android's on-device SpeechRecognizer with live partials. */
@@ -202,13 +203,12 @@ fun VoiceExplainSheet(
             Text(
                 "Explain your reasoning",
                 color = c.textPrimary,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.heading,
             )
             Text(
                 "Before you reveal the answer. Captured on-device \u2014 nothing is uploaded.",
                 color = c.textSecondary,
-                fontSize = 15.sp,
+                style = MaterialTheme.typography.body,
                 modifier = Modifier.padding(top = Space.xs),
             )
             Spacer(Modifier.height(Space.l))
@@ -217,23 +217,23 @@ fun VoiceExplainSheet(
                 Text(
                     partial.ifBlank { "\u2026" },
                     color = c.accent,
-                    fontSize = 17.sp,
+                    style = MaterialTheme.typography.bodyLg,
                     modifier = Modifier.padding(bottom = Space.s),
                 )
             }
 
-            OutlinedTextField(
+            AppTextField(
                 value = text,
                 onValueChange = { text = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Your reasoning") },
+                label = "Your reasoning",
+                singleLine = false,
                 minLines = 3,
             )
 
             Text(
                 status,
                 color = c.textSecondary,
-                fontSize = 13.sp,
+                style = MaterialTheme.typography.caption,
                 modifier = Modifier.padding(top = Space.s),
             )
             Spacer(Modifier.height(Space.l))

@@ -471,6 +471,35 @@ object EngineRepository {
             }
         }
 
+    /**
+     * Resolve a two-sided sync conflict by forcing a direction: [upload] = true
+     * pushes this device's collection to the server, false mirrors the server's
+     * copy down (reopening the replaced local collection).
+     */
+    suspend fun resolveSyncConflict(
+        url: String,
+        username: String,
+        password: String,
+        upload: Boolean,
+    ): SyncResult = withContext(dispatcher) {
+        val b = backend ?: return@withContext SyncResult.Error("Collection is not open")
+        try {
+            val endpoint = normalizeEndpoint(url)
+            val auth = b.syncLogin(username, password, endpoint)
+            b.fullUploadOrDownload(auth, upload = upload)
+            if (!upload) reopenCollection(b)
+            SyncResult.Ok(
+                if (upload) {
+                    "Uploaded this device's collection to the server"
+                } else {
+                    "Mirrored the server's collection to this device"
+                },
+            )
+        } catch (e: Exception) {
+            SyncResult.Error(e.message ?: e.toString())
+        }
+    }
+
     /** Reopen the collection after a full download replaced the local file. */
     private fun reopenCollection(b: AnkiBackend) {
         val col = colPath ?: return

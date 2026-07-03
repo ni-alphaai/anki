@@ -5,7 +5,6 @@ package net.speedrun.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,14 +14,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Switch
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,25 +28,27 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import net.speedrun.app.AppSettings
 import net.speedrun.app.EngineRepository
 import net.speedrun.app.ExamProfileUi
+import net.speedrun.app.McatScale
 import net.speedrun.app.ThemeMode
+import net.speedrun.app.ui.AppSwitch
+import net.speedrun.app.ui.AppTextField
+import net.speedrun.app.ui.DetailTopBar
+import net.speedrun.app.ui.PrimaryButton
+import net.speedrun.app.ui.SecondaryButton
 import net.speedrun.app.ui.SectionLabel
+import net.speedrun.app.ui.SegmentedControl
 import net.speedrun.app.ui.SpeedrunCard
-import net.speedrun.app.ui.theme.Display
-import net.speedrun.app.ui.theme.Radius
 import net.speedrun.app.ui.theme.Space
 import net.speedrun.app.ui.theme.Speedrun
+import net.speedrun.app.ui.theme.body
+import net.speedrun.app.ui.theme.caption
+import net.speedrun.app.ui.theme.subhead
 import android.content.Context
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import kotlinx.coroutines.launch
@@ -74,24 +72,12 @@ fun SettingsScreen(onBack: () -> Unit, onEditExam: () -> Unit) {
             .verticalScroll(rememberScrollState())
             .padding(horizontal = Space.l),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = c.accent)
-            }
-        }
-        Text(
-            "Settings",
-            color = c.textPrimary,
-            fontFamily = Display,
-            fontSize = 30.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(start = Space.xs),
-        )
+        DetailTopBar(title = "Settings", onBack = onBack)
         Spacer(Modifier.height(Space.l))
 
         SectionLabel("Appearance")
         SpeedrunCard {
-            Segmented(
+            SegmentedControl(
                 options = listOf("System", "Light", "Dark"),
                 selectedIndex = when (AppSettings.themeMode) {
                     ThemeMode.System -> 0
@@ -119,8 +105,8 @@ fun SettingsScreen(onBack: () -> Unit, onEditExam: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Exam date & target", color = c.textPrimary, fontSize = 17.sp)
-                    Text(examSummary(profile), color = c.textSecondary, fontSize = 15.sp)
+                    Text("Exam date & target", color = c.textPrimary, style = MaterialTheme.typography.subhead)
+                    Text(examSummary(profile), color = c.textSecondary, style = MaterialTheme.typography.body)
                 }
                 Icon(
                     Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -138,16 +124,16 @@ fun SettingsScreen(onBack: () -> Unit, onEditExam: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Auto reasoning round", color = c.textPrimary, fontSize = 17.sp)
+                    Text("Auto reasoning round", color = c.textPrimary, style = MaterialTheme.typography.subhead)
                     Text(
                         "After you finish a deck's reviews, jump straight into a short reasoning check on those concepts (otherwise it's offered).",
                         color = c.textSecondary,
-                        fontSize = 15.sp,
+                        style = MaterialTheme.typography.body,
                         modifier = Modifier.padding(top = Space.xs),
                     )
                 }
                 Spacer(Modifier.width(Space.m))
-                Switch(
+                AppSwitch(
                     checked = AppSettings.autoReasoningRound,
                     onCheckedChange = { AppSettings.setAutoReasoningRound(context, it) },
                 )
@@ -155,11 +141,11 @@ fun SettingsScreen(onBack: () -> Unit, onEditExam: () -> Unit) {
         }
         Spacer(Modifier.height(Space.m))
         SpeedrunCard {
-            Text("Daily limits", color = c.textPrimary, fontSize = 17.sp)
+            Text("Daily limits", color = c.textPrimary, style = MaterialTheme.typography.subhead)
             Text(
                 "New and review limits follow each deck's preset. Adjust them in the desktop app; the phone shares the same collection.",
                 color = c.textSecondary,
-                fontSize = 15.sp,
+                style = MaterialTheme.typography.body,
                 modifier = Modifier.padding(top = Space.xs),
             )
         }
@@ -171,7 +157,7 @@ fun SettingsScreen(onBack: () -> Unit, onEditExam: () -> Unit) {
 
         SectionLabel("About")
         SpeedrunCard {
-            AboutRow("Exam", "MCAT (472\u2013528)")
+            AboutRow("Exam", "MCAT (${McatScale.MIN}\u2013${McatScale.MAX})")
             AboutRow("Engine", "Shared Anki/Speedrun core (Rust)")
             AboutRow("Version", "0.1")
             AboutRow("License", "AGPL-3.0-or-later")
@@ -187,102 +173,92 @@ private fun SyncSection(context: Context) {
     var url by remember { mutableStateOf(AppSettings.syncUrl) }
     var username by remember { mutableStateOf(AppSettings.syncUsername) }
     var password by remember { mutableStateOf("") }
-    var status by remember { mutableStateOf("") }
+    var result by remember { mutableStateOf<SyncResult?>(null) }
     var syncing by remember { mutableStateOf(false) }
 
+    fun startSync(block: suspend () -> SyncResult) {
+        if (url.isBlank() || username.isBlank() || syncing) return
+        AppSettings.setSyncSettings(context, url.trim(), username.trim())
+        syncing = true
+        result = null
+        scope.launch {
+            val r = block()
+            if (r is SyncResult.Ok) AppSettings.setLastSynced(context, System.currentTimeMillis())
+            result = r
+            syncing = false
+        }
+    }
+
     SpeedrunCard {
-        Text("Self-hosted sync", color = c.textPrimary, fontSize = 17.sp)
+        Text("Self-hosted sync", color = c.textPrimary, style = MaterialTheme.typography.subhead)
         Text(
             "Sync this device's collection with your desktop through a self-hosted Anki sync server. Reviews flow both ways.",
             color = c.textSecondary,
-            fontSize = 15.sp,
+            style = MaterialTheme.typography.body,
             modifier = Modifier.padding(top = Space.xs, bottom = Space.s),
         )
-        OutlinedTextField(
+        AppTextField(
             value = url,
             onValueChange = { url = it },
-            label = { Text("Server URL") },
-            placeholder = { Text("http://10.10.1.69:8080/") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            label = "Server URL",
+            placeholder = "http://10.10.1.69:8080/",
         )
         Spacer(Modifier.height(Space.s))
-        OutlinedTextField(
+        AppTextField(
             value = username,
             onValueChange = { username = it },
-            label = { Text("Username") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            label = "Username",
         )
         Spacer(Modifier.height(Space.s))
-        OutlinedTextField(
+        AppTextField(
             value = password,
             onValueChange = { password = it },
-            label = { Text("Password") },
-            singleLine = true,
+            label = "Password",
             visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(Space.s))
+        Text(
+            "Last synced: ${lastSyncedLabel(AppSettings.lastSyncedMs)}",
+            color = c.textTertiary,
+            style = MaterialTheme.typography.caption,
         )
         Spacer(Modifier.height(Space.m))
-        Button(
-            onClick = {
-                if (url.isBlank() || username.isBlank() || syncing) return@Button
-                AppSettings.setSyncSettings(context, url.trim(), username.trim())
-                syncing = true
-                status = "Syncing\u2026"
-                scope.launch {
-                    status = when (val r = EngineRepository.sync(url.trim(), username.trim(), password)) {
-                        is SyncResult.Ok -> r.message
-                        is SyncResult.Conflict -> r.message
-                        is SyncResult.Error -> "Sync failed: ${r.message}"
-                    }
-                    syncing = false
-                }
-            },
+        PrimaryButton(
+            text = if (syncing) "Syncing\u2026" else "Sync now",
             enabled = !syncing,
-            modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(if (syncing) "Syncing\u2026" else "Sync now")
+            startSync { EngineRepository.sync(url.trim(), username.trim(), password) }
         }
-        if (status.isNotBlank()) {
-            Text(
-                status,
-                color = c.textSecondary,
-                fontSize = 14.sp,
-                modifier = Modifier.padding(top = Space.s),
-            )
+        result?.let { r ->
+            Spacer(Modifier.height(Space.s))
+            val (msg, color) = when (r) {
+                is SyncResult.Ok -> r.message to c.readinessGood
+                is SyncResult.Conflict -> r.message to c.readinessWarn
+                is SyncResult.Error -> "Sync failed: ${r.message}" to c.readinessBad
+            }
+            Text(msg, color = color, style = MaterialTheme.typography.body)
+            if (r is SyncResult.Conflict) {
+                // Both sides changed: make the resolution explicit instead of failing.
+                Spacer(Modifier.height(Space.s))
+                PrimaryButton("Upload this device", enabled = !syncing) {
+                    startSync {
+                        EngineRepository.resolveSyncConflict(url.trim(), username.trim(), password, upload = true)
+                    }
+                }
+                Spacer(Modifier.height(Space.xs))
+                SecondaryButton("Use the server copy", enabled = !syncing) {
+                    startSync {
+                        EngineRepository.resolveSyncConflict(url.trim(), username.trim(), password, upload = false)
+                    }
+                }
+            }
         }
     }
 }
 
-@Composable
-private fun Segmented(options: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit) {
-    val c = Speedrun.colors
-    Row(
-        Modifier.fillMaxWidth()
-            .clip(RoundedCornerShape(Radius.button))
-            .background(c.separator)
-            .padding(3.dp),
-    ) {
-        options.forEachIndexed { i, label ->
-            val selected = i == selectedIndex
-            Box(
-                Modifier.weight(1f)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(if (selected) c.surface else Color.Transparent)
-                    .clickable { onSelect(i) }
-                    .padding(vertical = 8.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    label,
-                    color = if (selected) c.textPrimary else c.textSecondary,
-                    fontSize = 14.sp,
-                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                )
-            }
-        }
-    }
+private fun lastSyncedLabel(ms: Long): String {
+    if (ms <= 0L) return "Never"
+    return SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()).format(Date(ms))
 }
 
 @Composable
@@ -290,8 +266,8 @@ private fun AboutRow(label: String, value: String) {
     Row(
         Modifier.fillMaxWidth().padding(vertical = Space.s),
     ) {
-        Text(label, color = Speedrun.colors.textSecondary, fontSize = 15.sp, modifier = Modifier.weight(1f))
-        Text(value, color = Speedrun.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+        Text(label, color = Speedrun.colors.textSecondary, style = MaterialTheme.typography.body, modifier = Modifier.weight(1f))
+        Text(value, color = Speedrun.colors.textPrimary, style = MaterialTheme.typography.body, fontWeight = FontWeight.Medium)
     }
 }
 

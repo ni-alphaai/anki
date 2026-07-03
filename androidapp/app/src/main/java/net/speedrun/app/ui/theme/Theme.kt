@@ -4,8 +4,10 @@
 package net.speedrun.app.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -25,11 +27,25 @@ object Space {
     val xxxl = 32.dp
 }
 
+/** Radii from the shared spec: card 20 - control/input 12 - CTA/chips pill (999). */
 object Radius {
-    val card = 24.dp
-    val button = 16.dp
+    val card = 20.dp
+    val control = 12.dp
     val pill = 999.dp
 }
+
+/**
+ * Material3 shape scale driven by [Radius] so raw M3 widgets (text fields, menus,
+ * sheets) pick up the design language instead of the default rounding. inputs/
+ * controls -> 12, cards/containers -> 20.
+ */
+val SpeedrunShapes = Shapes(
+    extraSmall = RoundedCornerShape(Radius.control),
+    small = RoundedCornerShape(Radius.control),
+    medium = RoundedCornerShape(Radius.card),
+    large = RoundedCornerShape(Radius.card),
+    extraLarge = RoundedCornerShape(Radius.card),
+)
 
 /** Read semantic colors by meaning: `Speedrun.colors.textSecondary`. */
 object Speedrun {
@@ -46,8 +62,8 @@ fun SpeedrunTheme(
 
     val material = if (darkTheme) {
         darkColorScheme(
-            primary = colors.accent,
-            onPrimary = colors.onSignal,
+            primary = colors.primary,
+            onPrimary = colors.onPrimary,
             background = colors.background,
             onBackground = colors.textPrimary,
             surface = colors.surface,
@@ -59,8 +75,8 @@ fun SpeedrunTheme(
         )
     } else {
         lightColorScheme(
-            primary = colors.accent,
-            onPrimary = colors.onSignal,
+            primary = colors.primary,
+            onPrimary = colors.onPrimary,
             background = colors.background,
             onBackground = colors.textPrimary,
             surface = colors.surface,
@@ -75,6 +91,7 @@ fun SpeedrunTheme(
     MaterialTheme(
         colorScheme = material,
         typography = SpeedrunTypography,
+        shapes = SpeedrunShapes,
     ) {
         CompositionLocalProvider(
             LocalSpeedrunColors provides colors,

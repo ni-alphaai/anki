@@ -4,19 +4,14 @@
 package net.speedrun.app.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -27,21 +22,20 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import kotlinx.coroutines.launch
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
 import net.speedrun.app.DeckNode
 import net.speedrun.app.EngineRepository
-import net.speedrun.app.ui.CountPill
+import net.speedrun.app.ui.DetailTopBar
+import net.speedrun.app.ui.DueCounts
 import net.speedrun.app.ui.PrimaryButton
 import net.speedrun.app.ui.SectionLabel
 import net.speedrun.app.ui.Selection
 import net.speedrun.app.ui.SpeedrunCard
 import net.speedrun.app.ui.TertiaryButton
-import net.speedrun.app.ui.theme.Display
 import net.speedrun.app.ui.theme.Space
 import net.speedrun.app.ui.theme.Speedrun
+import net.speedrun.app.ui.theme.body
+import net.speedrun.app.ui.theme.caption
 
 /** Deck detail: strictly deck-scoped (this deck's due counts + Study + Practice). */
 @Composable
@@ -63,19 +57,7 @@ fun DeckOverviewScreen(onBack: () -> Unit, onStudy: () -> Unit, onPractice: () -
             .verticalScroll(rememberScrollState())
             .padding(horizontal = Space.l),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = c.accent)
-            }
-        }
-        Text(
-            Selection.deckName.ifBlank { "Deck" },
-            color = c.textPrimary,
-            fontFamily = Display,
-            fontSize = 30.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(start = Space.xs),
-        )
+        DetailTopBar(title = Selection.deckName.ifBlank { "Deck" }, onBack = onBack)
         Spacer(Modifier.height(Space.l))
 
         SpeedrunCard {
@@ -85,14 +67,10 @@ fun DeckOverviewScreen(onBack: () -> Unit, onStudy: () -> Unit, onPractice: () -
                 Text(
                     if (n == null) "\u2026" else "All caught up in this deck",
                     color = c.textSecondary,
-                    fontSize = 15.sp,
+                    style = MaterialTheme.typography.body,
                 )
             } else {
-                Row(horizontalArrangement = Arrangement.spacedBy(Space.l)) {
-                    if (n.newCount > 0) CountPill(n.newCount, "new", c.easy)
-                    if (n.learnCount > 0) CountPill(n.learnCount, "learn", c.hard)
-                    if (n.reviewCount > 0) CountPill(n.reviewCount, "review", c.good)
-                }
+                DueCounts(n.newCount, n.learnCount, n.reviewCount)
             }
         }
         Spacer(Modifier.height(Space.xl))
@@ -105,7 +83,7 @@ fun DeckOverviewScreen(onBack: () -> Unit, onStudy: () -> Unit, onPractice: () -
         Text(
             "Practice draws from your full question bank. Your projected score and exam plan live on the Today and Progress tabs.",
             color = c.textTertiary,
-            fontSize = 13.sp,
+            style = MaterialTheme.typography.caption,
             modifier = Modifier.padding(horizontal = Space.xs),
         )
         Spacer(Modifier.height(Space.xxl))
