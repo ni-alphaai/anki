@@ -45,7 +45,10 @@ mod test {
 
     #[test]
     fn normalizes_punctuation_and_case() {
-        assert_eq!(normalize("The pKa, of Amino-acids!"), "the pka of amino acids");
+        assert_eq!(
+            normalize("The pKa, of Amino-acids!"),
+            "the pka of amino acids"
+        );
     }
 
     #[test]

@@ -5,8 +5,8 @@
 //!
 //! Speedrun maps the user's deck onto a topic outline (e.g., the MCAT content
 //! outline) so it can report how much of the exam the deck actually covers, and
-//! so readiness can abstain when coverage is too thin. A topic is "covered" when
-//! at least one note is tagged with it.
+//! so readiness can abstain when coverage is too thin. A topic is "covered"
+//! when at least one note is tagged with it.
 
 /// One topic's coverage evidence.
 #[derive(Debug, Clone, Copy)]

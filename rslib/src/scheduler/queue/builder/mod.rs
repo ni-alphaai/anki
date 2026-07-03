@@ -343,8 +343,8 @@ impl Collection {
     /// Compute (group, topic) key arrays for a sequence of cards. topic = the
     /// first matching `sr_topic_map` tag; group = the topic's parent path (the
     /// substring before the last "::"), or the topic itself when it has no
-    /// hierarchy -- so flat / rote tags become their own singleton group and are
-    /// never interleaved.
+    /// hierarchy -- so flat / rote tags become their own singleton group and
+    /// are never interleaved.
     fn confusable_keys(&self, ids: &[CardId]) -> Result<(Vec<usize>, Vec<usize>)> {
         let mut group_keys: HashMap<String, usize> = HashMap::new();
         let mut topic_keys: HashMap<String, usize> = HashMap::new();
@@ -364,8 +364,9 @@ impl Collection {
         Ok((groups, topics))
     }
 
-    /// Interleave confusable sibling topics within due reviews, keeping unrelated
-    /// concepts (and rote/flat tags) blocked. Reorders due cards only.
+    /// Interleave confusable sibling topics within due reviews, keeping
+    /// unrelated concepts (and rote/flat tags) blocked. Reorders due cards
+    /// only.
     fn interleave_reviews_by_topic(&self, reviews: &mut [DueCard]) -> Result<()> {
         use crate::speedrun::interleave::interleave_grouped_indices;
 
@@ -695,15 +696,112 @@ mod test {
         col.storage.add_sr_attempt(&attempt(2, strong_id, true))?;
 
         // flag off: both present, default order
-        let baseline: Vec<CardId> = col.build_queues(deck.id)?.iter().map(|e| e.card_id()).collect();
+        let baseline: Vec<CardId> = col
+            .build_queues(deck.id)?
+            .iter()
+            .map(|e| e.card_id())
+            .collect();
         assert_eq!(baseline.len(), 2);
 
         // flag on: weak card surfaces first
         col.set_config_bool(BoolKey::SpeedrunPointsAtStake, true, false)?;
-        let ranked: Vec<CardId> = col.build_queues(deck.id)?.iter().map(|e| e.card_id()).collect();
+        let ranked: Vec<CardId> = col
+            .build_queues(deck.id)?
+            .iter()
+            .map(|e| e.card_id())
+            .collect();
         assert_eq!(ranked.len(), 2);
         assert_eq!(ranked[0], weak_id, "weak card should be first when enabled");
         assert!(ranked.contains(&strong_id));
+        Ok(())
+    }
+
+    /// The points-at-stake reorder only reshuffles already-due review cards, so
+    /// answering a card through the reordered queue and then undoing must leave
+    /// the collection uncorrupted and fully restored (the design claim at the
+    /// top of `build_queues`). This drives the real answer path (which surfaces
+    /// the weak card first) and then undoes it, asserting DB integrity and that
+    /// both cards' scheduling fields and the due counts are back to baseline.
+    #[test]
+    fn speedrun_reorder_is_undo_safe_and_non_corrupting() -> Result<()> {
+        use crate::dbcheck::CheckDatabaseOutput;
+        use crate::storage::SrAttempt;
+
+        let mut col = Collection::new();
+        let deck = col.get_or_create_normal_deck("Default").unwrap();
+        let nt = col.get_notetype_by_name("Basic")?.unwrap();
+
+        // two due review cards with identical due/interval
+        let mut cards = vec![];
+        for _ in 0..2 {
+            let mut note = nt.new_note();
+            note.set_field(0, "foo")?;
+            note.id.0 = 0;
+            col.add_note(&mut note, deck.id)?;
+            let mut card = col.storage.get_card_by_ordinal(note.id, 0)?.unwrap();
+            card.interval = 10;
+            card.due = 0;
+            card.ctype = CardType::Review;
+            card.queue = CardQueue::Review;
+            cards.push(card);
+        }
+        let strong_id = cards[0].id;
+        let weak_id = cards[1].id;
+        col.update_cards_maybe_undoable(cards, false)?;
+
+        // weakness evidence so the points-at-stake reorder is active (mirrors the
+        // sibling test): weak card missed, strong card correct.
+        let attempt = |id: i64, cid: CardId, correct: bool| SrAttempt {
+            id,
+            cid,
+            nid: NoteId(1),
+            session_id: String::new(),
+            answered_at_ms: id,
+            took_ms: 0,
+            question_type: 0,
+            selected: None,
+            correct,
+            diagnosis_kind: 0,
+            diagnosis_confidence: 0.0,
+            routed_action: 0,
+            action_status: 0,
+            usn: Usn(-1),
+            data: String::new(),
+            predicted: None,
+        };
+        col.storage.add_sr_attempt(&attempt(1, weak_id, false))?;
+        col.storage.add_sr_attempt(&attempt(2, strong_id, true))?;
+
+        col.set_config_bool(BoolKey::SpeedrunPointsAtStake, true, false)?;
+
+        // snapshot the pre-answer state
+        let counts_before = col.counts();
+        let strong_before = col.storage.get_card(strong_id)?.unwrap();
+        let weak_before = col.storage.get_card(weak_id)?.unwrap();
+
+        // answer through the reorder-affected review path: the weak card is
+        // surfaced first, so the answer really travels the reordered queue.
+        let answered = col.answer_good();
+        assert_eq!(
+            answered.card_id, weak_id,
+            "reorder should surface the weak card first"
+        );
+
+        // undo the answer
+        col.undo()?;
+
+        // no corruption after reorder + answer + undo
+        assert_eq!(col.check_database()?, CheckDatabaseOutput::default());
+        assert!(!col.storage.quick_check_corrupt());
+
+        // due counts and both cards' scheduling fields fully restored
+        assert_eq!(col.counts(), counts_before);
+        let strong_after = col.storage.get_card(strong_id)?.unwrap();
+        let weak_after = col.storage.get_card(weak_id)?.unwrap();
+        assert_eq!(strong_after.interval, strong_before.interval);
+        assert_eq!(strong_after.due, strong_before.due);
+        assert_eq!(weak_after.interval, weak_before.interval);
+        assert_eq!(weak_after.due, weak_before.due);
         Ok(())
     }
 
@@ -746,7 +844,11 @@ mod test {
         col.update_cards_maybe_undoable(cards, false)?;
 
         col.set_config_bool(BoolKey::SpeedrunInterleaveTopics, true, false)?;
-        let order: Vec<CardId> = col.build_queues(deck.id)?.iter().map(|e| e.card_id()).collect();
+        let order: Vec<CardId> = col
+            .build_queues(deck.id)?
+            .iter()
+            .map(|e| e.card_id())
+            .collect();
         assert_eq!(order.len(), 4);
 
         // consecutive cards should not share a topic
@@ -799,7 +901,11 @@ mod test {
         col.update_cards_maybe_undoable(cards, false)?;
 
         col.set_config_bool(BoolKey::SpeedrunInterleaveTopics, true, false)?;
-        let order: Vec<CardId> = col.build_queues(deck.id)?.iter().map(|e| e.card_id()).collect();
+        let order: Vec<CardId> = col
+            .build_queues(deck.id)?
+            .iter()
+            .map(|e| e.card_id())
+            .collect();
         assert_eq!(order.len(), 4);
 
         // unrelated concepts stay blocked (each concept's cards are adjacent),
@@ -811,9 +917,18 @@ mod test {
                 topic.split("::").next().unwrap().to_string()
             })
             .collect();
-        assert_eq!(parents[0], parents[1], "concept should be blocked: {parents:?}");
-        assert_eq!(parents[2], parents[3], "concept should be blocked: {parents:?}");
-        assert_ne!(parents[0], parents[2], "concepts should not interleave: {parents:?}");
+        assert_eq!(
+            parents[0], parents[1],
+            "concept should be blocked: {parents:?}"
+        );
+        assert_eq!(
+            parents[2], parents[3],
+            "concept should be blocked: {parents:?}"
+        );
+        assert_ne!(
+            parents[0], parents[2],
+            "concepts should not interleave: {parents:?}"
+        );
         Ok(())
     }
 
@@ -854,7 +969,11 @@ mod test {
         col.update_cards_maybe_undoable(cards, false)?;
 
         col.set_config_bool(BoolKey::SpeedrunInterleaveTopics, true, false)?;
-        let order: Vec<CardId> = col.build_queues(deck.id)?.iter().map(|e| e.card_id()).collect();
+        let order: Vec<CardId> = col
+            .build_queues(deck.id)?
+            .iter()
+            .map(|e| e.card_id())
+            .collect();
         assert_eq!(order.len(), 4);
 
         // new-card introduction order interleaves the sibling topics
@@ -863,7 +982,10 @@ mod test {
             .map(|cid| col.storage.sr_card_topic(*cid).unwrap().unwrap())
             .collect();
         for window in topics.windows(2) {
-            assert_ne!(window[0], window[1], "new-card topics should alternate: {topics:?}");
+            assert_ne!(
+                window[0], window[1],
+                "new-card topics should alternate: {topics:?}"
+            );
         }
         Ok(())
     }

@@ -4,14 +4,15 @@
 //! Performance signal and the recall-vs-performance gap (AI-off).
 //!
 //! Speedrun separates **recall** (can you remember a fact, from the SRS
-//! substrate) from **performance** (can you apply it on an exam-style question).
-//! The held-out "paraphrase test" answers reworded questions whose source card
-//! the SRS already tracks; if recall and performance are basically equal there
-//! is no gap and the bridge from memory to application has not been built.
+//! substrate) from **performance** (can you apply it on an exam-style
+//! question). The held-out "paraphrase test" answers reworded questions whose
+//! source card the SRS already tracks; if recall and performance are basically
+//! equal there is no gap and the bridge from memory to application has not been
+//! built.
 //!
-//! Held-out discipline is structural: question items live in `sr_question_items`
-//! and are never added to the collection as cards, so answering them does not
-//! leak into the source card's scheduling.
+//! Held-out discipline is structural: question items live in
+//! `sr_question_items` and are never added to the collection as cards, so
+//! answering them does not leak into the source card's scheduling.
 
 /// Mature-interval threshold (days) used as the binary recall proxy, matching
 /// Anki's "mature card" convention.
@@ -37,7 +38,8 @@ pub struct PerformanceSummary {
     pub recall_rate: f32,
     /// Mean exam-style accuracy over evaluated cards, 0..1.
     pub performance_rate: f32,
-    /// recall_rate - performance_rate; positive means recall outruns application.
+    /// recall_rate - performance_rate; positive means recall outruns
+    /// application.
     pub recall_perf_gap: f32,
     /// True only when there are enough cards to trust the gap.
     pub sufficient: bool,

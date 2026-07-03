@@ -1,6 +1,9 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
+use fsrs::FSRS;
+use fsrs::FSRS5_DEFAULT_DECAY;
+
 use crate::collection::Collection;
 use crate::error;
 use crate::prelude::*;
@@ -8,10 +11,10 @@ use crate::speedrun::calibration::compute_calibration;
 use crate::speedrun::calibration::CalibrationPair;
 use crate::speedrun::classify;
 use crate::speedrun::coverage::summarize_coverage;
-use crate::speedrun::exam::compute_exam_plan;
-use crate::speedrun::exam::ExamPlanInputs;
 use crate::speedrun::coverage::TopicCoverageRow;
 use crate::speedrun::coverage::MCAT_FOUNDATIONAL_CONCEPTS;
+use crate::speedrun::exam::compute_exam_plan;
+use crate::speedrun::exam::ExamPlanInputs;
 use crate::speedrun::performance::summarize_performance;
 use crate::speedrun::performance::PerfCardRow;
 use crate::speedrun::readiness::compute_readiness;
@@ -25,8 +28,6 @@ use crate::storage::SrProfile;
 use crate::storage::SrQuestionItem;
 use crate::storage::SrReadiness;
 use crate::storage::SrTopicMapEntry;
-use fsrs::FSRS;
-use fsrs::FSRS5_DEFAULT_DECAY;
 
 impl crate::services::SpeedrunService for Collection {
     fn classify_attempt(
@@ -131,9 +132,7 @@ impl crate::services::SpeedrunService for Collection {
         Ok(to_proto_readiness(&snapshot))
     }
 
-    fn get_readiness_snapshot(
-        &mut self,
-    ) -> error::Result<anki_proto::speedrun::ReadinessSnapshot> {
+    fn get_readiness_snapshot(&mut self) -> error::Result<anki_proto::speedrun::ReadinessSnapshot> {
         match self.storage.get_latest_sr_readiness()? {
             Some(snapshot) => Ok(to_proto_readiness(&snapshot)),
             None => self.compute_readiness(),
@@ -167,9 +166,7 @@ impl crate::services::SpeedrunService for Collection {
         })
     }
 
-    fn get_performance_report(
-        &mut self,
-    ) -> error::Result<anki_proto::speedrun::PerformanceReport> {
+    fn get_performance_report(&mut self) -> error::Result<anki_proto::speedrun::PerformanceReport> {
         let rows: Vec<PerfCardRow> = self
             .storage
             .sr_performance_rows()?
@@ -240,9 +237,7 @@ impl crate::services::SpeedrunService for Collection {
         Ok(anki_proto::speedrun::SetTopicMapResponse { topics })
     }
 
-    fn get_coverage_report(
-        &mut self,
-    ) -> error::Result<anki_proto::speedrun::CoverageReport> {
+    fn get_coverage_report(&mut self) -> error::Result<anki_proto::speedrun::CoverageReport> {
         let detail = self.storage.sr_topic_coverage_detail()?;
         let rows: Vec<TopicCoverageRow> = detail
             .iter()
@@ -254,13 +249,15 @@ impl crate::services::SpeedrunService for Collection {
         let summary = summarize_coverage(&rows);
         let topics = detail
             .into_iter()
-            .map(|(topic, label, weight, cards)| anki_proto::speedrun::TopicCoverage {
-                topic,
-                label,
-                weight,
-                cards,
-                covered: cards > 0,
-            })
+            .map(
+                |(topic, label, weight, cards)| anki_proto::speedrun::TopicCoverage {
+                    topic,
+                    label,
+                    weight,
+                    cards,
+                    covered: cards > 0,
+                },
+            )
             .collect();
         Ok(anki_proto::speedrun::CoverageReport {
             topics_total: summary.topics_total,
@@ -356,10 +353,11 @@ impl crate::services::SpeedrunService for Collection {
         &mut self,
         input: anki_proto::speedrun::SessionReasoningRoundRequest,
     ) -> error::Result<anki_proto::speedrun::QuestionItems> {
+        use std::collections::HashSet;
+
         use crate::speedrun::reasoning_round::deck_name_to_topic;
         use crate::speedrun::reasoning_round::select_round;
         use crate::speedrun::reasoning_round::DEFAULT_ROUND_SIZE;
-        use std::collections::HashSet;
 
         let limit = if input.limit == 0 {
             DEFAULT_ROUND_SIZE
@@ -437,9 +435,7 @@ impl crate::services::SpeedrunService for Collection {
             .set_sr_attempt_action_status(input.attempt_id, input.action_status as u8)
     }
 
-    fn get_leakage_report(
-        &mut self,
-    ) -> error::Result<anki_proto::speedrun::LeakageReport> {
+    fn get_leakage_report(&mut self) -> error::Result<anki_proto::speedrun::LeakageReport> {
         let rows = self.storage.sr_question_items_with_note_text()?;
         let total_items = rows.len() as u32;
         let mut flagged_item_ids = Vec::new();
@@ -461,9 +457,7 @@ impl crate::services::SpeedrunService for Collection {
         })
     }
 
-    fn get_calibration_report(
-        &mut self,
-    ) -> error::Result<anki_proto::speedrun::CalibrationReport> {
+    fn get_calibration_report(&mut self) -> error::Result<anki_proto::speedrun::CalibrationReport> {
         let pairs: Vec<CalibrationPair> = self
             .storage
             .sr_calibration_pairs()?
@@ -506,14 +500,16 @@ impl Collection {
         let now = TimestampSecs::now().0;
         let seconds_elapsed = (now as u32).saturating_sub(last.0 as u32);
         let decay = data.decay.unwrap_or(FSRS5_DEFAULT_DECAY);
-        let retrievability = FSRS::new(None)
-            .unwrap()
-            .current_retrievability_seconds(state.into(), seconds_elapsed, decay);
+        let retrievability = FSRS::new(None).unwrap().current_retrievability_seconds(
+            state.into(),
+            seconds_elapsed,
+            decay,
+        );
         Ok(Some(retrievability))
     }
 
-    /// Gather raw evidence from the collection + Speedrun tables and compute the
-    /// three scores. Pure scoring lives in `speedrun::readiness`.
+    /// Gather raw evidence from the collection + Speedrun tables and compute
+    /// the three scores. Pure scoring lives in `speedrun::readiness`.
     fn readiness_report(&self) -> error::Result<ReadinessReport> {
         let (review_cards, mature_cards) = self.storage.sr_card_counts()?;
         let (exam_attempts, exam_correct) = self.storage.sr_exam_attempt_stats()?;
@@ -613,8 +609,8 @@ mod test {
     use crate::collection::CollectionBuilder;
     use crate::error::Result;
     use crate::services::SpeedrunService;
-    use crate::speedrun::DIAGNOSIS_MEMORY;
     use crate::speedrun::ACTION_RESURFACE;
+    use crate::speedrun::DIAGNOSIS_MEMORY;
 
     #[test]
     fn record_classifies_and_persists_attempt() -> Result<()> {
@@ -648,9 +644,10 @@ mod test {
         assert_eq!(diagnosis.kind, DIAGNOSIS_MEMORY as u32);
         assert_eq!(diagnosis.routed_action, ACTION_RESURFACE as u32);
 
-        let fetched = col.get_attempts_for_card(anki_proto::speedrun::GetAttemptsForCardRequest {
-            card_id: 111,
-        })?;
+        let fetched =
+            col.get_attempts_for_card(anki_proto::speedrun::GetAttemptsForCardRequest {
+                card_id: 111,
+            })?;
         assert_eq!(fetched.attempts.len(), 1);
         assert_eq!(fetched.attempts[0].diagnosis_kind, DIAGNOSIS_MEMORY as u32);
         assert!(!fetched.attempts[0].correct);
@@ -847,8 +844,13 @@ mod test {
         assert!(plan.has_profile);
         assert_eq!(plan.target_score, 510);
         // ~14 days left (allow for clock granularity)
-        assert!(plan.days_left >= 13 && plan.days_left <= 14, "days_left {}", plan.days_left);
-        // empty collection -> readiness ~472, below target -> needs points, consolidates
+        assert!(
+            plan.days_left >= 13 && plan.days_left <= 14,
+            "days_left {}",
+            plan.days_left
+        );
+        // empty collection -> readiness ~472, below target -> needs points,
+        // consolidates
         assert!(plan.needed_points > 0);
         assert_eq!(plan.study_mode, "consolidation");
         Ok(())

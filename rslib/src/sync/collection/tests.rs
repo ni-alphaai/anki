@@ -33,6 +33,7 @@ use crate::notetype::all_stock_notetypes;
 use crate::prelude::*;
 use crate::revlog::RevlogEntry;
 use crate::search::SortMode;
+use crate::storage::SrAttempt;
 use crate::sync::collection::graves::ApplyGravesRequest;
 use crate::sync::collection::meta::MetaRequest;
 use crate::sync::collection::normal::NormalSyncer;
@@ -281,6 +282,155 @@ async fn sync_roundtrip() -> Result<()> {
         let ctx = SyncTestContext::new(client);
         upload_download(&ctx).await?;
         regular_sync(&ctx).await?;
+        Ok(())
+    })
+    .await
+}
+
+/// Build a minimal pending (usn = -1) attempt for the given card.
+fn attempt(id: i64, cid: CardId) -> SrAttempt {
+    SrAttempt {
+        id,
+        cid,
+        nid: NoteId(1),
+        session_id: String::new(),
+        answered_at_ms: id,
+        took_ms: 0,
+        question_type: 1,
+        selected: None,
+        correct: true,
+        diagnosis_kind: 0,
+        diagnosis_confidence: 0.0,
+        routed_action: 0,
+        action_status: 0,
+        usn: Usn(-1),
+        data: String::new(),
+        predicted: None,
+    }
+}
+
+/// Speedrun `sr_attempts` ride Anki's chunk transport (modeled on revlog):
+/// an attempt recorded on one collection reaches the other on a normal sync,
+/// and attempts recorded independently on each side union together.
+#[tokio::test]
+async fn sr_attempts_sync_roundtrip() -> Result<()> {
+    with_active_server(|client| async move {
+        let ctx = SyncTestContext::new(client);
+        // establish a common base: col1 has a card, uploaded; col2 downloaded it
+        upload_download(&ctx).await?;
+
+        let cid = CardId(
+            ctx.col1()
+                .storage
+                .db_scalar::<i64>("select id from cards")?,
+        );
+
+        // seed an attempt on col1 and push it up with a normal (incremental) sync.
+        // set_modified_time marks the collection changed so a normal sync runs
+        // (recording an attempt does not itself bump the collection mtime).
+        {
+            let mut col1 = ctx.col1();
+            col1.storage
+                .add_sr_attempt(&attempt(1_700_000_000_001, cid))?;
+            col1.storage.set_modified_time(TimestampMillis::now())?;
+            ctx.normal_sync(&mut col1).await;
+        }
+        // col2 pulls it down
+        {
+            let mut col2 = ctx.col2();
+            ctx.normal_sync(&mut col2).await;
+        }
+        assert_eq!(ctx.col2().storage.sr_attempts_for_card(cid)?.len(), 1);
+
+        // reverse direction: an attempt recorded on col2 unions back to col1
+        {
+            let mut col2 = ctx.col2();
+            col2.storage
+                .add_sr_attempt(&attempt(1_700_000_000_002, cid))?;
+            col2.storage.set_modified_time(TimestampMillis::now())?;
+            ctx.normal_sync(&mut col2).await;
+        }
+        {
+            let mut col1 = ctx.col1();
+            ctx.normal_sync(&mut col1).await;
+        }
+
+        // both attempts are present on both sides, and the rows agree
+        assert_eq!(ctx.col1().storage.sr_attempts_for_card(cid)?.len(), 2);
+        assert_eq!(
+            ctx.col1().storage.sr_attempts_for_card(cid)?,
+            ctx.col2().storage.sr_attempts_for_card(cid)?,
+        );
+        Ok(())
+    })
+    .await
+}
+
+/// The same attempt edited in place on two devices resolves deterministically
+/// as last-chunk-wins (ADR 0001): the first side to sync its edit up wins,
+/// because the other side pulls that edit before it can push its own. Both
+/// sides converge, and the append-only chunk stream never forces a full sync.
+#[tokio::test]
+async fn sr_attempt_edit_conflict_is_last_writer_wins() -> Result<()> {
+    with_active_server(|client| async move {
+        let ctx = SyncTestContext::new(client);
+        upload_download(&ctx).await?;
+
+        let cid = CardId(
+            ctx.col1()
+                .storage
+                .db_scalar::<i64>("select id from cards")?,
+        );
+        let attempt_id = 1_700_000_000_010;
+
+        // seed one shared attempt and propagate it to both collections
+        {
+            let mut col1 = ctx.col1();
+            col1.storage.add_sr_attempt(&attempt(attempt_id, cid))?;
+            col1.storage.set_modified_time(TimestampMillis::now())?;
+            ctx.normal_sync(&mut col1).await;
+        }
+        {
+            let mut col2 = ctx.col2();
+            ctx.normal_sync(&mut col2).await;
+        }
+        assert_eq!(ctx.col1().storage.sr_attempts_for_card(cid)?.len(), 1);
+        assert_eq!(ctx.col2().storage.sr_attempts_for_card(cid)?.len(), 1);
+
+        // both devices edit the SAME attempt in place while offline
+        {
+            let col1 = ctx.col1();
+            col1.storage.update_sr_attempt_diagnosis(attempt_id, 1, 1)?;
+            col1.storage.set_modified_time(TimestampMillis::now())?;
+        }
+        {
+            let col2 = ctx.col2();
+            col2.storage.update_sr_attempt_diagnosis(attempt_id, 4, 4)?;
+            col2.storage.set_modified_time(TimestampMillis::now())?;
+        }
+
+        // col1 syncs first, so its edit lands on the server first; col2 then
+        // pulls col1's edit before pushing its own, so col1's edit wins
+        {
+            let mut col1 = ctx.col1();
+            ctx.normal_sync(&mut col1).await;
+        }
+        {
+            let mut col2 = ctx.col2();
+            ctx.normal_sync(&mut col2).await;
+        }
+        {
+            let mut col1 = ctx.col1();
+            ctx.normal_sync(&mut col1).await;
+        }
+
+        let a1 = ctx.col1().storage.sr_attempts_for_card(cid)?;
+        let a2 = ctx.col2().storage.sr_attempts_for_card(cid)?;
+        assert_eq!(a1.len(), 1);
+        assert_eq!(a2.len(), 1);
+        // col1's edit (first to sync) is the winner on both sides
+        assert_eq!(a1[0].diagnosis_kind, 1);
+        assert_eq!(a1, a2);
         Ok(())
     })
     .await

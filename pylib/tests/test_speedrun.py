@@ -216,11 +216,15 @@ def test_get_practice_questions_batch():
 
     for i in range(5):
         col._backend.add_question_item(
-            speedrun_pb2.QuestionItem(topic="biology", provenance=1, payload=f'{{"n":{i}}}')
+            speedrun_pb2.QuestionItem(
+                topic="biology", provenance=1, payload=f'{{"n":{i}}}'
+            )
         )
     for i in range(3):
         col._backend.add_question_item(
-            speedrun_pb2.QuestionItem(topic="physics", provenance=1, payload=f'{{"n":{i}}}')
+            speedrun_pb2.QuestionItem(
+                topic="physics", provenance=1, payload=f'{{"n":{i}}}'
+            )
         )
 
     # any topic, generous limit -> the whole bank
@@ -246,7 +250,9 @@ def test_session_reasoning_round_weaves_memory_and_reasoning():
 
     # tier 1: a held-out question linked to the exact card just reviewed
     col._backend.add_question_item(
-        speedrun_pb2.QuestionItem(card_id=card_id, topic="biology", payload='{"k":"cl"}')
+        speedrun_pb2.QuestionItem(
+            card_id=card_id, topic="biology", payload='{"k":"cl"}'
+        )
     )
     # tier 2: a biology question reachable only via the deck-name -> topic map
     col._backend.add_question_item(
@@ -258,7 +264,9 @@ def test_session_reasoning_round_weaves_memory_and_reasoning():
     )
 
     # full round: all three, with the card-linked question first
-    full = col._backend.get_session_reasoning_round(reviewed_card_ids=[card_id], limit=5)
+    full = col._backend.get_session_reasoning_round(
+        reviewed_card_ids=[card_id], limit=5
+    )
     payloads = [q.payload for q in full]
     assert len(full) == 3
     assert payloads[0] == '{"k":"cl"}'
@@ -266,8 +274,13 @@ def test_session_reasoning_round_weaves_memory_and_reasoning():
 
     # capped at 2: card-linked + deck-topic-matched fill the round before the
     # physics fallback is ever consulted (proves the deck-name -> topic path)
-    capped = col._backend.get_session_reasoning_round(reviewed_card_ids=[card_id], limit=2)
+    capped = col._backend.get_session_reasoning_round(
+        reviewed_card_ids=[card_id], limit=2
+    )
     assert [q.payload for q in capped] == ['{"k":"cl"}', '{"k":"bio"}']
 
     # an empty session still returns a round from the general bank (never errors)
-    assert len(col._backend.get_session_reasoning_round(reviewed_card_ids=[], limit=5)) == 3
+    assert (
+        len(col._backend.get_session_reasoning_round(reviewed_card_ids=[], limit=5))
+        == 3
+    )

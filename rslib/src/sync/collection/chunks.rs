@@ -16,6 +16,7 @@ use crate::revlog::RevlogEntry;
 use crate::serde::deserialize_int_from_number;
 use crate::storage::card::data::card_data_string;
 use crate::storage::card::data::CardData;
+use crate::storage::SrAttempt;
 use crate::sync::collection::normal::ClientSyncState;
 use crate::sync::collection::normal::NormalSyncer;
 use crate::sync::collection::protocol::EmptyInput;
@@ -29,6 +30,7 @@ pub(in crate::sync) struct ChunkableIds {
     revlog: Vec<RevlogId>,
     cards: Vec<CardId>,
     notes: Vec<NoteId>,
+    sr_attempts: Vec<i64>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -41,6 +43,34 @@ pub struct Chunk {
     pub cards: Vec<CardEntry>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub notes: Vec<NoteEntry>,
+    /// Speedrun's append-only attempt evidence, synced incrementally alongside
+    /// revlog. Added as a named field so peers that don't know about it simply
+    /// ignore it (keeping the chunk stream wire-compatible). See ADR 0001.
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub sr_attempts: Vec<SrAttemptEntry>,
+}
+
+/// Wire representation of an [`SrAttempt`], mirroring the
+/// `CardEntry`/`NoteEntry` pattern: a compact positional tuple that keeps the
+/// storage struct decoupled from the sync format.
+#[derive(Serialize_tuple, Deserialize, Debug)]
+pub struct SrAttemptEntry {
+    pub id: i64,
+    pub cid: CardId,
+    pub nid: NoteId,
+    pub session_id: String,
+    pub answered_at_ms: i64,
+    pub took_ms: i64,
+    pub question_type: u8,
+    pub selected: Option<i64>,
+    pub correct: bool,
+    pub diagnosis_kind: u8,
+    pub diagnosis_confidence: f32,
+    pub routed_action: u8,
+    pub action_status: u8,
+    pub usn: Usn,
+    pub data: String,
+    pub predicted: Option<f32>,
 }
 
 #[derive(Serialize_tuple, Deserialize, Debug)]
@@ -99,11 +129,15 @@ impl NormalSyncer<'_> {
                 cards = chunk.cards.len(),
                 notes = chunk.notes.len(),
                 revlog = chunk.revlog.len(),
+                sr_attempts = chunk.sr_attempts.len(),
                 "received"
             );
 
             self.progress.update(false, |p| {
-                p.remote_update += chunk.cards.len() + chunk.notes.len() + chunk.revlog.len()
+                p.remote_update += chunk.cards.len()
+                    + chunk.notes.len()
+                    + chunk.revlog.len()
+                    + chunk.sr_attempts.len()
             })?;
 
             let done = chunk.done;
@@ -132,11 +166,15 @@ impl NormalSyncer<'_> {
                 cards = chunk.cards.len(),
                 notes = chunk.notes.len(),
                 revlog = chunk.revlog.len(),
+                sr_attempts = chunk.sr_attempts.len(),
                 "sending"
             );
 
             self.progress.update(false, |p| {
-                p.local_update += chunk.cards.len() + chunk.notes.len() + chunk.revlog.len()
+                p.local_update += chunk.cards.len()
+                    + chunk.notes.len()
+                    + chunk.revlog.len()
+                    + chunk.sr_attempts.len()
             })?;
 
             self.server
@@ -162,12 +200,23 @@ impl Collection {
     pub(in crate::sync) fn apply_chunk(&mut self, chunk: Chunk, pending_usn: Usn) -> Result<()> {
         self.merge_revlog(chunk.revlog)?;
         self.merge_cards(chunk.cards, pending_usn)?;
-        self.merge_notes(chunk.notes, pending_usn)
+        self.merge_notes(chunk.notes, pending_usn)?;
+        self.merge_sr_attempts(chunk.sr_attempts)
     }
 
     fn merge_revlog(&self, entries: Vec<RevlogEntry>) -> Result<()> {
         for entry in entries {
             self.storage.add_revlog_entry(&entry, false)?;
+        }
+        Ok(())
+    }
+
+    /// Insert-union attempts by id. Attempts are append-only, so this is a
+    /// blind upsert; for the two in-place edit fields the last chunk to arrive
+    /// wins (see ADR 0001).
+    fn merge_sr_attempts(&self, entries: Vec<SrAttemptEntry>) -> Result<()> {
+        for entry in entries {
+            self.storage.add_or_update_sr_attempt(&entry.into())?;
         }
         Ok(())
     }
@@ -224,6 +273,9 @@ impl Collection {
             revlog: self.storage.objects_pending_sync("revlog", pending_usn)?,
             cards: self.storage.objects_pending_sync("cards", pending_usn)?,
             notes: self.storage.objects_pending_sync("notes", pending_usn)?,
+            sr_attempts: self
+                .storage
+                .objects_pending_sync("sr_attempts", pending_usn)?,
         })
     }
 
@@ -238,6 +290,7 @@ impl Collection {
         let mut revlog_ids = vec![];
         let mut card_ids = vec![];
         let mut note_ids = vec![];
+        let mut sr_attempt_ids = vec![];
         let mut chunk = Chunk::default();
         while limit > 0 {
             let last_limit = limit;
@@ -251,6 +304,10 @@ impl Collection {
             }
             if let Some(id) = ids.cards.pop() {
                 card_ids.push(id);
+                limit -= 1;
+            }
+            if let Some(id) = ids.sr_attempts.pop() {
+                sr_attempt_ids.push(id);
                 limit -= 1;
             }
             if limit == last_limit {
@@ -270,6 +327,11 @@ impl Collection {
                 .maybe_update_object_usns("cards", &card_ids, server_usn_if_client)?;
             self.storage
                 .maybe_update_object_usns("notes", &note_ids, server_usn_if_client)?;
+            self.storage.maybe_update_object_usns(
+                "sr_attempts",
+                &sr_attempt_ids,
+                server_usn_if_client,
+            )?;
         }
 
         // the fetch associated objects, and return
@@ -303,6 +365,15 @@ impl Collection {
                 })
             })
             .collect::<Result<_>>()?;
+        chunk.sr_attempts = self
+            .storage
+            .get_sr_attempts_by_ids(&sr_attempt_ids)?
+            .into_iter()
+            .map(|mut a| {
+                a.usn = server_usn_if_client.unwrap_or(a.usn);
+                a.into()
+            })
+            .collect();
 
         Ok(chunk)
     }
@@ -395,6 +466,52 @@ impl From<Note> for NoteEntry {
             csum: String::new(),
             flags: 0,
             data: String::new(),
+        }
+    }
+}
+
+impl From<SrAttempt> for SrAttemptEntry {
+    fn from(a: SrAttempt) -> Self {
+        SrAttemptEntry {
+            id: a.id,
+            cid: a.cid,
+            nid: a.nid,
+            session_id: a.session_id,
+            answered_at_ms: a.answered_at_ms,
+            took_ms: a.took_ms,
+            question_type: a.question_type,
+            selected: a.selected,
+            correct: a.correct,
+            diagnosis_kind: a.diagnosis_kind,
+            diagnosis_confidence: a.diagnosis_confidence,
+            routed_action: a.routed_action,
+            action_status: a.action_status,
+            usn: a.usn,
+            data: a.data,
+            predicted: a.predicted,
+        }
+    }
+}
+
+impl From<SrAttemptEntry> for SrAttempt {
+    fn from(e: SrAttemptEntry) -> Self {
+        SrAttempt {
+            id: e.id,
+            cid: e.cid,
+            nid: e.nid,
+            session_id: e.session_id,
+            answered_at_ms: e.answered_at_ms,
+            took_ms: e.took_ms,
+            question_type: e.question_type,
+            selected: e.selected,
+            correct: e.correct,
+            diagnosis_kind: e.diagnosis_kind,
+            diagnosis_confidence: e.diagnosis_confidence,
+            routed_action: e.routed_action,
+            action_status: e.action_status,
+            usn: e.usn,
+            data: e.data,
+            predicted: e.predicted,
         }
     }
 }

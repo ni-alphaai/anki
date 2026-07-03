@@ -43,8 +43,9 @@ pub struct Diagnosis {
     pub routed_action: u8,
 }
 
-/// A wrong exam-style answer counts as a test-taking (careless/rushed) miss only
-/// when the student was this confident or more -- otherwise it is a reasoning gap.
+/// A wrong exam-style answer counts as a test-taking (careless/rushed) miss
+/// only when the student was this confident or more -- otherwise it is a
+/// reasoning gap.
 pub const TEST_TAKING_CONFIDENCE: f32 = 0.75;
 
 /// Inputs to the deterministic classifier.
@@ -129,7 +130,10 @@ mod test {
 
     #[test]
     fn classifier_routes_each_failure_mode() {
-        assert_eq!(classify(&signals(true, 5000, false, false)).kind, DIAGNOSIS_CORRECT);
+        assert_eq!(
+            classify(&signals(true, 5000, false, false)).kind,
+            DIAGNOSIS_CORRECT
+        );
         assert_eq!(
             classify(&signals(false, 5000, true, false)).kind,
             DIAGNOSIS_MEMORY

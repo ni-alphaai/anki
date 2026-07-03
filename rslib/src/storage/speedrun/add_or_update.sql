@@ -1,0 +1,35 @@
+INSERT INTO sr_attempts (
+    id,
+    cid,
+    nid,
+    session_id,
+    answered_at_ms,
+    took_ms,
+    question_type,
+    selected,
+    correct,
+    diagnosis_kind,
+    diagnosis_confidence,
+    routed_action,
+    action_status,
+    usn,
+    data,
+    predicted
+  )
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
+UPDATE
+SET cid = excluded.cid,
+  nid = excluded.nid,
+  session_id = excluded.session_id,
+  answered_at_ms = excluded.answered_at_ms,
+  took_ms = excluded.took_ms,
+  question_type = excluded.question_type,
+  selected = excluded.selected,
+  correct = excluded.correct,
+  diagnosis_kind = excluded.diagnosis_kind,
+  diagnosis_confidence = excluded.diagnosis_confidence,
+  routed_action = excluded.routed_action,
+  action_status = excluded.action_status,
+  usn = excluded.usn,
+  data = excluded.data,
+  predicted = excluded.predicted

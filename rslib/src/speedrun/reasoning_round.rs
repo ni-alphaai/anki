@@ -16,9 +16,10 @@ pub const DEFAULT_ROUND_SIZE: u32 = 5;
 /// Map an Anki deck name onto an MCAT topic used by the question packs.
 ///
 /// This is a deliberately coarse heuristic so the round is concept-relevant on
-/// real decks (e.g. MileDown) whose cards are not tagged with the topic outline.
-/// It matches on the leaf deck name (Anki decks are `Parent::Child`) and is
-/// case-insensitive. Unknown names return `None` and fall back to unseen items.
+/// real decks (e.g. MileDown) whose cards are not tagged with the topic
+/// outline. It matches on the leaf deck name (Anki decks are `Parent::Child`)
+/// and is case-insensitive. Unknown names return `None` and fall back to unseen
+/// items.
 ///
 /// Organic chemistry maps to `general_chemistry` because that is the closest
 /// topic present in the bundled packs.

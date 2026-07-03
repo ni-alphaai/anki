@@ -195,6 +195,7 @@ impl Collection {
             col.storage.clear_pending_note_usns()?;
             col.storage.clear_pending_card_usns()?;
             col.storage.clear_pending_revlog_usns()?;
+            col.storage.clear_pending_sr_attempt_usns()?;
             col.storage.clear_tag_usns()?;
             col.storage.clear_deck_conf_usns()?;
             col.storage.clear_deck_usns()?;

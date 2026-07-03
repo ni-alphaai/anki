@@ -92,10 +92,12 @@ pub fn compute_readiness(inputs: &ReadinessInputs) -> ReadinessReport {
     };
 
     let readiness_scaled = scaled.round().clamp(SCALE_LOW as f32, SCALE_HIGH as f32) as u32;
-    let low_scaled =
-        (scaled - half_width_scaled).round().clamp(SCALE_LOW as f32, SCALE_HIGH as f32) as u32;
-    let high_scaled =
-        (scaled + half_width_scaled).round().clamp(SCALE_LOW as f32, SCALE_HIGH as f32) as u32;
+    let low_scaled = (scaled - half_width_scaled)
+        .round()
+        .clamp(SCALE_LOW as f32, SCALE_HIGH as f32) as u32;
+    let high_scaled = (scaled + half_width_scaled)
+        .round()
+        .clamp(SCALE_LOW as f32, SCALE_HIGH as f32) as u32;
 
     let mut missing = Vec::new();
     if inputs.graded_attempts < MIN_GRADED_ATTEMPTS {
@@ -245,7 +247,7 @@ mod test {
             exam_correct: 40,
             graded_attempts: 60,
             topics_total: 31,
-            topics_covered: 17, // 54.8% by count -> passes the raw floor
+            topics_covered: 17,       // 54.8% by count -> passes the raw floor
             weighted_coverage: 0.439, // but a heavy section is missing
         };
         let report = compute_readiness(&inputs);

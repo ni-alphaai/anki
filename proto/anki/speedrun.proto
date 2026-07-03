@@ -23,7 +23,8 @@ service SpeedrunService {
   rpc GetReadinessSnapshot(generic.Empty) returns (ReadinessSnapshot);
   // Register a held-out exam-style question (paraphrase test bank).
   rpc AddQuestionItem(QuestionItem) returns (QuestionItemId);
-  rpc GetQuestionItemsForCard(GetQuestionItemsForCardRequest) returns (QuestionItems);
+  rpc GetQuestionItemsForCard(GetQuestionItemsForCardRequest)
+      returns (QuestionItems);
   // Recall-vs-performance gap over cards with exam-style attempts.
   rpc GetPerformanceReport(generic.Empty) returns (PerformanceReport);
   // Topic outline / coverage map.
@@ -43,20 +44,24 @@ service SpeedrunService {
   rpc SetExamProfile(ExamProfile) returns (ExamProfile);
   rpc GetExamProfile(generic.Empty) returns (ExamProfile);
   rpc GetExamPlan(generic.Empty) returns (ExamPlan);
-  // Paraphrase-test integrity: held-out items that duplicate a study card's text.
+  // Paraphrase-test integrity: held-out items that duplicate a study card's
+  // text.
   rpc GetLeakageReport(generic.Empty) returns (LeakageReport);
   // Concept-linked practice: held-out questions for a (weak) topic.
   rpc GetRoutedPractice(GetRoutedPracticeRequest) returns (QuestionItems);
   // Let the student correct a diagnosis / advance the routed action lifecycle.
-  rpc UpdateAttemptDiagnosis(UpdateAttemptDiagnosisRequest) returns (generic.Empty);
+  rpc UpdateAttemptDiagnosis(UpdateAttemptDiagnosisRequest)
+      returns (generic.Empty);
   rpc SetActionStatus(SetActionStatusRequest) returns (generic.Empty);
   // Fetch a batch of held-out questions for a practice session (optionally
-  // filtered to one topic). Appended last to keep existing method indices stable.
+  // filtered to one topic). Appended last to keep existing method indices
+  // stable.
   rpc GetPracticeQuestions(GetPracticeQuestionsRequest) returns (QuestionItems);
-  // Woven memory->reasoning: after a review session, pick held-out questions for
-  // the concepts just reviewed (card-linked, then topic-matched, then unseen).
-  // Appended last to keep existing method indices stable.
-  rpc GetSessionReasoningRound(SessionReasoningRoundRequest) returns (QuestionItems);
+  // Woven memory->reasoning: after a review session, pick held-out questions
+  // for the concepts just reviewed (card-linked, then topic-matched, then
+  // unseen). Appended last to keep existing method indices stable.
+  rpc GetSessionReasoningRound(SessionReasoningRoundRequest)
+      returns (QuestionItems);
 }
 
 // Backend counterpart. The methods above are implemented on Collection and are

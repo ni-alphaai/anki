@@ -26,7 +26,6 @@ CREATE TABLE IF NOT EXISTS sr_attempts (
 );
 CREATE INDEX IF NOT EXISTS ix_sr_attempts_cid ON sr_attempts (cid);
 CREATE INDEX IF NOT EXISTS ix_sr_attempts_usn ON sr_attempts (usn);
-
 CREATE TABLE IF NOT EXISTS sr_readiness (
   id integer PRIMARY KEY NOT NULL,
   computed_at_ms integer NOT NULL,
@@ -45,13 +44,11 @@ CREATE TABLE IF NOT EXISTS sr_readiness (
   performance_sufficient integer NOT NULL DEFAULT 0,
   blocking_dimension text NOT NULL DEFAULT 'none'
 );
-
 CREATE TABLE IF NOT EXISTS sr_topic_map (
   topic text PRIMARY KEY NOT NULL COLLATE unicase,
   label text NOT NULL DEFAULT '',
   weight real NOT NULL DEFAULT 1.0
 );
-
 -- Single-row exam profile (exam date + target score) driving exam-anchored
 -- scheduling. Replaces FSRS "desired retention" as the primary user input.
 CREATE TABLE IF NOT EXISTS sr_profile (
@@ -59,7 +56,6 @@ CREATE TABLE IF NOT EXISTS sr_profile (
   exam_date_ms integer,
   target_score integer NOT NULL DEFAULT 0
 );
-
 CREATE TABLE IF NOT EXISTS sr_question_items (
   id integer PRIMARY KEY NOT NULL,
   cid integer,

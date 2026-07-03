@@ -153,7 +153,8 @@ impl SqliteStorage {
     }
 
     /// Append an attempt. If `id` is 0, SQLite assigns one (avoids collisions
-    /// for attempts recorded within the same millisecond). Returns the stored id.
+    /// for attempts recorded within the same millisecond). Returns the stored
+    /// id.
     pub(crate) fn add_sr_attempt(&self, attempt: &SrAttempt) -> Result<i64> {
         if attempt.id == 0 {
             self.db
@@ -209,6 +210,60 @@ impl SqliteStorage {
         self.db
             .prepare_cached(concat!(include_str!("get.sql"), " where cid=? order by id"))?
             .query_and_then([cid], row_to_sr_attempt)?
+            .collect()
+    }
+
+    /// Insert an attempt, or update it in place if the `id` already exists.
+    /// Used by incremental sync's insert-union merge: attempts are immutable on
+    /// insert, so for the two in-place edit fields (diagnosis, action status)
+    /// the last chunk to arrive wins (see ADR 0001).
+    pub(crate) fn add_or_update_sr_attempt(&self, attempt: &SrAttempt) -> Result<()> {
+        self.db
+            .prepare_cached(include_str!("add_or_update.sql"))?
+            .execute(params![
+                attempt.id,
+                attempt.cid,
+                attempt.nid,
+                attempt.session_id,
+                attempt.answered_at_ms,
+                attempt.took_ms,
+                attempt.question_type,
+                attempt.selected,
+                attempt.correct,
+                attempt.diagnosis_kind,
+                attempt.diagnosis_confidence,
+                attempt.routed_action,
+                attempt.action_status,
+                attempt.usn,
+                attempt.data,
+                attempt.predicted,
+            ])?;
+        Ok(())
+    }
+
+    /// Reset the pending-sync marker after a full upload, mirroring
+    /// `clear_pending_revlog_usns`: rows written with `usn = -1` become the
+    /// synced baseline (`usn = 0`) so the server does not re-stream them.
+    pub(crate) fn clear_pending_sr_attempt_usns(&self) -> Result<()> {
+        self.db
+            .prepare("update sr_attempts set usn = 0 where usn = -1")?
+            .execute([])?;
+        Ok(())
+    }
+
+    pub(crate) fn get_sr_attempt(&self, id: i64) -> Result<Option<SrAttempt>> {
+        self.db
+            .prepare_cached(concat!(include_str!("get.sql"), " where id=?"))?
+            .query_and_then([id], row_to_sr_attempt)?
+            .next()
+            .transpose()
+    }
+
+    /// Fetch the attempts with the given ids, skipping any that no longer
+    /// exist. Used to hydrate a sync chunk from a list of pending ids.
+    pub(crate) fn get_sr_attempts_by_ids(&self, ids: &[i64]) -> Result<Vec<SrAttempt>> {
+        ids.iter()
+            .filter_map(|id| self.get_sr_attempt(*id).transpose())
             .collect()
     }
 
@@ -419,8 +474,8 @@ impl SqliteStorage {
         }
     }
 
-    /// Correct a recorded attempt's diagnosis (and routed action). Marks the row
-    /// pending re-sync.
+    /// Correct a recorded attempt's diagnosis (and routed action). Marks the
+    /// row pending re-sync.
     pub(crate) fn update_sr_attempt_diagnosis(
         &self,
         id: i64,
@@ -436,7 +491,8 @@ impl SqliteStorage {
         Ok(())
     }
 
-    /// Advance a routed action's lifecycle (pending/accepted/dismissed/completed).
+    /// Advance a routed action's lifecycle
+    /// (pending/accepted/dismissed/completed).
     pub(crate) fn set_sr_attempt_action_status(&self, id: i64, action_status: u8) -> Result<()> {
         self.db
             .prepare_cached("update sr_attempts set action_status = ?, usn = -1 where id = ?")?
@@ -451,8 +507,8 @@ impl SqliteStorage {
             .map_err(Into::into)
     }
 
-    /// Each question item with the note text of its linked source card (if any):
-    /// (item id, payload, note fields). Used by the leakage check.
+    /// Each question item with the note text of its linked source card (if
+    /// any): (item id, payload, note fields). Used by the leakage check.
     pub(crate) fn sr_question_items_with_note_text(
         &self,
     ) -> Result<Vec<(i64, String, Option<String>)>> {
@@ -562,7 +618,8 @@ impl SqliteStorage {
             .map_err(Into::into)
     }
 
-    /// Per topic: (topic, label, weight, number of notes tagged with the topic).
+    /// Per topic: (topic, label, weight, number of notes tagged with the
+    /// topic).
     pub(crate) fn sr_topic_coverage_detail(&self) -> Result<Vec<(String, String, f32, u32)>> {
         self.db
             .prepare_cached(
@@ -624,6 +681,45 @@ mod test {
         Ok(())
     }
 
+    #[test]
+    fn sr_attempt_upsert_and_pending_usn_clear() -> Result<()> {
+        let tempfile = new_tempfile()?;
+        let col = CollectionBuilder::default()
+            .set_collection_path(tempfile.path())
+            .build()?;
+
+        // upsert inserts a brand-new row (pending sync via usn = -1)
+        let a = attempt_qt(1000, 77, false, 1);
+        assert_eq!(a.usn, Usn(-1));
+        col.storage.add_or_update_sr_attempt(&a)?;
+
+        // pending gather sees it while usn = -1
+        let pending: Vec<i64> = col.storage.objects_pending_sync("sr_attempts", Usn(-1))?;
+        assert!(pending.contains(&1000));
+
+        // fetch-by-ids hydrates the stored row (and skips unknown ids)
+        assert_eq!(
+            col.storage.get_sr_attempts_by_ids(&[1000, 999])?,
+            vec![a.clone()]
+        );
+
+        // clearing pending usns moves -1 -> 0 so the row is no longer pending
+        col.storage.clear_pending_sr_attempt_usns()?;
+        let pending_after: Vec<i64> = col.storage.objects_pending_sync("sr_attempts", Usn(-1))?;
+        assert!(pending_after.is_empty());
+
+        // upsert by id updates in place (no duplicate row) and rewrites usn
+        let mut a2 = a.clone();
+        a2.correct = !a.correct;
+        a2.usn = Usn(5);
+        col.storage.add_or_update_sr_attempt(&a2)?;
+        let rows = col.storage.sr_attempts_for_card(a.cid)?;
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].correct, a2.correct);
+        assert_eq!(rows[0].usn, Usn(5));
+        Ok(())
+    }
+
     fn attempt_qt(id: i64, cid: i64, correct: bool, question_type: u8) -> SrAttempt {
         SrAttempt {
             id,
@@ -670,7 +766,7 @@ mod test {
             .set_collection_path(tempfile.path())
             .build()?;
 
-        let mut item = |topic: &str, n: i32| SrQuestionItem {
+        let item = |topic: &str, n: i32| SrQuestionItem {
             id: 0,
             cid: None,
             topic: topic.to_string(),

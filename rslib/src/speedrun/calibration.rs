@@ -5,8 +5,8 @@
 //!
 //! When an attempt captures the model's pre-answer probability of success, we
 //! can measure whether those probabilities are honest: Brier score and log loss
-//! summarise calibration, and a reliability curve (binned) shows where the model
-//! is over- or under-confident. Lower Brier/log-loss is better.
+//! summarise calibration, and a reliability curve (binned) shows where the
+//! model is over- or under-confident. Lower Brier/log-loss is better.
 
 /// One (predicted probability, actual outcome) pair.
 #[derive(Debug, Clone, Copy)]
