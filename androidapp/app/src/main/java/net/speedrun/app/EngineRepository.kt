@@ -8,6 +8,7 @@ import anki.decks.DeckTreeNode
 import anki.import_export.ImportAnkiPackageOptions
 import anki.scheduler.CardAnswer
 import anki.speedrun.ClassifyAttemptRequest
+import anki.speedrun.FeedbackReport
 import anki.speedrun.QuestionItem
 import anki.speedrun.RecordAttemptRequest
 import anki.sync.SyncCollectionResponse
@@ -375,10 +376,30 @@ object EngineRepository {
      */
     suspend fun sessionReasoningRound(reviewedCardIds: List<Long>, limit: Int): List<QuestionItemUi> =
         engine { b ->
-            b.getSessionReasoningRound(reviewedCardIds, limit)
+            val session = b.getSessionReasoningRound(reviewedCardIds, limit)
                 .mapNotNull { it.toUi() }
                 .filter { it.options.size >= 2 }
+            if (session.size >= limit) return@engine session
+            // Top up from the engine's scheduled reasoning-due queue (Design 2 /
+            // D1), de-duped by question id, mirroring the desktop reviewer.
+            val seen = session.map { it.id }.toMutableSet()
+            val merged = session.toMutableList()
+            for (q in b.getDueReasoning(limit).mapNotNull { it.toUi() }.filter { it.options.size >= 2 }) {
+                if (merged.size >= limit) break
+                if (seen.add(q.id)) merged.add(q)
+            }
+            merged
         }
+
+    /** The engine's scheduled reasoning-due queue (Design 2 / D1). */
+    suspend fun dueReasoning(limit: Int): List<QuestionItemUi> =
+        engine { b ->
+            b.getDueReasoning(limit).mapNotNull { it.toUi() }.filter { it.options.size >= 2 }
+        }
+
+    /** The end-of-session feedback report (Design 2 / D2). */
+    suspend fun feedbackReport(): FeedbackReport =
+        engine { b -> b.getFeedbackReport() }
 
     private fun anki.speedrun.QuestionItem.toUi(): QuestionItemUi? = runCatching {
         val o = JSONObject(payload)

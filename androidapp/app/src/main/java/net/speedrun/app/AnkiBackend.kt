@@ -24,6 +24,8 @@ import anki.speedrun.CalibrationReport
 import anki.speedrun.CoverageReport
 import anki.speedrun.ExamPlan
 import anki.speedrun.ExamProfile
+import anki.speedrun.FeedbackReport
+import anki.speedrun.GetDueReasoningRequest
 import anki.speedrun.GetPracticeQuestionsRequest
 import anki.speedrun.PerformanceReport
 import anki.speedrun.QuestionItem
@@ -172,6 +174,21 @@ class AnkiBackend private constructor(private var ptr: Long) {
         return QuestionItems.parseFrom(bytes).itemsList
     }
 
+    /**
+     * The engine-scheduled reasoning-due queue (Design 2 / D1): held-out
+     * questions for the most-due topics, ranked by reasoning debt
+     * (recall-vs-performance gap + uncovered + recency).
+     */
+    fun getDueReasoning(limit: Int): List<QuestionItem> {
+        val req = GetDueReasoningRequest.newBuilder().setLimit(limit).build()
+        val bytes = run(SVC_SPEEDRUN, M_GET_DUE_REASONING, req.toByteArray())
+        return QuestionItems.parseFrom(bytes).itemsList
+    }
+
+    /** The end-of-session feedback report (Design 2 / D2): miss counts by cause + weak topics. */
+    fun getFeedbackReport(): FeedbackReport =
+        FeedbackReport.parseFrom(run(SVC_SPEEDRUN, M_GET_FEEDBACK_REPORT, ByteArray(0)))
+
     /** Register one held-out question item; returns its stored id. */
     fun addQuestionItem(item: QuestionItem): Long =
         QuestionItemId.parseFrom(run(SVC_SPEEDRUN, M_ADD_QUESTION_ITEM, item.toByteArray())).id
@@ -290,6 +307,8 @@ class AnkiBackend private constructor(private var ptr: Long) {
         private const val M_GET_EXAM_PLAN = 16
         private const val M_GET_PRACTICE_QUESTIONS = 21
         private const val M_GET_SESSION_REASONING_ROUND = 22
+        private const val M_GET_DUE_REASONING = 23
+        private const val M_GET_FEEDBACK_REPORT = 24
 
         // BackendSyncService (service index 1) - see out/pylib/anki/_backend_generated.py.
         private const val SVC_SYNC = 1
