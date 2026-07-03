@@ -43,15 +43,15 @@ BSD-3-Clause.
 
 ## Where the Speedrun code lives
 
-| Layer | Path |
-| --- | --- |
-| Engine (Rust) | `rslib/src/speedrun/` (`mod.rs`, `service.rs`, `readiness.rs`, `performance.rs`, `coverage.rs`, `calibration.rs`, `exam.rs`, `leakage.rs`, `interleave.rs`, `points_at_stake.rs`, `reasoning_round.rs`) |
-| Storage | `rslib/src/storage/speedrun/` (`tables.sql`, `add.sql`, `get.sql`, `mod.rs`) — `sr_*` tables created idempotently on open |
-| Scheduler hook | `rslib/src/scheduler/queue/builder/mod.rs` (points-at-stake reorder) |
-| Protobuf boundary | `proto/anki/speedrun.proto` (`SpeedrunService`) |
-| Desktop (Python/Qt) | `qt/aqt/speedrun.py`, `speedrun_theme.py`, `speedrun_library.py`, `speedrun_voice.py`; wired from `qt/aqt/main.py` |
-| Android (Kotlin/JNI) | `androidapp/` (app) + `rsandroid/` (JNI bridge → `librsandroid.so`) |
-| Tools / evals | `tools/speedrun_*.{sh,py}`, `tools/import_*`, `tools/build_e2e_apkg.py` |
+| Layer                | Path                                                                                                                                                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Engine (Rust)        | `rslib/src/speedrun/` (`mod.rs`, `service.rs`, `readiness.rs`, `performance.rs`, `coverage.rs`, `calibration.rs`, `exam.rs`, `leakage.rs`, `interleave.rs`, `points_at_stake.rs`, `reasoning_round.rs`) |
+| Storage              | `rslib/src/storage/speedrun/` (`tables.sql`, `add.sql`, `get.sql`, `mod.rs`) — `sr_*` tables created idempotently on open                                                                               |
+| Scheduler hook       | `rslib/src/scheduler/queue/builder/mod.rs` (points-at-stake reorder)                                                                                                                                    |
+| Protobuf boundary    | `proto/anki/speedrun.proto` (`SpeedrunService`)                                                                                                                                                         |
+| Desktop (Python/Qt)  | `qt/aqt/speedrun.py`, `speedrun_theme.py`, `speedrun_library.py`, `speedrun_voice.py`; wired from `qt/aqt/main.py`                                                                                      |
+| Android (Kotlin/JNI) | `androidapp/` (app) + `rsandroid/` (JNI bridge → `librsandroid.so`)                                                                                                                                     |
+| Tools / evals        | `tools/speedrun_*.{sh,py}`, `tools/import_*`, `tools/build_e2e_apkg.py`                                                                                                                                 |
 
 ---
 
@@ -202,6 +202,8 @@ cargo test --workspace --exclude rsbridge -- speedrun points_at_stake reasoning_
 PYTHONPATH=out/pylib:pylib out/pyenv/bin/pytest -q pylib/tests/test_speedrun.py
 ./tools/speedrun_benchmark.sh     # three signals + calibration + leakage on a collection
 ./tools/speedrun_ablation.sh      # points-at-stake ON vs OFF
+./tools/speedrun_e2e.sh           # smoke: classifier + recall-vs-performance gap
+./tools/speedrun_e2e_full.sh      # full pipeline: abstain -> real in-range score
 ```
 
 ---
