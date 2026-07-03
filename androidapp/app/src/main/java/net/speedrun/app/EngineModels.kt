@@ -130,6 +130,17 @@ data class QuestionItemUi(
     val explanation: String,
 )
 
+/** End-of-session feedback report (Design 2 / D2): miss counts by cause + weak topics. */
+data class FeedbackReportUi(
+    val total: Int,
+    val correct: Int,
+    val memoryMisses: Int,
+    val reasoningMisses: Int,
+    val passageMisses: Int,
+    val testTakingMisses: Int,
+    val weakTopics: List<String>,
+)
+
 enum class Rating { AGAIN, HARD, GOOD, EASY }
 
 /** A single card ready to review; [states] carries the scheduler transitions. */

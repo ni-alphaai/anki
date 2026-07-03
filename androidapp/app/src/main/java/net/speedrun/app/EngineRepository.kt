@@ -8,7 +8,6 @@ import anki.decks.DeckTreeNode
 import anki.import_export.ImportAnkiPackageOptions
 import anki.scheduler.CardAnswer
 import anki.speedrun.ClassifyAttemptRequest
-import anki.speedrun.FeedbackReport
 import anki.speedrun.QuestionItem
 import anki.speedrun.RecordAttemptRequest
 import anki.sync.SyncCollectionResponse
@@ -398,8 +397,19 @@ object EngineRepository {
         }
 
     /** The end-of-session feedback report (Design 2 / D2). */
-    suspend fun feedbackReport(): FeedbackReport =
-        engine { b -> b.getFeedbackReport() }
+    suspend fun feedbackReport(): FeedbackReportUi =
+        engine { b ->
+            val r = b.getFeedbackReport()
+            FeedbackReportUi(
+                total = r.total,
+                correct = r.correct,
+                memoryMisses = r.memoryMisses,
+                reasoningMisses = r.reasoningMisses,
+                passageMisses = r.passageMisses,
+                testTakingMisses = r.testTakingMisses,
+                weakTopics = r.weakTopicsList,
+            )
+        }
 
     private fun anki.speedrun.QuestionItem.toUi(): QuestionItemUi? = runCatching {
         val o = JSONObject(payload)

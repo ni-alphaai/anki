@@ -25,10 +25,12 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import kotlinx.coroutines.launch
 import net.speedrun.app.ExamPlanUi
 import net.speedrun.app.EngineRepository
+import net.speedrun.app.FeedbackReportUi
 import net.speedrun.app.Readiness
 import net.speedrun.app.ui.ExamPlanCard
 import net.speedrun.app.ui.ReadinessVerdict
 import net.speedrun.app.ui.ScreenHeader
+import net.speedrun.app.ui.SectionLabel
 import net.speedrun.app.ui.SpeedrunCard
 import net.speedrun.app.ui.theme.Space
 import net.speedrun.app.ui.theme.Speedrun
@@ -45,12 +47,14 @@ fun DashboardScreen() {
     val scope = rememberCoroutineScope()
     var readiness by remember { mutableStateOf<Readiness?>(null) }
     var plan by remember { mutableStateOf<ExamPlanUi?>(null) }
+    var feedback by remember { mutableStateOf<FeedbackReportUi?>(null) }
 
     // Reload on resume so the verdict reflects reviews done on other screens.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         scope.launch {
             readiness = runCatching { EngineRepository.readiness() }.getOrNull()
             plan = runCatching { EngineRepository.examPlan() }.getOrNull()
+            feedback = runCatching { EngineRepository.feedbackReport() }.getOrNull()
         }
     }
 
@@ -74,6 +78,52 @@ fun DashboardScreen() {
             ExamPlanCard(it)
         }
 
+        feedback?.takeIf { it.total > 0 }?.let {
+            Spacer(Modifier.height(Space.xl))
+            SectionLabel("Feedback")
+            FeedbackCard(it)
+        }
+
         Spacer(Modifier.height(Space.xxl))
+    }
+}
+
+/**
+ * The end-of-session feedback report (Design 2 / D2): how many exam-style
+ * questions were answered, the miss breakdown by root cause, and the weakest
+ * topics. Mirrors the desktop reviewer's feedback report.
+ */
+@Composable
+private fun FeedbackCard(fb: FeedbackReportUi) {
+    val c = Speedrun.colors
+    SpeedrunCard {
+        Text(
+            "Answered ${fb.total} exam-style question(s), ${fb.correct} correct.",
+            color = c.textPrimary,
+            style = MaterialTheme.typography.body,
+        )
+        val misses = listOf(
+            "Memory" to fb.memoryMisses,
+            "Reasoning" to fb.reasoningMisses,
+            "Passage" to fb.passageMisses,
+            "Test-taking" to fb.testTakingMisses,
+        ).filter { it.second > 0 }
+        if (misses.isNotEmpty()) {
+            Spacer(Modifier.height(Space.s))
+            Text(
+                "Misses by cause \u2014 " +
+                    misses.joinToString(", ") { "${it.first}: ${it.second}" } + ".",
+                color = c.textSecondary,
+                style = MaterialTheme.typography.body,
+            )
+        }
+        if (fb.weakTopics.isNotEmpty()) {
+            Spacer(Modifier.height(Space.s))
+            Text(
+                "Weakest topics: " + fb.weakTopics.take(5).joinToString(", ") + ".",
+                color = c.textSecondary,
+                style = MaterialTheme.typography.body,
+            )
+        }
     }
 }
