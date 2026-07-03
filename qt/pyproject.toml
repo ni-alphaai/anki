@@ -25,6 +25,9 @@ dependencies = [
   "pyqt6>=6.2",
   "pyqt6-webengine>=6.2",
   "packaging",
+  # Speedrun: pure-Python, zero-dependency QR generation for one-button phone
+  # pairing (the "Sync with phone" flow renders the pairing payload as a QR).
+  "segno>=1.6",
   # anki dependency is added dynamically in hatch_build.py with exact version
 ]
 

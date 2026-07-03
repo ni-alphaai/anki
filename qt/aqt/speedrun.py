@@ -36,6 +36,7 @@ from anki.cards import Card
 from aqt import gui_hooks
 from aqt import speedrun_ai as srai
 from aqt import speedrun_library as library
+from aqt import speedrun_sync as srsync
 from aqt import speedrun_theme as theme
 from aqt import speedrun_voice as voice
 from aqt.qt import (
@@ -232,6 +233,9 @@ def setup(mw: aqt.AnkiQt) -> None:
     gui_hooks.theme_did_change.append(_on_theme_did_change)
 
     gui_hooks.collection_did_load.append(_on_collection_loaded)
+    # Tear the embedded sync server down when the profile closes (atexit is a
+    # backstop for hard exits).
+    gui_hooks.profile_will_close.append(srsync.stop_server)
 
     # Home / Practice / Library are primary destinations in the app-shell
     # sidebar, so the Tools menu keeps only the card-context and setup actions.
@@ -275,6 +279,10 @@ def _on_collection_loaded(_col) -> None:
         _apply_shell_visibility(mw)
         if mw.col is not None and _modern_on(mw.col):
             _show_workspace(mw, "dashboard")
+        # If this collection was already paired with a phone, bring the local
+        # sync server up and sync so the phone can reach fresh data immediately.
+        if mw.col is not None and srsync.is_paired(mw.col):
+            _sync_to_local(mw)
 
     QTimer.singleShot(600, first_run)
 
@@ -841,6 +849,8 @@ def _on_js_message(handled: tuple[bool, object], message: str, context: object):
         _leave_workspace(mw)
     elif message.startswith("speedrun:set:"):
         _ws_set(mw, message.split(":", 2)[2])
+    elif message == "speedrun:syncnow":
+        _sync_now_from_screen(mw)
     elif message.startswith("speedrun:sync:"):
         _ws_sync(mw, message[len("speedrun:sync:") :])
     elif message.startswith("speedrun:pq:submit:"):
@@ -977,7 +987,12 @@ _shell_ctx = _ShellContext()
 
 # Map the active Speedrun screen (_ws_active) to the sidebar item to highlight.
 # None (no Speedrun screen showing) means a native Anki state is active = Study.
-_SECTION_FOR_WS = {"dashboard": "home", "practice": "practice", "settings": "settings"}
+_SECTION_FOR_WS = {
+    "dashboard": "home",
+    "practice": "practice",
+    "settings": "settings",
+    "sync": "sync",  # the sync screen; no nav item matches, so none highlights
+}
 
 
 def install_app_shell(mw: aqt.AnkiQt) -> bool:
@@ -1031,22 +1046,11 @@ def _shell_active_section() -> str:
 
 
 def _sync_chip_state(mw: aqt.AnkiQt) -> dict:
-    """Status for the sidebar's sync chip. (One-button pairing arrives in a
-    later phase; for now it reflects whether a self-hosted server is signed in
-    and the chip routes to the Settings sync section.)"""
+    """Status for the sidebar's sync chip (delegates to the sync module)."""
     try:
-        signed_in = mw.pm.sync_auth() is not None
+        return srsync.status(mw)
     except Exception:
-        signed_in = False
-    if signed_in:
-        user = ""
-        try:
-            if mw.col is not None:
-                user = str(mw.col.get_config("speedrunSyncUser", "") or "")
-        except Exception:
-            user = ""
-        return {"state": "ok", "label": "Synced", "detail": user or "self-hosted"}
-    return {"state": "idle", "label": "Sync with phone", "detail": "Not connected"}
+        return {"state": "idle", "label": "Sync with phone", "detail": ""}
 
 
 def _render_sidebar(mw: aqt.AnkiQt | None) -> None:
@@ -1086,10 +1090,122 @@ def _navigate(mw: aqt.AnkiQt, section: str) -> None:
         _render_sidebar(mw)
     elif section == "library":
         library.open_library(mw)
+    elif section == "sync":
+        _show_sync_pair(mw)
     elif section in ("practice", "settings"):
         _show_workspace(mw, section)
     else:  # home / dashboard / anything unrecognized
         _show_workspace(mw, "dashboard")
+
+
+# --- one-button phone sync (Sync with phone) --------------------------------
+#
+# The desktop hosts the sync server (speedrun_sync manages the child process +
+# credentials); this section owns the client-side orchestration: point Anki's
+# own sync at the local server, run the native sync, and drive the pairing UI.
+
+_original_sync_button = None
+
+
+def _qr_svg(text: str) -> str:
+    """Render a payload string as an inline SVG QR (dark modules on white, so it
+    scans in both light and dark themes)."""
+    try:
+        import segno
+
+        return segno.make(text, error="m").svg_inline(
+            scale=5, border=2, dark="#16181D", light="#FFFFFF"
+        )
+    except Exception as exc:  # pragma: no cover - QR is best-effort
+        print(f"speedrun: qr generation failed: {exc}")
+        return ""
+
+
+def _sync_pair_data(mw: aqt.AnkiQt) -> dict:
+    running = srsync.is_running()
+    data: dict = {"running": running}
+    if running:
+        payload = srsync.pairing_payload(mw)
+        data.update(
+            {
+                "url": payload.get("url", ""),
+                "user": payload.get("user", ""),
+                "token": payload.get("token", ""),
+                "qr_svg": _qr_svg(json.dumps(payload)),
+            }
+        )
+    return data
+
+
+def _show_sync_pair(
+    mw: aqt.AnkiQt, *, start: bool = True, status_msg: str = ""
+) -> None:
+    """Render the Sync-with-phone screen. When ``start`` is set, bring the local
+    server up first so the QR reflects a live, reachable address."""
+    global _ws_active
+    if mw.col is None:
+        return
+    started = srsync.start_server(mw) if start else False
+    _ws_active = "sync"
+    data = _sync_pair_data(mw)
+    if status_msg:
+        data["status"] = status_msg
+    _render_ws(mw, theme.sync_pair_body(data))
+    _render_sidebar(mw)
+    # On the first pairing, seed the server with this device's collection so the
+    # phone receives current data the moment it scans.
+    if started and not srsync.is_paired(mw.col):
+        _sync_to_local(mw)
+
+
+def _run_native_sync(mw: aqt.AnkiQt) -> None:
+    """Run Anki's real sync via the original (unpatched) toolbar handler."""
+    if _original_sync_button is not None:
+        _original_sync_button()
+
+
+def _sync_to_local(mw: aqt.AnkiQt, on_done=None) -> None:
+    """Start the local server, sign Anki's own sync in against it, and sync. This
+    is the shared path for the toolbar Sync button, the chip, and auto-sync."""
+    if mw.col is None or not srsync.start_server(mw):
+        return
+    user, token = srsync.creds(mw.col)
+    url = srsync.local_url()
+    if not url:
+        return
+    mw.pm.set_custom_sync_url(url)
+
+    def do_login():
+        return mw.col.sync_login(username=user, password=token, endpoint=url)
+
+    def after_login(fut) -> None:
+        try:
+            auth = fut.result()
+        except Exception as exc:
+            tooltip(f"Local sync sign-in failed: {exc}")
+            return
+        mw.pm.set_sync_key(auth.hkey)
+        try:
+            mw.pm.set_sync_username(user)
+        except Exception:
+            pass
+        srsync.mark_paired(mw.col)
+        _run_native_sync(mw)
+        if on_done is not None:
+            on_done()
+
+    mw.taskman.with_progress(do_login, after_login, parent=mw)
+
+
+def _sync_now_from_screen(mw: aqt.AnkiQt) -> None:
+    """The Sync screen's primary button: ensure the server is up, then sync."""
+    if not srsync.start_server(mw):
+        _show_sync_pair(mw, start=False)
+        return
+    _show_sync_pair(mw, start=False, status_msg="Syncing…")
+    _sync_to_local(
+        mw, on_done=lambda: _show_sync_pair(mw, start=False, status_msg="Synced.")
+    )
 
 
 def _settings_items(col) -> list[dict]:
@@ -1143,22 +1259,20 @@ def _settings_items(col) -> list[dict]:
 
 
 def _install_sync_button_override(mw: aqt.AnkiQt) -> None:
-    """Route the toolbar Sync button to the self-hosted Speedrun sync setup when
-    the profile isn't signed in, instead of AnkiWeb's 'Account Required' dialog
-    (this fork's modified schema can't sync to AnkiWeb anyway). Once signed in to
-    a self-hosted server, the normal sync runs."""
-    original = mw.on_sync_button_clicked
+    """Route the toolbar Sync button to the one-button phone-sync flow instead of
+    AnkiWeb (this fork's modified schema can't sync to AnkiWeb). When already
+    paired it syncs to the local server directly; otherwise it opens the
+    Sync-with-phone screen (start server + show QR). The original handler is
+    saved so _run_native_sync can run the real Anki sync without recursing."""
+    global _original_sync_button
+    _original_sync_button = mw.on_sync_button_clicked
 
     def patched() -> None:
-        try:
-            signed_in = mw.pm.sync_auth() is not None
-        except Exception:
-            signed_in = False
-        if not signed_in:
-            _show_workspace(mw, "settings")
-            tooltip("Set up self-hosted sync below, then press Sync now.")
-            return
-        original()
+        col = mw.col
+        if col is not None and srsync.is_paired(col):
+            _sync_to_local(mw)
+        else:
+            _show_sync_pair(mw)
 
     mw.on_sync_button_clicked = patched  # type: ignore[method-assign]
 

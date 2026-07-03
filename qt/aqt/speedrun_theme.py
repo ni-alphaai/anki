@@ -1104,6 +1104,18 @@ _WORKSPACE_CSS = """
 .sr-inp:focus { outline:none; border-color:var(--sr-accent);
   box-shadow:0 0 0 2px color-mix(in srgb, var(--sr-accent) 24%, transparent); }
 .sr-sync-status { margin-top:14px; font-size:13px; color:var(--sr-secondary); }
+/* sync pairing (Sync with phone) */
+.sr-qr { display:flex; justify-content:center; padding:20px; background:#FFFFFF;
+  border:1px solid var(--sr-hairline); border-radius:var(--sr-radius); }
+.sr-qr svg { width:220px; height:220px; display:block; }
+.sr-steps { margin:16px 4px; padding-left:22px; color:var(--sr-secondary); line-height:1.75;
+  font-size:14.5px; }
+.sr-steps b { color:var(--sr-ink); }
+.sr-creds { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px;
+  color:var(--sr-secondary); background:var(--sr-canvas); border:1px solid var(--sr-hairline);
+  border-radius:var(--sr-radius-input); padding:12px 14px; margin-top:6px; word-break:break-all;
+  line-height:1.7; }
+.sr-creds b { color:var(--sr-ink); }
 """
 
 
@@ -1233,7 +1245,7 @@ def sidebar_html(active: str, sync: dict | None = None) -> str:
     detail = escape(str(sync.get("detail") or ""))
     detail_html = f'<span class="sr-sb-sync-detail">{detail}</span>' if detail else ""
     chip = (
-        f'<button class="sr-sb-sync {state}" onclick="pycmd(\'speedrun:nav:settings\')">'
+        f'<button class="sr-sb-sync {state}" onclick="pycmd(\'speedrun:nav:sync\')">'
         '<span class="sr-sb-sync-dot"></span>'
         f'<span class="sr-sb-sync-txt"><span class="sr-sb-sync-label">{label}</span>'
         f"{detail_html}</span></button>"
@@ -1247,6 +1259,51 @@ def sidebar_html(active: str, sync: dict | None = None) -> str:
         f'<div class="sr-sb">{brand}'
         f'<nav class="sr-sb-nav">{items}</nav>'
         f'<div class="sr-sb-spacer"></div>{chip}</div>'
+    )
+
+
+def sync_pair_body(data: dict) -> str:
+    """The "Sync with phone" screen: a QR the phone scans to pair in one step,
+    numbered steps, and a manual-entry fallback. ``data`` carries the rendered
+    QR SVG plus the pairing url/user/token and whether the server is running."""
+    header = (
+        '<div class="sr-dash-head"><h1 class="sr-dash-title">Sync with phone</h1>'
+        '<p class="sr-dash-sub">Scan once to pair. No account, no typing — your '
+        "devices sync directly over your local network.</p></div>"
+    )
+    running = bool(data.get("running"))
+    qr = data.get("qr_svg") or ""
+    status = escape(data.get("status") or "")
+    if running and qr:
+        url = escape(data.get("url") or "")
+        user = escape(data.get("user") or "")
+        token = escape(data.get("token") or "")
+        inner = (
+            f'<div class="sr-qr">{qr}</div>'
+            '<ol class="sr-steps">'
+            "<li>Open Speedrun on your phone.</li>"
+            "<li>Go to <b>Sync</b> and tap <b>Scan to pair</b>.</li>"
+            "<li>Point the camera at this code.</li></ol>"
+            '<div class="sr-creds">Can’t scan? Enter these manually:<br>'
+            f"server <b>{url}</b><br>user <b>{user}</b><br>key <b>{token}</b></div>"
+        )
+        cta = "Sync now"
+    else:
+        inner = (
+            '<p style="color:var(--sr-secondary);line-height:1.6">Start the local '
+            "sync server to generate a pairing code your phone can scan. Your "
+            "desktop stays the host, so it needs to be running to sync.</p>"
+        )
+        cta = "Start &amp; show code"
+    actions = (
+        '<div class="sr-actions" style="margin-top:18px">'
+        f'<button class="sr-btn sr-primary" onclick="pycmd(\'speedrun:syncnow\')">{cta}</button>'
+        "</div>"
+    )
+    status_html = f'<p class="sr-sync-status">{status}</p>' if status else ""
+    return (
+        f'<div class="sr-panel sr-dash">{header}'
+        f'<div class="sr-card">{inner}{actions}{status_html}</div></div>'
     )
 
 
