@@ -25,7 +25,9 @@ from anki.collection import Collection, DeckIdLimit, ExportAnkiPackageOptions
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(_HERE)
-PACK = os.path.join(_ROOT, "qt", "aqt", "data", "web", "imgs", "speedrun_e2e_biology.json")
+PACK = os.path.join(
+    _ROOT, "qt", "aqt", "data", "web", "imgs", "speedrun_e2e_biology.json"
+)
 DEFAULT_OUT = os.path.join(
     _ROOT, "androidapp", "app", "src", "main", "assets", "speedrun_e2e_biology.apkg"
 )

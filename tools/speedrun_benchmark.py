@@ -28,8 +28,8 @@ import os
 import sys
 import tempfile
 
-from anki.collection import Collection
 from anki import speedrun_pb2
+from anki.collection import Collection
 
 DIAGNOSIS_LABELS = {
     0: "none",
@@ -115,7 +115,10 @@ def _seed_synthetic(col: Collection) -> None:
     # a held-out paraphrase question for the card
     backend.add_question_item(
         speedrun_pb2.QuestionItem(
-            card_id=source_cid, topic="fc1", provenance=0, payload='{"stem": "reworded"}'
+            card_id=source_cid,
+            topic="fc1",
+            provenance=0,
+            payload='{"stem": "reworded"}',
         )
     )
 

@@ -37,6 +37,7 @@ echo "== Tool self-tests =="
 ./tools/import_question_pack.sh >/dev/null && echo "question-pack ...... PASS"
 ./tools/speedrun_ablation.sh >/dev/null && echo "ablation ........... PASS"
 ./tools/speedrun_e2e.sh >/dev/null && echo "e2e-workflow ....... PASS"
+./tools/speedrun_e2e_full.sh >/dev/null && echo "e2e-full ........... PASS"
 
 echo
 echo "All Speedrun checks passed."

@@ -39,7 +39,9 @@ def _load_env() -> None:
 class LLM:
     """A minimal chat-completions wrapper that returns parsed JSON, with caching."""
 
-    def __init__(self, model: str = DEFAULT_MODEL, temperature: float = 0.0, seed: int = 7):
+    def __init__(
+        self, model: str = DEFAULT_MODEL, temperature: float = 0.0, seed: int = 7
+    ):
         self.model = model
         self.temperature = temperature
         self.seed = seed

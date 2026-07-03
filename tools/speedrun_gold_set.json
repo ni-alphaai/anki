@@ -1,246 +1,559 @@
 {
-  "name": "Speedrun diagnosis gold set v1",
-  "license": "AGPL-3.0-or-later",
-  "note": "Hand-authored, original MCAT-style missed-item scenarios (no copyrighted source). Each item has a human-assigned root-cause failure mode + rationale, the student's chosen distractor, and realistic behavioural signals. Synthetic by design (real longitudinal miss data can't be gathered in a week; see projectspec s9); used to measure diagnosis agreement and to compare the AI coach against the deterministic + keyword baselines. Expandable toward the ~100-item target.",
-  "labels": ["memory", "reasoning", "passage", "test_taking"],
-  "items": [
-    {
-      "id": "g01", "topic": "biochemistry", "question_type": 2,
-      "stem": "Which cofactor is required by transaminase enzymes?",
-      "options": ["Thiamine (B1)", "Pyridoxal phosphate (B6)", "Cobalamin (B12)", "Ascorbate (C)"],
-      "correct_index": 1, "selected_index": 2,
-      "explanation": "Transaminases require pyridoxal phosphate (PLP), the active form of vitamin B6; the student chose an unrelated cofactor.",
-      "signals": {"took_ms": 9000, "confidence": 0.3, "recall_failed": false, "passage_evidence_missed": false},
-      "gold_kind": "memory",
-      "label_rationale": "Chose an unrelated vitamin, indicating the specific fact was never retrieved, not misapplied."
-    },
-    {
-      "id": "g02", "topic": "biochemistry", "question_type": 0,
-      "stem": "Define allosteric regulation.",
-      "options": [], "correct_index": -1, "selected_index": -1,
-      "explanation": "Regulation of an enzyme by a molecule binding at a site other than the active site. Marked 'Again' on this SRS card.",
-      "signals": {"took_ms": 7000, "confidence": 0.2, "recall_failed": true, "passage_evidence_missed": false},
-      "gold_kind": "memory",
-      "label_rationale": "Plain SRS recall failure (pressed Again); the definition was not retrievable."
-    },
-    {
-      "id": "g03", "topic": "biology", "question_type": 2,
-      "stem": "Which enzyme unwinds the double helix at the DNA replication fork?",
-      "options": ["Ligase", "Helicase", "Primase", "Topoisomerase"],
-      "correct_index": 1, "selected_index": 3,
-      "explanation": "Helicase unwinds the duplex at the fork; topoisomerase relieves supercoiling ahead of it. The student swapped two distinct enzymes.",
-      "signals": {"took_ms": 8000, "confidence": 0.4, "recall_failed": false, "passage_evidence_missed": false},
-      "gold_kind": "memory",
-      "label_rationale": "Confused the identity/role of two enzymes = the underlying fact was not securely known."
-    },
-    {
-      "id": "g04", "topic": "physiology", "question_type": 0,
-      "stem": "What is the ion stoichiometry of the Na+/K+-ATPase per cycle?",
-      "options": [], "correct_index": -1, "selected_index": -1,
-      "explanation": "3 Na+ out, 2 K+ in per ATP hydrolyzed. Marked 'Again' on this SRS card.",
-      "signals": {"took_ms": 6000, "confidence": 0.25, "recall_failed": true, "passage_evidence_missed": false},
-      "gold_kind": "memory",
-      "label_rationale": "SRS recall failure of a memorized quantitative fact."
-    },
-    {
-      "id": "g05", "topic": "biochemistry", "question_type": 2,
-      "stem": "Which lipoprotein carries out reverse cholesterol transport?",
-      "options": ["LDL", "HDL", "VLDL", "Chylomicrons"],
-      "correct_index": 1, "selected_index": 0,
-      "explanation": "HDL returns cholesterol from tissues to the liver (reverse transport); LDL delivers cholesterol to tissues. The student picked the opposite carrier.",
-      "signals": {"took_ms": 7000, "confidence": 0.5, "recall_failed": false, "passage_evidence_missed": false},
-      "gold_kind": "memory",
-      "label_rationale": "Picked the opposite lipoprotein — a fact-recall confusion, not a reasoning slip."
-    },
-    {
-      "id": "g06", "topic": "biology", "question_type": 2,
-      "stem": "What is the primary neurotransmitter at the neuromuscular junction?",
-      "options": ["Dopamine", "Acetylcholine", "GABA", "Serotonin"],
-      "correct_index": 1, "selected_index": 0,
-      "explanation": "Motor neurons release acetylcholine at the neuromuscular junction. The student named an unrelated transmitter.",
-      "signals": {"took_ms": 6500, "confidence": 0.4, "recall_failed": false, "passage_evidence_missed": false},
-      "gold_kind": "memory",
-      "label_rationale": "Named the wrong transmitter entirely = fact not retrieved."
-    },
-    {
-      "id": "g07", "topic": "biochemistry", "question_type": 2,
-      "stem": "An enzyme lowers a reaction's activation energy. This affects:",
-      "options": ["The equilibrium constant", "Only the forward rate", "Both forward and reverse rates", "The overall free-energy change"],
-      "correct_index": 2, "selected_index": 1,
-      "explanation": "Catalysts lower activation energy for both directions equally; the student knew catalysis speeds reactions but applied it to only the forward direction.",
-      "signals": {"took_ms": 15000, "confidence": 0.55, "recall_failed": false, "passage_evidence_missed": false},
-      "gold_kind": "reasoning",
-      "label_rationale": "Understood catalysis but misapplied it directionally — an application error, not a missing fact."
-    },
-    {
-      "id": "g08", "topic": "biochemistry", "question_type": 2,
-      "stem": "A high Km indicates the enzyme's affinity for its substrate is:",
-      "options": ["High", "Low", "Unchanged", "Undefined"],
-      "correct_index": 1, "selected_index": 0,
-      "explanation": "High Km means low affinity (more substrate needed to reach half-Vmax). The student inverted the (inverse) Km-affinity relationship.",
-      "signals": {"took_ms": 12000, "confidence": 0.6, "recall_failed": false, "passage_evidence_missed": false},
-      "gold_kind": "reasoning",
-      "label_rationale": "Knew Km relates to affinity but inverted the logic — a reasoning error."
-    },
-    {
-      "id": "g09", "topic": "physics", "question_type": 2,
-      "stem": "If an object's speed doubles, its kinetic energy changes by a factor of:",
-      "options": ["2", "4", "1/2", "sqrt(2)"],
-      "correct_index": 1, "selected_index": 0,
-      "explanation": "KE = 1/2 m v^2, so KE scales with the square of speed; doubling v quadruples KE. The student applied a linear instead of quadratic relationship.",
-      "signals": {"took_ms": 14000, "confidence": 0.5, "recall_failed": false, "passage_evidence_missed": false},
-      "gold_kind": "reasoning",
-      "label_rationale": "Knew the KE formula but misapplied the squared dependence."
-    },
-    {
-      "id": "g10", "topic": "general_chemistry", "question_type": 2,
-      "stem": "Raising the temperature of an exothermic reaction at equilibrium shifts it:",
-      "options": ["Toward products", "Toward reactants", "No shift", "Toward more moles of gas"],
-      "correct_index": 1, "selected_index": 0,
-      "explanation": "Heat is a product of an exothermic reaction, so by Le Chatelier added heat shifts toward reactants. The student applied Le Chatelier in the wrong direction.",
-      "signals": {"took_ms": 13000, "confidence": 0.5, "recall_failed": false, "passage_evidence_missed": false},
-      "gold_kind": "reasoning",
-      "label_rationale": "Knew Le Chatelier but reasoned the shift backwards."
-    },
-    {
-      "id": "g11", "topic": "biochemistry", "question_type": 2,
-      "stem": "A reaction with positive delta-G is coupled to ATP hydrolysis. The coupled process is:",
-      "options": ["Always nonspontaneous", "Spontaneous if the net delta-G is negative", "Thermodynamically impossible", "Independent of ATP"],
-      "correct_index": 1, "selected_index": 0,
-      "explanation": "Energetic coupling makes an unfavorable step proceed when the summed delta-G is negative. The student ignored coupling and judged the step in isolation.",
-      "signals": {"took_ms": 16000, "confidence": 0.6, "recall_failed": false, "passage_evidence_missed": false},
-      "gold_kind": "reasoning",
-      "label_rationale": "Failed to combine free energies — a reasoning/application gap, not a fact gap."
-    },
-    {
-      "id": "g12", "topic": "general_chemistry", "question_type": 2,
-      "stem": "A buffer resists pH change best when:",
-      "options": ["pH equals the pKa", "pH is far above the pKa", "pH is far below the pKa", "the temperature is 25 C"],
-      "correct_index": 0, "selected_index": 1,
-      "explanation": "Buffer capacity is maximal at pH = pKa (conjugate acid/base ratio 1, Henderson-Hasselbalch). The student misjudged where capacity peaks.",
-      "signals": {"took_ms": 12000, "confidence": 0.55, "recall_failed": false, "passage_evidence_missed": false},
-      "gold_kind": "reasoning",
-      "label_rationale": "Understood buffers conceptually but misapplied the pKa relationship."
-    },
-    {
-      "id": "g13", "topic": "biology", "question_type": 1,
-      "stem": "Based on the passage, the researchers concluded the drug was ineffective primarily because:",
-      "options": ["Figure 2 shows no difference from placebo", "The sample was too small", "The drug was toxic", "The dose was too low"],
-      "correct_index": 0, "selected_index": 1,
-      "explanation": "The passage states the conclusion rests on Figure 2, where the treatment and placebo curves overlap; the student ignored the figure the passage points to.",
-      "signals": {"took_ms": 11000, "confidence": 0.5, "recall_failed": false, "passage_evidence_missed": false},
-      "gold_kind": "passage",
-      "label_rationale": "Answer is stated in the passage/figure; the student missed the given evidence."
-    },
-    {
-      "id": "g14", "topic": "biology", "question_type": 1,
-      "stem": "According to the passage, the most likely cause of the elevated enzyme levels is:",
-      "options": ["Hepatocyte damage described in paragraph 2", "Normal aging", "Dietary protein", "Dehydration"],
-      "correct_index": 0, "selected_index": 2,
-      "explanation": "The passage attributes the elevation to hepatocyte damage (paragraph 2); the student chose a cause the passage never supports.",
-      "signals": {"took_ms": 10000, "confidence": 0.5, "recall_failed": false, "passage_evidence_missed": false},
-      "gold_kind": "passage",
-      "label_rationale": "Selected an option unsupported by the passage's stated cause."
-    },
-    {
-      "id": "g15", "topic": "psychology_sociology", "question_type": 1,
-      "stem": "The author's argument in paragraph 3 relies on the assumption that:",
-      "options": ["Self-reports accurately reflect behaviour", "All participants were adults", "The study was double-blind", "The sample was random"],
-      "correct_index": 0, "selected_index": 3,
-      "explanation": "According to the passage, the author's inference only holds if self-reports track actual behaviour; the student picked an assumption the passage does not rely on.",
-      "signals": {"took_ms": 12000, "confidence": 0.45, "recall_failed": false, "passage_evidence_missed": false},
-      "gold_kind": "passage",
-      "label_rationale": "Misidentified the load-bearing assumption stated in the passage."
-    },
-    {
-      "id": "g16", "topic": "biology", "question_type": 1,
-      "stem": "In the experiment described, the control and treatment groups differed only in:",
-      "options": ["The presence of the inhibitor", "Temperature", "Species", "Time of day"],
-      "correct_index": 0, "selected_index": 1,
-      "explanation": "The passage specifies the sole manipulated variable was the inhibitor; the student introduced a difference the passage rules out.",
-      "signals": {"took_ms": 9000, "confidence": 0.5, "recall_failed": false, "passage_evidence_missed": false},
-      "gold_kind": "passage",
-      "label_rationale": "Ignored the passage's explicit statement of the controlled variable."
-    },
-    {
-      "id": "g17", "topic": "general_chemistry", "question_type": 1,
-      "stem": "The data in Table 1 best support which conclusion about reaction rate versus temperature?",
-      "options": ["Rate increases with temperature", "Rate is independent of temperature", "Rate decreases with temperature", "Rate peaks then vanishes"],
-      "correct_index": 0, "selected_index": 1,
-      "explanation": "Table 1 shows rate rising across every temperature step; the student overlooked the trend in the given data.",
-      "signals": {"took_ms": 8000, "confidence": 0.5, "recall_failed": false, "passage_evidence_missed": false},
-      "gold_kind": "passage",
-      "label_rationale": "Misread the trend explicitly shown in the table."
-    },
-    {
-      "id": "g18", "topic": "biochemistry", "question_type": 1,
-      "stem": "According to the graph, increasing substrate concentration well beyond saturation:",
-      "options": ["Leaves reaction rate roughly constant", "Continues to increase rate linearly", "Decreases rate", "Doubles the rate"],
-      "correct_index": 0, "selected_index": 1,
-      "explanation": "The graph plateaus at Vmax, so added substrate barely changes rate; the student read a linear trend the figure does not show.",
-      "signals": {"took_ms": 9500, "confidence": 0.5, "recall_failed": false, "passage_evidence_missed": false},
-      "gold_kind": "passage",
-      "label_rationale": "Misinterpreted the plateau shown in the provided graph."
-    },
-    {
-      "id": "g19", "topic": "physics", "question_type": 2,
-      "stem": "A ball is thrown straight up. At its highest point, its acceleration is:",
-      "options": ["Zero", "g, directed downward", "g, directed upward", "Depends on mass"],
-      "correct_index": 1, "selected_index": 0,
-      "explanation": "Velocity is momentarily zero at the apex, but gravity still acts: acceleration is g downward throughout. The student conflated zero velocity with zero acceleration.",
-      "signals": {"took_ms": 3000, "confidence": 0.9, "recall_failed": false, "passage_evidence_missed": false},
-      "gold_kind": "test_taking",
-      "label_rationale": "Fast + highly confident on a classic trap; a careless slip, not a missing concept."
-    },
-    {
-      "id": "g20", "topic": "biochemistry", "question_type": 2,
-      "stem": "The bond linking adjacent residues in a protein backbone is:",
-      "options": ["An ester", "An amide", "An ether", "A thioester"],
-      "correct_index": 1, "selected_index": 0,
-      "explanation": "The peptide bond is an amide. The student answered very quickly and confidently with a closely related bond type.",
-      "signals": {"took_ms": 2500, "confidence": 0.85, "recall_failed": false, "passage_evidence_missed": false},
-      "gold_kind": "test_taking",
-      "label_rationale": "Confident and rushed on a well-known fact = careless misclick, not a knowledge gap."
-    },
-    {
-      "id": "g21", "topic": "general_chemistry", "question_type": 2,
-      "stem": "Which molecule has the highest normal boiling point?",
-      "options": ["CH4", "H2O", "H2S", "CO2"],
-      "correct_index": 1, "selected_index": 2,
-      "explanation": "Water's extensive hydrogen bonding gives the highest boiling point. The student rushed and chose the sulfur analogue.",
-      "signals": {"took_ms": 3500, "confidence": 0.8, "recall_failed": false, "passage_evidence_missed": false},
-      "gold_kind": "test_taking",
-      "label_rationale": "High confidence + speed on basic content points to a careless slip."
-    },
-    {
-      "id": "g22", "topic": "biochemistry", "question_type": 2,
-      "stem": "Which amino acid is most likely buried in a globular protein's hydrophobic core?",
-      "options": ["Aspartate", "Leucine", "Lysine", "Glutamate"],
-      "correct_index": 1, "selected_index": 2,
-      "explanation": "Leucine's nonpolar side chain favors the interior; the others are charged. The student answered fast and confidently but grabbed a charged residue.",
-      "signals": {"took_ms": 3000, "confidence": 0.82, "recall_failed": false, "passage_evidence_missed": false},
-      "gold_kind": "test_taking",
-      "label_rationale": "Confident/fast miss on polarity the student clearly knows = careless."
-    },
-    {
-      "id": "g23", "topic": "general_chemistry", "question_type": 2,
-      "stem": "Which aqueous solution has the lowest pH?",
-      "options": ["0.1 M HCl", "0.1 M NaOH", "0.1 M NaCl", "Pure water"],
-      "correct_index": 0, "selected_index": 1,
-      "explanation": "0.1 M HCl is strongly acidic (lowest pH); the student confidently and quickly selected the strong base.",
-      "signals": {"took_ms": 2800, "confidence": 0.88, "recall_failed": false, "passage_evidence_missed": false},
-      "gold_kind": "test_taking",
-      "label_rationale": "Acid/base is well known; a fast confident base pick is a careless slip."
-    },
-    {
-      "id": "g24", "topic": "physics", "question_type": 2,
-      "stem": "How many grams are in 2.0 kilograms?",
-      "options": ["20 g", "200 g", "2000 g", "0.002 g"],
-      "correct_index": 2, "selected_index": 1,
-      "explanation": "1 kg = 1000 g, so 2.0 kg = 2000 g. The student rushed the decimal place.",
-      "signals": {"took_ms": 2000, "confidence": 0.95, "recall_failed": false, "passage_evidence_missed": false},
-      "gold_kind": "test_taking",
-      "label_rationale": "Trivial unit conversion missed under speed/overconfidence = careless."
-    }
-  ]
+    "name": "Speedrun diagnosis gold set v1",
+    "license": "AGPL-3.0-or-later",
+    "note": "Hand-authored, original MCAT-style missed-item scenarios (no copyrighted source). Each item has a human-assigned root-cause failure mode + rationale, the student's chosen distractor, and realistic behavioural signals. Synthetic by design (real longitudinal miss data can't be gathered in a week; see projectspec s9); used to measure diagnosis agreement and to compare the AI coach against the deterministic + keyword baselines. Expandable toward the ~100-item target.",
+    "labels": ["memory", "reasoning", "passage", "test_taking"],
+    "items": [
+        {
+            "id": "g01",
+            "topic": "biochemistry",
+            "question_type": 2,
+            "stem": "Which cofactor is required by transaminase enzymes?",
+            "options": ["Thiamine (B1)", "Pyridoxal phosphate (B6)", "Cobalamin (B12)", "Ascorbate (C)"],
+            "correct_index": 1,
+            "selected_index": 2,
+            "explanation": "Transaminases require pyridoxal phosphate (PLP), the active form of vitamin B6; the student chose an unrelated cofactor.",
+            "signals": { "took_ms": 9000, "confidence": 0.3, "recall_failed": false, "passage_evidence_missed": false },
+            "gold_kind": "memory",
+            "label_rationale": "Chose an unrelated vitamin, indicating the specific fact was never retrieved, not misapplied."
+        },
+        {
+            "id": "g02",
+            "topic": "biochemistry",
+            "question_type": 0,
+            "stem": "Define allosteric regulation.",
+            "options": [],
+            "correct_index": -1,
+            "selected_index": -1,
+            "explanation": "Regulation of an enzyme by a molecule binding at a site other than the active site. Marked 'Again' on this SRS card.",
+            "signals": { "took_ms": 7000, "confidence": 0.2, "recall_failed": true, "passage_evidence_missed": false },
+            "gold_kind": "memory",
+            "label_rationale": "Plain SRS recall failure (pressed Again); the definition was not retrievable."
+        },
+        {
+            "id": "g03",
+            "topic": "biology",
+            "question_type": 2,
+            "stem": "Which enzyme unwinds the double helix at the DNA replication fork?",
+            "options": ["Ligase", "Helicase", "Primase", "Topoisomerase"],
+            "correct_index": 1,
+            "selected_index": 3,
+            "explanation": "Helicase unwinds the duplex at the fork; topoisomerase relieves supercoiling ahead of it. The student swapped two distinct enzymes.",
+            "signals": { "took_ms": 8000, "confidence": 0.4, "recall_failed": false, "passage_evidence_missed": false },
+            "gold_kind": "memory",
+            "label_rationale": "Confused the identity/role of two enzymes = the underlying fact was not securely known."
+        },
+        {
+            "id": "g04",
+            "topic": "physiology",
+            "question_type": 0,
+            "stem": "What is the ion stoichiometry of the Na+/K+-ATPase per cycle?",
+            "options": [],
+            "correct_index": -1,
+            "selected_index": -1,
+            "explanation": "3 Na+ out, 2 K+ in per ATP hydrolyzed. Marked 'Again' on this SRS card.",
+            "signals": { "took_ms": 6000, "confidence": 0.25, "recall_failed": true, "passage_evidence_missed": false },
+            "gold_kind": "memory",
+            "label_rationale": "SRS recall failure of a memorized quantitative fact."
+        },
+        {
+            "id": "g05",
+            "topic": "biochemistry",
+            "question_type": 2,
+            "stem": "Which lipoprotein carries out reverse cholesterol transport?",
+            "options": ["LDL", "HDL", "VLDL", "Chylomicrons"],
+            "correct_index": 1,
+            "selected_index": 0,
+            "explanation": "HDL returns cholesterol from tissues to the liver (reverse transport); LDL delivers cholesterol to tissues. The student picked the opposite carrier.",
+            "signals": { "took_ms": 7000, "confidence": 0.5, "recall_failed": false, "passage_evidence_missed": false },
+            "gold_kind": "memory",
+            "label_rationale": "Picked the opposite lipoprotein — a fact-recall confusion, not a reasoning slip."
+        },
+        {
+            "id": "g06",
+            "topic": "biology",
+            "question_type": 2,
+            "stem": "What is the primary neurotransmitter at the neuromuscular junction?",
+            "options": ["Dopamine", "Acetylcholine", "GABA", "Serotonin"],
+            "correct_index": 1,
+            "selected_index": 0,
+            "explanation": "Motor neurons release acetylcholine at the neuromuscular junction. The student named an unrelated transmitter.",
+            "signals": { "took_ms": 6500, "confidence": 0.4, "recall_failed": false, "passage_evidence_missed": false },
+            "gold_kind": "memory",
+            "label_rationale": "Named the wrong transmitter entirely = fact not retrieved."
+        },
+        {
+            "id": "g07",
+            "topic": "biochemistry",
+            "question_type": 2,
+            "stem": "An enzyme lowers a reaction's activation energy. This affects:",
+            "options": [
+                "The equilibrium constant",
+                "Only the forward rate",
+                "Both forward and reverse rates",
+                "The overall free-energy change"
+            ],
+            "correct_index": 2,
+            "selected_index": 1,
+            "explanation": "Catalysts lower activation energy for both directions equally; the student knew catalysis speeds reactions but applied it to only the forward direction.",
+            "signals": {
+                "took_ms": 15000,
+                "confidence": 0.55,
+                "recall_failed": false,
+                "passage_evidence_missed": false
+            },
+            "gold_kind": "reasoning",
+            "label_rationale": "Understood catalysis but misapplied it directionally — an application error, not a missing fact."
+        },
+        {
+            "id": "g08",
+            "topic": "biochemistry",
+            "question_type": 2,
+            "stem": "A high Km indicates the enzyme's affinity for its substrate is:",
+            "options": ["High", "Low", "Unchanged", "Undefined"],
+            "correct_index": 1,
+            "selected_index": 0,
+            "explanation": "High Km means low affinity (more substrate needed to reach half-Vmax). The student inverted the (inverse) Km-affinity relationship.",
+            "signals": {
+                "took_ms": 12000,
+                "confidence": 0.6,
+                "recall_failed": false,
+                "passage_evidence_missed": false
+            },
+            "gold_kind": "reasoning",
+            "label_rationale": "Knew Km relates to affinity but inverted the logic — a reasoning error."
+        },
+        {
+            "id": "g09",
+            "topic": "physics",
+            "question_type": 2,
+            "stem": "If an object's speed doubles, its kinetic energy changes by a factor of:",
+            "options": ["2", "4", "1/2", "sqrt(2)"],
+            "correct_index": 1,
+            "selected_index": 0,
+            "explanation": "KE = 1/2 m v^2, so KE scales with the square of speed; doubling v quadruples KE. The student applied a linear instead of quadratic relationship.",
+            "signals": {
+                "took_ms": 14000,
+                "confidence": 0.5,
+                "recall_failed": false,
+                "passage_evidence_missed": false
+            },
+            "gold_kind": "reasoning",
+            "label_rationale": "Knew the KE formula but misapplied the squared dependence."
+        },
+        {
+            "id": "g10",
+            "topic": "general_chemistry",
+            "question_type": 2,
+            "stem": "Raising the temperature of an exothermic reaction at equilibrium shifts it:",
+            "options": ["Toward products", "Toward reactants", "No shift", "Toward more moles of gas"],
+            "correct_index": 1,
+            "selected_index": 0,
+            "explanation": "Heat is a product of an exothermic reaction, so by Le Chatelier added heat shifts toward reactants. The student applied Le Chatelier in the wrong direction.",
+            "signals": {
+                "took_ms": 13000,
+                "confidence": 0.5,
+                "recall_failed": false,
+                "passage_evidence_missed": false
+            },
+            "gold_kind": "reasoning",
+            "label_rationale": "Knew Le Chatelier but reasoned the shift backwards."
+        },
+        {
+            "id": "g11",
+            "topic": "biochemistry",
+            "question_type": 2,
+            "stem": "A reaction with positive delta-G is coupled to ATP hydrolysis. The coupled process is:",
+            "options": [
+                "Always nonspontaneous",
+                "Spontaneous if the net delta-G is negative",
+                "Thermodynamically impossible",
+                "Independent of ATP"
+            ],
+            "correct_index": 1,
+            "selected_index": 0,
+            "explanation": "Energetic coupling makes an unfavorable step proceed when the summed delta-G is negative. The student ignored coupling and judged the step in isolation.",
+            "signals": {
+                "took_ms": 16000,
+                "confidence": 0.6,
+                "recall_failed": false,
+                "passage_evidence_missed": false
+            },
+            "gold_kind": "reasoning",
+            "label_rationale": "Failed to combine free energies — a reasoning/application gap, not a fact gap."
+        },
+        {
+            "id": "g12",
+            "topic": "general_chemistry",
+            "question_type": 2,
+            "stem": "A buffer resists pH change best when:",
+            "options": [
+                "pH equals the pKa",
+                "pH is far above the pKa",
+                "pH is far below the pKa",
+                "the temperature is 25 C"
+            ],
+            "correct_index": 0,
+            "selected_index": 1,
+            "explanation": "Buffer capacity is maximal at pH = pKa (conjugate acid/base ratio 1, Henderson-Hasselbalch). The student misjudged where capacity peaks.",
+            "signals": {
+                "took_ms": 12000,
+                "confidence": 0.55,
+                "recall_failed": false,
+                "passage_evidence_missed": false
+            },
+            "gold_kind": "reasoning",
+            "label_rationale": "Understood buffers conceptually but misapplied the pKa relationship."
+        },
+        {
+            "id": "g13",
+            "topic": "biology",
+            "question_type": 1,
+            "stem": "Based on the passage, the researchers concluded the drug was ineffective primarily because:",
+            "options": [
+                "Figure 2 shows no difference from placebo",
+                "The sample was too small",
+                "The drug was toxic",
+                "The dose was too low"
+            ],
+            "correct_index": 0,
+            "selected_index": 1,
+            "explanation": "The passage states the conclusion rests on Figure 2, where the treatment and placebo curves overlap; the student ignored the figure the passage points to.",
+            "signals": {
+                "took_ms": 11000,
+                "confidence": 0.5,
+                "recall_failed": false,
+                "passage_evidence_missed": false
+            },
+            "gold_kind": "passage",
+            "label_rationale": "Answer is stated in the passage/figure; the student missed the given evidence."
+        },
+        {
+            "id": "g14",
+            "topic": "biology",
+            "question_type": 1,
+            "stem": "According to the passage, the most likely cause of the elevated enzyme levels is:",
+            "options": ["Hepatocyte damage described in paragraph 2", "Normal aging", "Dietary protein", "Dehydration"],
+            "correct_index": 0,
+            "selected_index": 2,
+            "explanation": "The passage attributes the elevation to hepatocyte damage (paragraph 2); the student chose a cause the passage never supports.",
+            "signals": {
+                "took_ms": 10000,
+                "confidence": 0.5,
+                "recall_failed": false,
+                "passage_evidence_missed": false
+            },
+            "gold_kind": "passage",
+            "label_rationale": "Selected an option unsupported by the passage's stated cause."
+        },
+        {
+            "id": "g15",
+            "topic": "psychology_sociology",
+            "question_type": 1,
+            "stem": "The author's argument in paragraph 3 relies on the assumption that:",
+            "options": [
+                "Self-reports accurately reflect behaviour",
+                "All participants were adults",
+                "The study was double-blind",
+                "The sample was random"
+            ],
+            "correct_index": 0,
+            "selected_index": 3,
+            "explanation": "According to the passage, the author's inference only holds if self-reports track actual behaviour; the student picked an assumption the passage does not rely on.",
+            "signals": {
+                "took_ms": 12000,
+                "confidence": 0.45,
+                "recall_failed": false,
+                "passage_evidence_missed": false
+            },
+            "gold_kind": "passage",
+            "label_rationale": "Misidentified the load-bearing assumption stated in the passage."
+        },
+        {
+            "id": "g16",
+            "topic": "biology",
+            "question_type": 1,
+            "stem": "In the experiment described, the control and treatment groups differed only in:",
+            "options": ["The presence of the inhibitor", "Temperature", "Species", "Time of day"],
+            "correct_index": 0,
+            "selected_index": 1,
+            "explanation": "The passage specifies the sole manipulated variable was the inhibitor; the student introduced a difference the passage rules out.",
+            "signals": { "took_ms": 9000, "confidence": 0.5, "recall_failed": false, "passage_evidence_missed": false },
+            "gold_kind": "passage",
+            "label_rationale": "Ignored the passage's explicit statement of the controlled variable."
+        },
+        {
+            "id": "g17",
+            "topic": "general_chemistry",
+            "question_type": 1,
+            "stem": "The data in Table 1 best support which conclusion about reaction rate versus temperature?",
+            "options": [
+                "Rate increases with temperature",
+                "Rate is independent of temperature",
+                "Rate decreases with temperature",
+                "Rate peaks then vanishes"
+            ],
+            "correct_index": 0,
+            "selected_index": 1,
+            "explanation": "Table 1 shows rate rising across every temperature step; the student overlooked the trend in the given data.",
+            "signals": { "took_ms": 8000, "confidence": 0.5, "recall_failed": false, "passage_evidence_missed": false },
+            "gold_kind": "passage",
+            "label_rationale": "Misread the trend explicitly shown in the table."
+        },
+        {
+            "id": "g18",
+            "topic": "biochemistry",
+            "question_type": 1,
+            "stem": "According to the graph, increasing substrate concentration well beyond saturation:",
+            "options": [
+                "Leaves reaction rate roughly constant",
+                "Continues to increase rate linearly",
+                "Decreases rate",
+                "Doubles the rate"
+            ],
+            "correct_index": 0,
+            "selected_index": 1,
+            "explanation": "The graph plateaus at Vmax, so added substrate barely changes rate; the student read a linear trend the figure does not show.",
+            "signals": { "took_ms": 9500, "confidence": 0.5, "recall_failed": false, "passage_evidence_missed": false },
+            "gold_kind": "passage",
+            "label_rationale": "Misinterpreted the plateau shown in the provided graph."
+        },
+        {
+            "id": "g19",
+            "topic": "physics",
+            "question_type": 2,
+            "stem": "A ball is thrown straight up. At its highest point, its acceleration is:",
+            "options": ["Zero", "g, directed downward", "g, directed upward", "Depends on mass"],
+            "correct_index": 1,
+            "selected_index": 0,
+            "explanation": "Velocity is momentarily zero at the apex, but gravity still acts: acceleration is g downward throughout. The student conflated zero velocity with zero acceleration.",
+            "signals": { "took_ms": 3000, "confidence": 0.9, "recall_failed": false, "passage_evidence_missed": false },
+            "gold_kind": "test_taking",
+            "label_rationale": "Fast + highly confident on a classic trap; a careless slip, not a missing concept."
+        },
+        {
+            "id": "g20",
+            "topic": "biochemistry",
+            "question_type": 2,
+            "stem": "The bond linking adjacent residues in a protein backbone is:",
+            "options": ["An ester", "An amide", "An ether", "A thioester"],
+            "correct_index": 1,
+            "selected_index": 0,
+            "explanation": "The peptide bond is an amide. The student answered very quickly and confidently with a closely related bond type.",
+            "signals": {
+                "took_ms": 2500,
+                "confidence": 0.85,
+                "recall_failed": false,
+                "passage_evidence_missed": false
+            },
+            "gold_kind": "test_taking",
+            "label_rationale": "Confident and rushed on a well-known fact = careless misclick, not a knowledge gap."
+        },
+        {
+            "id": "g21",
+            "topic": "general_chemistry",
+            "question_type": 2,
+            "stem": "Which molecule has the highest normal boiling point?",
+            "options": ["CH4", "H2O", "H2S", "CO2"],
+            "correct_index": 1,
+            "selected_index": 2,
+            "explanation": "Water's extensive hydrogen bonding gives the highest boiling point. The student rushed and chose the sulfur analogue.",
+            "signals": { "took_ms": 3500, "confidence": 0.8, "recall_failed": false, "passage_evidence_missed": false },
+            "gold_kind": "test_taking",
+            "label_rationale": "High confidence + speed on basic content points to a careless slip."
+        },
+        {
+            "id": "g22",
+            "topic": "biochemistry",
+            "question_type": 2,
+            "stem": "Which amino acid is most likely buried in a globular protein's hydrophobic core?",
+            "options": ["Aspartate", "Leucine", "Lysine", "Glutamate"],
+            "correct_index": 1,
+            "selected_index": 2,
+            "explanation": "Leucine's nonpolar side chain favors the interior; the others are charged. The student answered fast and confidently but grabbed a charged residue.",
+            "signals": {
+                "took_ms": 3000,
+                "confidence": 0.82,
+                "recall_failed": false,
+                "passage_evidence_missed": false
+            },
+            "gold_kind": "test_taking",
+            "label_rationale": "Confident/fast miss on polarity the student clearly knows = careless."
+        },
+        {
+            "id": "g23",
+            "topic": "general_chemistry",
+            "question_type": 2,
+            "stem": "Which aqueous solution has the lowest pH?",
+            "options": ["0.1 M HCl", "0.1 M NaOH", "0.1 M NaCl", "Pure water"],
+            "correct_index": 0,
+            "selected_index": 1,
+            "explanation": "0.1 M HCl is strongly acidic (lowest pH); the student confidently and quickly selected the strong base.",
+            "signals": {
+                "took_ms": 2800,
+                "confidence": 0.88,
+                "recall_failed": false,
+                "passage_evidence_missed": false
+            },
+            "gold_kind": "test_taking",
+            "label_rationale": "Acid/base is well known; a fast confident base pick is a careless slip."
+        },
+        {
+            "id": "g24",
+            "topic": "physics",
+            "question_type": 2,
+            "stem": "How many grams are in 2.0 kilograms?",
+            "options": ["20 g", "200 g", "2000 g", "0.002 g"],
+            "correct_index": 2,
+            "selected_index": 1,
+            "explanation": "1 kg = 1000 g, so 2.0 kg = 2000 g. The student rushed the decimal place.",
+            "signals": {
+                "took_ms": 2000,
+                "confidence": 0.95,
+                "recall_failed": false,
+                "passage_evidence_missed": false
+            },
+            "gold_kind": "test_taking",
+            "label_rationale": "Trivial unit conversion missed under speed/overconfidence = careless."
+        },
+        {
+            "id": "g25",
+            "topic": "physiology",
+            "question_type": 0,
+            "stem": "What is the approximate resting membrane potential of a typical neuron?",
+            "options": [],
+            "correct_index": -1,
+            "selected_index": -1,
+            "explanation": "About -70 mV. Marked 'Again' on this SRS card.",
+            "signals": { "took_ms": 6500, "confidence": 0.2, "recall_failed": true, "passage_evidence_missed": false },
+            "gold_kind": "memory",
+            "label_rationale": "SRS recall failure (pressed Again) of a memorized quantitative value."
+        },
+        {
+            "id": "g26",
+            "topic": "biochemistry",
+            "question_type": 2,
+            "stem": "Which electron carrier delivers its electrons to Complex I of the electron transport chain?",
+            "options": ["FADH2", "NADH", "Ubiquinone", "Cytochrome c"],
+            "correct_index": 1,
+            "selected_index": 0,
+            "explanation": "NADH donates electrons at Complex I, whereas FADH2 enters later at Complex II. The student swapped the two carriers' entry points.",
+            "signals": {
+                "took_ms": 8500,
+                "confidence": 0.35,
+                "recall_failed": false,
+                "passage_evidence_missed": false
+            },
+            "gold_kind": "memory",
+            "label_rationale": "Confused which carrier enters where = the specific fact was not securely known."
+        },
+        {
+            "id": "g27",
+            "topic": "physics",
+            "question_type": 2,
+            "stem": "A cylindrical wire's length is doubled while its cross-sectional area is held constant. Its electrical resistance becomes:",
+            "options": ["Halved", "Doubled", "Unchanged", "Quadrupled"],
+            "correct_index": 1,
+            "selected_index": 0,
+            "explanation": "Resistance R = rho*L/A scales linearly with length, so doubling L doubles R. The student inverted the proportionality.",
+            "signals": {
+                "took_ms": 13000,
+                "confidence": 0.55,
+                "recall_failed": false,
+                "passage_evidence_missed": false
+            },
+            "gold_kind": "reasoning",
+            "label_rationale": "Knew the resistance relation but applied the length dependence backwards."
+        },
+        {
+            "id": "g28",
+            "topic": "general_chemistry",
+            "question_type": 2,
+            "stem": "Adding a common ion to a saturated salt solution changes the salt's molar solubility by:",
+            "options": ["Increasing it", "Decreasing it", "No change", "Making it unbounded"],
+            "correct_index": 1,
+            "selected_index": 0,
+            "explanation": "The common-ion effect shifts the dissolution equilibrium back toward the solid, lowering solubility. The student pushed the shift the wrong way.",
+            "signals": {
+                "took_ms": 14000,
+                "confidence": 0.6,
+                "recall_failed": false,
+                "passage_evidence_missed": false
+            },
+            "gold_kind": "reasoning",
+            "label_rationale": "Understood the common-ion concept but reasoned the equilibrium shift in reverse."
+        },
+        {
+            "id": "g29",
+            "topic": "psychology_sociology",
+            "question_type": 1,
+            "stem": "Based on Figure 1, the relationship between arousal level and recall accuracy is best described as:",
+            "options": ["An inverted-U", "Strictly increasing", "Strictly decreasing", "No relationship"],
+            "correct_index": 0,
+            "selected_index": 2,
+            "explanation": "Figure 1 shows accuracy rising then falling as arousal increases (an inverted-U); the student read only the descending half and ignored the rest of the plotted curve.",
+            "signals": {
+                "took_ms": 10000,
+                "confidence": 0.5,
+                "recall_failed": false,
+                "passage_evidence_missed": false
+            },
+            "gold_kind": "passage",
+            "label_rationale": "Misread the shape explicitly shown in the provided figure."
+        },
+        {
+            "id": "g30",
+            "topic": "biology",
+            "question_type": 1,
+            "stem": "According to the passage, the knockout mice failed to gain weight primarily because:",
+            "options": [
+                "Their leptin receptors were nonfunctional, as the passage states",
+                "They chose to eat less",
+                "They exercised more",
+                "Their enclosures were colder"
+            ],
+            "correct_index": 0,
+            "selected_index": 1,
+            "explanation": "The passage attributes the phenotype to nonfunctional leptin receptors; the student chose a behavioural cause the passage never mentions.",
+            "signals": { "took_ms": 9500, "confidence": 0.5, "recall_failed": false, "passage_evidence_missed": false },
+            "gold_kind": "passage",
+            "label_rationale": "Selected an option unsupported by the passage's stated cause."
+        },
+        {
+            "id": "g31",
+            "topic": "general_chemistry",
+            "question_type": 2,
+            "stem": "Which noble gas has the smallest atomic radius?",
+            "options": ["Helium", "Neon", "Argon", "Krypton"],
+            "correct_index": 0,
+            "selected_index": 1,
+            "explanation": "Atomic radius increases down a group, so helium (top of the group) is smallest. Rushing, the student picked the next element down.",
+            "signals": {
+                "took_ms": 3000,
+                "confidence": 0.88,
+                "recall_failed": false,
+                "passage_evidence_missed": false
+            },
+            "gold_kind": "test_taking",
+            "label_rationale": "Fast + highly confident on a basic periodic trend = a careless slip, not a knowledge gap."
+        },
+        {
+            "id": "g32",
+            "topic": "physics",
+            "question_type": 2,
+            "stem": "A constant 10 N net force acts on a frictionless 2 kg block. The block's acceleration is:",
+            "options": ["2 m/s^2", "5 m/s^2", "10 m/s^2", "20 m/s^2"],
+            "correct_index": 1,
+            "selected_index": 3,
+            "explanation": "a = F/m = 10/2 = 5 m/s^2. The student rushed and multiplied instead of dividing.",
+            "signals": {
+                "took_ms": 2500,
+                "confidence": 0.92,
+                "recall_failed": false,
+                "passage_evidence_missed": false
+            },
+            "gold_kind": "test_taking",
+            "label_rationale": "Trivial F=ma miss under speed/overconfidence = careless."
+        }
+    ]
 }

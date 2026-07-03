@@ -114,8 +114,15 @@ def main() -> int:
     here = os.path.dirname(os.path.abspath(__file__))
     ap = argparse.ArgumentParser()
     ap.add_argument("--data-dir", help="path to an already-extracted MMLU data/ dir")
-    ap.add_argument("--cache", default=os.path.join(tempfile.gettempdir(), "speedrun_mmlu"))
-    ap.add_argument("--per-subject", type=int, default=150, help="cap questions per subject (0 = all)")
+    ap.add_argument(
+        "--cache", default=os.path.join(tempfile.gettempdir(), "speedrun_mmlu")
+    )
+    ap.add_argument(
+        "--per-subject",
+        type=int,
+        default=150,
+        help="cap questions per subject (0 = all)",
+    )
     ap.add_argument("--out", default=os.path.join(here, "speedrun_mmlu_pack.json"))
     args = ap.parse_args()
 

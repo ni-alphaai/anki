@@ -411,16 +411,33 @@ def run_offline_test() -> dict:
     # Signal-combination cases -> the deterministic (AI-off) classification the
     # engine must return, mirroring rslib/src/speedrun/mod.rs.
     cases = [
-        ("recall miss (SRS)", dict(correct=False, recall_failed=True,
-                                   question_type=SRS), MEMORY),
-        ("missed passage evidence", dict(correct=False, passage_evidence_missed=True,
-                                         question_type=PASSAGE_MCQ), PASSAGE),
-        ("confident + rushed miss", dict(correct=False, question_type=PASSAGE_MCQ,
-                                         took_ms=3000, predicted=0.9), TEST_TAKING),
-        ("slow deliberate miss", dict(correct=False, question_type=PASSAGE_MCQ,
-                                      took_ms=22000), REASONING),
-        ("correct application", dict(correct=True, question_type=DISCRETE,
-                                     took_ms=9000), CORRECT),
+        (
+            "recall miss (SRS)",
+            dict(correct=False, recall_failed=True, question_type=SRS),
+            MEMORY,
+        ),
+        (
+            "missed passage evidence",
+            dict(
+                correct=False, passage_evidence_missed=True, question_type=PASSAGE_MCQ
+            ),
+            PASSAGE,
+        ),
+        (
+            "confident + rushed miss",
+            dict(correct=False, question_type=PASSAGE_MCQ, took_ms=3000, predicted=0.9),
+            TEST_TAKING,
+        ),
+        (
+            "slow deliberate miss",
+            dict(correct=False, question_type=PASSAGE_MCQ, took_ms=22000),
+            REASONING,
+        ),
+        (
+            "correct application",
+            dict(correct=True, question_type=DISCRETE, took_ms=9000),
+            CORRECT,
+        ),
     ]
 
     with _NetworkPulled() as net:
@@ -473,8 +490,14 @@ def run_offline_test() -> dict:
             except OSError:
                 ai_attempted = True
                 ai_blocked = True
-            fb = _record(col, card_id=cid, note_id=nid, correct=False,
-                         passage_evidence_missed=True, question_type=PASSAGE_MCQ)
+            fb = _record(
+                col,
+                card_id=cid,
+                note_id=nid,
+                correct=False,
+                passage_evidence_missed=True,
+                question_type=PASSAGE_MCQ,
+            )
             fallback_kind = fb.diagnosis.kind
             # The engine keys each readiness snapshot by a millisecond timestamp
             # (its primary key), so let the clock advance past the first
@@ -535,10 +558,14 @@ def _write_report(crash: dict, offline: dict) -> None:
         "`tools/speedrun_crash.py` over the Rust SpeedrunService engine \u2014 the same "
         "protobuf boundary the desktop app and the phone use. No AI, no network.\n"
     )
-    L.append(f"\nReproduce: `./tools/speedrun_crash.sh` (or `./tools/speedrun_crash.sh {crash['n_kills']}`).\n")
+    L.append(
+        f"\nReproduce: `./tools/speedrun_crash.sh` (or `./tools/speedrun_crash.sh {crash['n_kills']}`).\n"
+    )
 
     # --- crash ---
-    L.append("\n## 1. Crash test \u2014 kill the app mid-review, prove zero corruption\n")
+    L.append(
+        "\n## 1. Crash test \u2014 kill the app mid-review, prove zero corruption\n"
+    )
     L.append(
         f"Each round a child process opens a **real on-disk** collection, durably "
         f"commits {crash['commits_per_round']} reviews, then opens a transaction and "
@@ -586,7 +613,9 @@ def _write_report(crash: dict, offline: dict) -> None:
     )
 
     # --- offline ---
-    L.append("\n## 2. Offline / AI-off test \u2014 network pulled, engine still scores\n")
+    L.append(
+        "\n## 2. Offline / AI-off test \u2014 network pulled, engine still scores\n"
+    )
     L.append(
         "All outbound Python sockets are black-holed (any `connect()` raises and is "
         "counted). The deterministic engine path is pure local Rust computation, so "

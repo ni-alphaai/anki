@@ -32,7 +32,7 @@ SYSTEM = (
     + "\nGround your reasoning in the provided answer explanation, which is the "
     "named source; refer to it. Explain the failure — do not simply restate the "
     "correct answer. If the evidence is insufficient to choose one mode "
-    "confidently, set \"abstain\" to true.\n"
+    'confidently, set "abstain" to true.\n'
     'Respond with JSON only: {"kind": one of '
     '["memory","reasoning","passage","test_taking"], "confidence": number 0..1, '
     '"rationale": short string grounded in the explanation, "source": short '

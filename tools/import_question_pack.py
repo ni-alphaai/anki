@@ -25,8 +25,8 @@ import os
 import sys
 import tempfile
 
-from anki.collection import Collection
 from anki import speedrun_pb2
+from anki.collection import Collection
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_PACK = os.path.join(_HERE, "speedrun_question_pack.json")

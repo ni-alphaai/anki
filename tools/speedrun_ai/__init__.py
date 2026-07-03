@@ -10,8 +10,8 @@ root-cause failure mode, grounded in the item's explanation (a named source),
 with an explicit abstention when evidence is thin.
 """
 
-from .taxonomy import Signals, deterministic_classify, keyword_classify, KIND_NAME
 from .coach import diagnose
+from .taxonomy import KIND_NAME, Signals, deterministic_classify, keyword_classify
 
 __all__ = [
     "Signals",

@@ -104,7 +104,14 @@ def main() -> int:
         failed |= not (a_has_a == 1 and a_has_b == 1 and b_has_a == 1 and b_has_b == 1)
         failed |= not (total_a == 2 and total_b == 2)
 
-        print("\n" + ("speedrun sync check: FAIL" if failed else "speedrun sync check: PASS (two-way, no loss, no duplication)"))
+        print(
+            "\n"
+            + (
+                "speedrun sync check: FAIL"
+                if failed
+                else "speedrun sync check: PASS (two-way, no loss, no duplication)"
+            )
+        )
         return 1 if failed else 0
     finally:
         for c in (col_a, col_b):

@@ -2,32 +2,40 @@
 # Copyright: Ankitects Pty Ltd and contributors
 # License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-"""Study-feature ablation for the points-at-stake queue (AI-off).
+"""Study-feature ablation for the points-at-stake + interleave queue (AI-off).
 
 The Speedrun spec (section 8) calls for a three-arm study-feature ablation:
 compare, on the *same* cards and at an *equal study budget*, three builds that
-differ only in how the review queue is ordered -
+differ only in how the review queue is ordered - each arm adding one study
+feature on top of the previous:
 
-    1. Full app     - points-at-stake queue ON (weak/high-value cards first),
-                      driven by the recorded diagnostic (weakness) evidence.
-    2. Feature off  - points-at-stake OFF (the one feature ablated); everything
-                      else (the same weakness evidence) is identical to arm 1.
-    3. Plain Anki   - the unmodified default review order, with no Speedrun
-                      weakness evidence at all.
+    1. Plain Anki             - both features OFF: the unmodified default review
+                                order, with no Speedrun weakness evidence at all.
+    2. +points-at-stake       - points-at-stake ON (weak/high-value cards first),
+                                driven by the recorded diagnostic (weakness)
+                                evidence; interleave OFF.
+    3. +points +interleave    - points-at-stake ON *and* topic interleave ON, so
+                                the same value ranking is then round-robined
+                                across confusable sibling topics within each
+                                parent concept.
 
 We cannot run real learners in a script, so this is an explicit, honest
 *simulated-learner* experiment ("simulation": true in the output). Every card is
 given a hidden "true mastery"; some topics are weak. The SAME miss evidence is
-recorded for every arm, so only the queue *ordering* differs between arms. We
-then "study" the first K cards of each arm's order (equal budget) and score how
-much exam value that surfaces. See tools/speedrun_ablation_report.md for the
+recorded for arms 2 and 3, so the arms differ only in queue *ordering*. We then
+"study" the first K cards of each arm's order (equal budget) and score how much
+exam value that surfaces. See tools/speedrun_ablation_report.md for the
 pre-registered metric and the results.
 
-How the engine actually ranks: with the toggle ON the queue stable-sorts due
-reviews by (1 + per-card weakness), where weakness is the recorded miss rate;
-with it OFF the points-at-stake path is skipped and Anki's default order is used
-unchanged. The live queue weights every topic equally (it ranks by weakness,
-not yield), so the "yield weight" below lives only in our scoring metric.
+How the engine actually ranks: with points-at-stake ON the queue stable-sorts
+due reviews by (1 + per-card weakness), where weakness is the recorded miss
+rate; with it OFF the points-at-stake path is skipped and Anki's default order
+is used unchanged. With interleave ON, confusable sibling topics (children of a
+shared `concept::topic` parent, resolved from each note's tag via a registered
+topic map) are round-robined within their concept block, so arm 3 genuinely
+diverges from arm 2. The live queue weights every topic equally (it ranks by
+weakness, not yield), so the "yield weight" below lives only in our scoring
+metric.
 
 Usage:
     python tools/speedrun_ablation.py                  # self-test + experiment
@@ -47,24 +55,31 @@ import statistics
 import sys
 import tempfile
 
-from anki.collection import Collection
 from anki import speedrun_pb2
+from anki.collection import Collection
 
 _FLAG = "speedrunPointsAtStake"
+_INTERLEAVE_FLAG = "speedrunInterleaveTopics"
 
 # card type / queue values for a mature review card
 _CARD_TYPE_REVIEW = 2
 _QUEUE_REVIEW = 2
 
 
-def _order(col: Collection, deck_id: int, enabled: bool) -> list[int]:
-    col.set_config(_FLAG, enabled)
+def _order(
+    col: Collection, deck_id: int, *, points_at_stake: bool, interleave: bool
+) -> list[int]:
+    """Return the deck's review-card study order under the two study-feature
+    toggles. Both flags live in collection config (not the RPC message), so they
+    are set before GetReviewOrder, matching the queue builder's gates."""
+    col.set_config(_FLAG, points_at_stake)
+    col.set_config(_INTERLEAVE_FLAG, interleave)
     return list(col._backend.get_review_order(deck_id=deck_id))
 
 
 def ablation(col: Collection, deck_id: int) -> dict:
-    off = _order(col, deck_id, False)
-    on = _order(col, deck_id, True)
+    off = _order(col, deck_id, points_at_stake=False, interleave=False)
+    on = _order(col, deck_id, points_at_stake=True, interleave=False)
     positions_changed = sum(1 for a, b in zip(off, on) if a != b)
     return {
         "deck_id": deck_id,
@@ -75,12 +90,18 @@ def ablation(col: Collection, deck_id: int) -> dict:
     }
 
 
-def _make_review_card(col: Collection, did: int, front: str, due: int = 0):
+def _make_review_card(
+    col: Collection, did: int, front: str, due: int = 0, tag: str | None = None
+):
     """Add a single due review card and return its Card (callers read both its
-    id and note id). `due` is in days; keep it <= 0 so the card is actually due."""
+    id and note id). `due` is in days; keep it <= 0 so the card is actually due.
+    An optional `tag` (a hierarchical `concept::name` topic key) is written to
+    the note so the interleave feature can group confusable siblings."""
     model = col.models.by_name("Basic")
     note = col.new_note(model)
     note["Front"] = front
+    if tag is not None:
+        note.tags = [tag]
     col.add_note(note, did)
     card = note.cards()[0]
     card.type = _CARD_TYPE_REVIEW
@@ -125,12 +146,12 @@ def _self_test() -> int:
         # the weak card from it: whichever card sorts LAST with the feature OFF
         # becomes the weak one, so turning the feature ON must move it to the
         # front - a guaranteed, deterministic ordering change.
-        off = _order(col, did, False)
+        off = _order(col, did, points_at_stake=False, interleave=False)
         weak_id = off[-1]
         _record_miss(col, weak_id)
         _record_miss(col, weak_id)
 
-        on = _order(col, did, True)
+        on = _order(col, did, points_at_stake=True, interleave=False)
         positions_changed = sum(1 for a, b in zip(off, on) if a != b)
         report = {
             "deck_id": did,
@@ -168,6 +189,28 @@ _TOPICS = [
     ("cell_bio", 1.8, 0.82),  # strong, high-yield
     ("genetics", 0.9, 0.85),  # strong, low-yield
 ]
+
+# Parent concept for each topic, forming a two-level hierarchy (`CONCEPT::topic`)
+# the interleave feature can recognise. Each parent groups >=2 sibling topics so
+# every concept block spans confusable siblings the round-robin can interleave;
+# without this the interleave arm would be a no-op and collapse onto the
+# points-at-stake arm. BIOCHEM = biomolecule/biology topics, PHYSSOC = the
+# physical-science + behavioural-science remainder.
+_TOPIC_PARENTS = {
+    "amino_acids": "BIOCHEM",
+    "lipids": "BIOCHEM",
+    "cell_bio": "BIOCHEM",
+    "kinetics": "PHYSSOC",
+    "sociology": "PHYSSOC",
+    "genetics": "PHYSSOC",
+}
+
+
+def _topic_key(name: str) -> str:
+    """Hierarchical `concept::topic` key used as the note tag and topic-map key."""
+    return f"{_TOPIC_PARENTS[name]}::{name}"
+
+
 _CARDS_PER_TOPIC = 8
 _ATTEMPTS_PER_CARD = 6  # coarse weakness evidence (miss rate in sixths)
 _MASTERY_NOISE = 0.22  # per-card jitter around the topic's base mastery
@@ -176,17 +219,33 @@ _BUDGET_FRACTION = 1 / 3  # equal study budget: only a third of the due pile
 _SENSITIVITY_FRACTIONS = [0.25, 1 / 3, 0.5, 0.75, 1.0]
 _DEFAULT_SEEDS = list(range(12))
 
-_ARM_KEYS = ("full_points_at_stake_on", "feature_off", "plain_anki")
+_ARM_KEYS = ("plain_anki", "points_at_stake", "points_plus_interleave")
 
 
 def _clamp(x: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, x))
 
 
+def _register_topic_map(col: Collection) -> None:
+    """Register the hierarchical `concept::topic` map once, so the interleave
+    feature can resolve each card's topic (from its note tag) and the parent
+    concept it shares with confusable siblings. Mirrors the SetTopicMap pattern
+    in tools/speedrun_e2e_full.py (`_load_outline`)."""
+    entries = [
+        speedrun_pb2.TopicMapEntry(topic=_topic_key(name), label=name, weight=1.0)
+        for (name, _weight, _base) in _TOPICS
+    ]
+    col._backend.set_topic_map(entries)
+
+
 def _build_cards(col: Collection, did: int, rng: random.Random) -> list[dict]:
     """Create the shared deck: N due review cards across several topics, each
     with a hidden true mastery. Creation/due order is shuffled independently of
-    mastery so the default (plain-Anki) order is a fair, mastery-blind baseline."""
+    mastery so the default (plain-Anki) order is a fair, mastery-blind baseline.
+    Each note is tagged with its hierarchical `concept::topic` key (and the topic
+    map is registered first) so the interleave feature has confusable sibling
+    groups to reorder."""
+    _register_topic_map(col)
     specs = [
         (name, weight, base)
         for (name, weight, base) in _TOPICS
@@ -196,9 +255,13 @@ def _build_cards(col: Collection, did: int, rng: random.Random) -> list[dict]:
     n = len(specs)
     cards: list[dict] = []
     for i, (name, weight, base) in enumerate(specs):
-        mastery = _clamp(base + rng.uniform(-_MASTERY_NOISE, _MASTERY_NOISE), 0.02, 0.98)
+        mastery = _clamp(
+            base + rng.uniform(-_MASTERY_NOISE, _MASTERY_NOISE), 0.02, 0.98
+        )
         # distinct negative due => all overdue, default order = by due (stable)
-        card = _make_review_card(col, did, f"{name} #{i}", due=i - n)
+        card = _make_review_card(
+            col, did, f"{name} #{i}", due=i - n, tag=_topic_key(name)
+        )
         cards.append(
             {
                 "cid": card.id,
@@ -224,7 +287,9 @@ def _seed_weakness_evidence(col: Collection, cards: list[dict]) -> None:
 def _oracle_order(cards: list[dict]) -> list[int]:
     """Best-possible order given the hidden truth: descending true value
     (1-mastery)*weight. A reference upper bound, NOT one of the three arms."""
-    ranked = sorted(cards, key=lambda c: (-(1.0 - c["mastery"]) * c["weight"], c["cid"]))
+    ranked = sorted(
+        cards, key=lambda c: (-(1.0 - c["mastery"]) * c["weight"], c["cid"])
+    )
     return [c["cid"] for c in ranked]
 
 
@@ -248,7 +313,9 @@ def _stats(values: list[float]) -> dict:
     }
 
 
-def run_experiment(seeds: list[int] | None = None, budget_fraction: float = _BUDGET_FRACTION) -> dict:
+def run_experiment(
+    seeds: list[int] | None = None, budget_fraction: float = _BUDGET_FRACTION
+) -> dict:
     """Run the three-arm ablation across several seeds and return a summary dict.
 
     Each seed builds a fresh collection, captures the three arm orders on the
@@ -265,26 +332,33 @@ def run_experiment(seeds: list[int] | None = None, budget_fraction: float = _BUD
             did = col.decks.id("Default")
             cards = _build_cards(col, did, rng)
             by_id = {c["cid"]: c for c in cards}
-            # Arm 3 (plain Anki): default order BEFORE any Speedrun evidence.
-            plain = _order(col, did, False)
+            # Arm 1 (plain Anki): default order, both features OFF, BEFORE any
+            # Speedrun evidence.
+            plain = _order(col, did, points_at_stake=False, interleave=False)
             _seed_weakness_evidence(col, cards)
-            # Arm 2 (feature off): default order AFTER the shared evidence.
-            feature_off = _order(col, did, False)
-            # Arm 1 (full app): points-at-stake order using that same evidence.
-            full = _order(col, did, True)
+            # Arm 2 (+points-at-stake): weakest/highest-value cards first, using
+            # the shared evidence.
+            points_only = _order(col, did, points_at_stake=True, interleave=False)
+            # Arm 3 (+points-at-stake +interleave): the same value ranking, then
+            # confusable sibling topics round-robined within each concept block.
+            points_plus_interleave = _order(
+                col, did, points_at_stake=True, interleave=True
+            )
             records.append(
                 {
                     "seed": seed,
                     "by_id": by_id,
                     "n": len(cards),
                     "orders": {
-                        "full_points_at_stake_on": full,
-                        "feature_off": feature_off,
                         "plain_anki": plain,
+                        "points_at_stake": points_only,
+                        "points_plus_interleave": points_plus_interleave,
                     },
                     "oracle": _oracle_order(cards),
                     "weakest_cid": min(cards, key=lambda c: c["mastery"])["cid"],
-                    "total_gain": sum((1.0 - c["mastery"]) * c["weight"] for c in cards),
+                    "total_gain": sum(
+                        (1.0 - c["mastery"]) * c["weight"] for c in cards
+                    ),
                 }
             )
         finally:
@@ -297,10 +371,11 @@ def run_experiment(seeds: list[int] | None = None, budget_fraction: float = _BUD
     weak = {key: [] for key in _ARM_KEYS}
     frac_captured = {key: [] for key in _ARM_KEYS}
     oracle_gains: list[float] = []
-    positions_changed: list[float] = []
+    positions_changed_points: list[float] = []
+    positions_changed_interleave: list[float] = []
     top_is_weakest: list[int] = []
     first_is_weak: list[int] = []
-    off_equals_plain: list[int] = []
+    interleave_differs: list[int] = []
     for r in records:
         by_id = r["by_id"]
         for key in _ARM_KEYS:
@@ -309,12 +384,22 @@ def run_experiment(seeds: list[int] | None = None, budget_fraction: float = _BUD
             weak[key].append(_weak_covered(r["orders"][key], by_id, k))
             frac_captured[key].append(g / r["total_gain"] if r["total_gain"] else 0.0)
         oracle_gains.append(_expected_gain(r["oracle"], by_id, k))
-        full = r["orders"]["full_points_at_stake_on"]
         plain = r["orders"]["plain_anki"]
-        positions_changed.append(float(sum(1 for a, b in zip(plain, full) if a != b)))
-        top_is_weakest.append(1 if full and full[0] == r["weakest_cid"] else 0)
-        first_is_weak.append(1 if full and by_id[full[0]]["mastery"] < _WEAK_THRESHOLD else 0)
-        off_equals_plain.append(1 if r["orders"]["feature_off"] == plain else 0)
+        points = r["orders"]["points_at_stake"]
+        interleaved = r["orders"]["points_plus_interleave"]
+        # Arm 2 vs arm 1: points-at-stake reorders the plain queue.
+        positions_changed_points.append(
+            float(sum(1 for a, b in zip(plain, points) if a != b))
+        )
+        # Arm 3 vs arm 2: interleave measurably reorders the value ranking.
+        positions_changed_interleave.append(
+            float(sum(1 for a, b in zip(points, interleaved) if a != b))
+        )
+        top_is_weakest.append(1 if points and points[0] == r["weakest_cid"] else 0)
+        first_is_weak.append(
+            1 if points and by_id[points[0]]["mastery"] < _WEAK_THRESHOLD else 0
+        )
+        interleave_differs.append(1 if interleaved != points else 0)
 
     plain_mean = statistics.mean(gains["plain_anki"])
     vs_plain = {}
@@ -335,17 +420,20 @@ def run_experiment(seeds: list[int] | None = None, budget_fraction: float = _BUD
                 4,
             )
         row["oracle"] = round(
-            statistics.mean(_expected_gain(r["oracle"], r["by_id"], kk) for r in records),
+            statistics.mean(
+                _expected_gain(r["oracle"], r["by_id"], kk) for r in records
+            ),
             4,
         )
         sensitivity.append(row)
 
     return {
-        "experiment": "points_at_stake_three_arm_ablation",
+        "experiment": "study_feature_three_arm_ablation",
         "simulation": True,
         "seeds": seeds,
         "params": {
             "topics": len(_TOPICS),
+            "parent_concepts": len(set(_TOPIC_PARENTS.values())),
             "cards_per_topic": _CARDS_PER_TOPIC,
             "cards_total_n": n,
             "attempts_per_card": _ATTEMPTS_PER_CARD,
@@ -369,18 +457,34 @@ def run_experiment(seeds: list[int] | None = None, budget_fraction: float = _BUD
         "reference_oracle_value_sorted": {"expected_gain": _stats(oracle_gains)},
         "vs_plain_anki": vs_plain,
         "ordering_diagnostic": {
-            "positions_changed_on_vs_plain": _stats(positions_changed),
-            "weakest_card_surfaced_first_frac": round(statistics.mean(top_is_weakest), 3),
+            "positions_changed_points_vs_plain": _stats(positions_changed_points),
+            "positions_changed_interleave_vs_points": _stats(
+                positions_changed_interleave
+            ),
+            "weakest_card_surfaced_first_frac": round(
+                statistics.mean(top_is_weakest), 3
+            ),
             "first_card_is_weak_frac": round(statistics.mean(first_is_weak), 3),
-            "feature_off_equals_plain_frac": round(statistics.mean(off_equals_plain), 3),
+            "interleave_differs_from_points_frac": round(
+                statistics.mean(interleave_differs), 3
+            ),
         },
         "budget_sensitivity": sensitivity,
         "per_seed": [
             {
                 "seed": r["seed"],
-                "full": round(_expected_gain(r["orders"]["full_points_at_stake_on"], r["by_id"], k), 4),
-                "feature_off": round(_expected_gain(r["orders"]["feature_off"], r["by_id"], k), 4),
-                "plain": round(_expected_gain(r["orders"]["plain_anki"], r["by_id"], k), 4),
+                "plain": round(
+                    _expected_gain(r["orders"]["plain_anki"], r["by_id"], k), 4
+                ),
+                "points_at_stake": round(
+                    _expected_gain(r["orders"]["points_at_stake"], r["by_id"], k), 4
+                ),
+                "points_plus_interleave": round(
+                    _expected_gain(
+                        r["orders"]["points_plus_interleave"], r["by_id"], k
+                    ),
+                    4,
+                ),
                 "oracle": round(_expected_gain(r["oracle"], r["by_id"], k), 4),
                 "total": round(r["total_gain"], 4),
             }
@@ -392,22 +496,28 @@ def run_experiment(seeds: list[int] | None = None, budget_fraction: float = _BUD
 def _assert_experiment_sane(result: dict) -> None:
     """Sanity checks that hold by construction; keep the experiment honest."""
     arms = result["arms"]
-    full = arms["full_points_at_stake_on"]["expected_gain"]["mean"]
-    off = arms["feature_off"]["expected_gain"]["mean"]
     plain = arms["plain_anki"]["expected_gain"]["mean"]
+    points = arms["points_at_stake"]["expected_gain"]["mean"]
+    interleave = arms["points_plus_interleave"]["expected_gain"]["mean"]
     oracle = result["reference_oracle_value_sorted"]["expected_gain"]["mean"]
     diag = result["ordering_diagnostic"]
 
-    # Ablating the feature must revert the queue to exactly the plain-Anki order:
-    # the diagnostic evidence alone does not reorder anything.
-    assert diag["feature_off_equals_plain_frac"] == 1.0, result
-    assert abs(off - plain) < 1e-9, (off, plain)
-    # The feature must actually reorder the queue and lead with a weak card.
-    assert diag["positions_changed_on_vs_plain"]["mean"] > 0, result
+    # The three arms must be genuinely distinct, not two aliases of one order.
+    # Arm 2 (+points-at-stake) must actually reorder the plain queue and lead
+    # with a weak card.
+    assert diag["positions_changed_points_vs_plain"]["mean"] > 0, result
     assert diag["first_card_is_weak_frac"] == 1.0, result
-    # ON should surface at least as much value as plain, and never beat the oracle.
-    assert full >= plain, (full, plain)
-    assert full <= oracle + 1e-9, (full, oracle)
+    # Arm 3 (+interleave) must measurably reorder the points-at-stake ranking on
+    # the aggregate and on at least some seeds - otherwise it would collapse onto
+    # arm 2 (the original soft spot this experiment closes).
+    assert diag["positions_changed_interleave_vs_points"]["mean"] > 0, result
+    assert diag["interleave_differs_from_points_frac"] > 0, result
+    # Points-at-stake should surface at least as much value as plain within the
+    # budget; no arm may beat the oracle upper bound. Interleave optimises for
+    # spacing, not within-budget value, so it is only bounded above by the oracle.
+    assert points >= plain, (points, plain)
+    assert points <= oracle + 1e-9, (points, oracle)
+    assert interleave <= oracle + 1e-9, (interleave, oracle)
 
 
 def _experiment_summary(result: dict) -> dict:

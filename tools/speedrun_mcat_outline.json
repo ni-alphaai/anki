@@ -1,60 +1,218 @@
 {
-  "name": "MCAT content outline coverage map (content-category grain)",
-  "source": "AAMC MCAT content outline (structure paraphrased)",
-  "source_note": "Reflects the structure of the AAMC MCAT content outline: the 10 Foundational Concepts and their 31 discipline 'content categories' (ids 1A..10A). Category names here are short paraphrases written for this tool, NOT the AAMC's copyrighted outline text. Only the id/name/weight structure is reproduced. The Critical Analysis and Reasoning Skills (CARS) section is skills-based and has no content categories, so it contributes no topics (see cars_note).",
-  "cars_note": "CARS has no content categories in the AAMC outline; it is assessed as a reasoning skill over unseen passages, so it is intentionally absent from this content-coverage map.",
-  "weighting": "Each topic 'weight' is a documented emphasis ESTIMATE, not an official AAMC number. Natural-science foundational concepts (biochemistry/biology/chemistry/physics) get higher weights because that material is tested across the two science sections and carries a heavier discrete/quantitative load; psychology/sociology concepts get lower weights. Rationale is per Foundational Concept (all content categories in a concept inherit its weight). Set every weight to 1.0 to disable weighting (weighted coverage then equals unweighted coverage).",
-  "min_coverage": 0.5,
-  "min_coverage_note": "Mirrors rslib MIN_COVERAGE (rslib/src/speedrun/readiness.rs). Readiness abstains (sufficient=false) while unweighted coverage < 0.50. Weighted coverage is reported as a sharper signal for skipped high-weight sections.",
-  "concept_weights": {
-    "FC1": 3.0, "FC2": 2.5, "FC3": 2.5, "FC4": 2.5, "FC5": 2.5,
-    "FC6": 1.5, "FC7": 1.5, "FC8": 1.5, "FC9": 1.0, "FC10": 1.0
-  },
-  "sections": {
-    "Bio/Biochem": "Biological and Biochemical Foundations of Living Systems",
-    "Chem/Phys": "Chemical and Physical Foundations of Biological Systems",
-    "Psych/Soc": "Psychological, Social, and Biological Foundations of Behavior"
-  },
-  "topics": [
-    {"id": "1A", "name": "Structure and function of proteins and their amino acids", "weight": 3.0, "concept": "FC1", "section": "Bio/Biochem"},
-    {"id": "1B", "name": "Transmission of genetic information from gene to protein", "weight": 3.0, "concept": "FC1", "section": "Bio/Biochem"},
-    {"id": "1C", "name": "Heritable information across generations and genetic diversity", "weight": 3.0, "concept": "FC1", "section": "Bio/Biochem"},
-    {"id": "1D", "name": "Bioenergetics and fuel-molecule metabolism", "weight": 3.0, "concept": "FC1", "section": "Bio/Biochem"},
+    "name": "MCAT content outline coverage map (content-category grain)",
+    "source": "AAMC MCAT content outline (structure paraphrased)",
+    "source_note": "Reflects the structure of the AAMC MCAT content outline: the 10 Foundational Concepts and their 31 discipline 'content categories' (ids 1A..10A). Category names here are short paraphrases written for this tool, NOT the AAMC's copyrighted outline text. Only the id/name/weight structure is reproduced. The Critical Analysis and Reasoning Skills (CARS) section is skills-based and has no content categories, so it contributes no topics (see cars_note).",
+    "cars_note": "CARS has no content categories in the AAMC outline; it is assessed as a reasoning skill over unseen passages, so it is intentionally absent from this content-coverage map.",
+    "weighting": "Each topic 'weight' is a documented emphasis ESTIMATE, not an official AAMC number. Natural-science foundational concepts (biochemistry/biology/chemistry/physics) get higher weights because that material is tested across the two science sections and carries a heavier discrete/quantitative load; psychology/sociology concepts get lower weights. Rationale is per Foundational Concept (all content categories in a concept inherit its weight). Set every weight to 1.0 to disable weighting (weighted coverage then equals unweighted coverage).",
+    "min_coverage": 0.5,
+    "min_coverage_note": "Mirrors rslib MIN_COVERAGE (rslib/src/speedrun/readiness.rs). Readiness abstains (sufficient=false) while unweighted coverage < 0.50. Weighted coverage is reported as a sharper signal for skipped high-weight sections.",
+    "concept_weights": {
+        "FC1": 3.0,
+        "FC2": 2.5,
+        "FC3": 2.5,
+        "FC4": 2.5,
+        "FC5": 2.5,
+        "FC6": 1.5,
+        "FC7": 1.5,
+        "FC8": 1.5,
+        "FC9": 1.0,
+        "FC10": 1.0
+    },
+    "sections": {
+        "Bio/Biochem": "Biological and Biochemical Foundations of Living Systems",
+        "Chem/Phys": "Chemical and Physical Foundations of Biological Systems",
+        "Psych/Soc": "Psychological, Social, and Biological Foundations of Behavior"
+    },
+    "topics": [
+        {
+            "id": "1A",
+            "name": "Structure and function of proteins and their amino acids",
+            "weight": 3.0,
+            "concept": "FC1",
+            "section": "Bio/Biochem"
+        },
+        {
+            "id": "1B",
+            "name": "Transmission of genetic information from gene to protein",
+            "weight": 3.0,
+            "concept": "FC1",
+            "section": "Bio/Biochem"
+        },
+        {
+            "id": "1C",
+            "name": "Heritable information across generations and genetic diversity",
+            "weight": 3.0,
+            "concept": "FC1",
+            "section": "Bio/Biochem"
+        },
+        {
+            "id": "1D",
+            "name": "Bioenergetics and fuel-molecule metabolism",
+            "weight": 3.0,
+            "concept": "FC1",
+            "section": "Bio/Biochem"
+        },
 
-    {"id": "2A", "name": "Assemblies of molecules and cells within organisms", "weight": 2.5, "concept": "FC2", "section": "Bio/Biochem"},
-    {"id": "2B", "name": "Structure, growth, physiology, and genetics of prokaryotes and viruses", "weight": 2.5, "concept": "FC2", "section": "Bio/Biochem"},
-    {"id": "2C", "name": "Cell division, differentiation, and specialization", "weight": 2.5, "concept": "FC2", "section": "Bio/Biochem"},
+        {
+            "id": "2A",
+            "name": "Assemblies of molecules and cells within organisms",
+            "weight": 2.5,
+            "concept": "FC2",
+            "section": "Bio/Biochem"
+        },
+        {
+            "id": "2B",
+            "name": "Structure, growth, physiology, and genetics of prokaryotes and viruses",
+            "weight": 2.5,
+            "concept": "FC2",
+            "section": "Bio/Biochem"
+        },
+        {
+            "id": "2C",
+            "name": "Cell division, differentiation, and specialization",
+            "weight": 2.5,
+            "concept": "FC2",
+            "section": "Bio/Biochem"
+        },
 
-    {"id": "3A", "name": "Nervous and endocrine systems coordinating the body", "weight": 2.5, "concept": "FC3", "section": "Bio/Biochem"},
-    {"id": "3B", "name": "Structure and integrated function of the major organ systems", "weight": 2.5, "concept": "FC3", "section": "Bio/Biochem"},
+        {
+            "id": "3A",
+            "name": "Nervous and endocrine systems coordinating the body",
+            "weight": 2.5,
+            "concept": "FC3",
+            "section": "Bio/Biochem"
+        },
+        {
+            "id": "3B",
+            "name": "Structure and integrated function of the major organ systems",
+            "weight": 2.5,
+            "concept": "FC3",
+            "section": "Bio/Biochem"
+        },
 
-    {"id": "4A", "name": "Motion, forces, energy, and equilibrium in living systems", "weight": 2.5, "concept": "FC4", "section": "Chem/Phys"},
-    {"id": "4B", "name": "Fluids: circulation of blood, gas movement, and gas exchange", "weight": 2.5, "concept": "FC4", "section": "Chem/Phys"},
-    {"id": "4C", "name": "Electrochemistry and electrical circuits", "weight": 2.5, "concept": "FC4", "section": "Chem/Phys"},
-    {"id": "4D", "name": "Interaction of light and sound with matter", "weight": 2.5, "concept": "FC4", "section": "Chem/Phys"},
-    {"id": "4E", "name": "Atomic structure, nuclear decay, and atomic chemical behavior", "weight": 2.5, "concept": "FC4", "section": "Chem/Phys"},
+        {
+            "id": "4A",
+            "name": "Motion, forces, energy, and equilibrium in living systems",
+            "weight": 2.5,
+            "concept": "FC4",
+            "section": "Chem/Phys"
+        },
+        {
+            "id": "4B",
+            "name": "Fluids: circulation of blood, gas movement, and gas exchange",
+            "weight": 2.5,
+            "concept": "FC4",
+            "section": "Chem/Phys"
+        },
+        {
+            "id": "4C",
+            "name": "Electrochemistry and electrical circuits",
+            "weight": 2.5,
+            "concept": "FC4",
+            "section": "Chem/Phys"
+        },
+        {
+            "id": "4D",
+            "name": "Interaction of light and sound with matter",
+            "weight": 2.5,
+            "concept": "FC4",
+            "section": "Chem/Phys"
+        },
+        {
+            "id": "4E",
+            "name": "Atomic structure, nuclear decay, and atomic chemical behavior",
+            "weight": 2.5,
+            "concept": "FC4",
+            "section": "Chem/Phys"
+        },
 
-    {"id": "5A", "name": "Unique nature of water and its solutions", "weight": 2.5, "concept": "FC5", "section": "Chem/Phys"},
-    {"id": "5B", "name": "Nature of molecules and intermolecular interactions", "weight": 2.5, "concept": "FC5", "section": "Chem/Phys"},
-    {"id": "5C", "name": "Separation and purification methods", "weight": 2.5, "concept": "FC5", "section": "Chem/Phys"},
-    {"id": "5D", "name": "Structure, function, and reactivity of biological molecules", "weight": 2.5, "concept": "FC5", "section": "Chem/Phys"},
-    {"id": "5E", "name": "Principles of chemical thermodynamics and kinetics", "weight": 2.5, "concept": "FC5", "section": "Chem/Phys"},
+        {
+            "id": "5A",
+            "name": "Unique nature of water and its solutions",
+            "weight": 2.5,
+            "concept": "FC5",
+            "section": "Chem/Phys"
+        },
+        {
+            "id": "5B",
+            "name": "Nature of molecules and intermolecular interactions",
+            "weight": 2.5,
+            "concept": "FC5",
+            "section": "Chem/Phys"
+        },
+        {
+            "id": "5C",
+            "name": "Separation and purification methods",
+            "weight": 2.5,
+            "concept": "FC5",
+            "section": "Chem/Phys"
+        },
+        {
+            "id": "5D",
+            "name": "Structure, function, and reactivity of biological molecules",
+            "weight": 2.5,
+            "concept": "FC5",
+            "section": "Chem/Phys"
+        },
+        {
+            "id": "5E",
+            "name": "Principles of chemical thermodynamics and kinetics",
+            "weight": 2.5,
+            "concept": "FC5",
+            "section": "Chem/Phys"
+        },
 
-    {"id": "6A", "name": "Sensing the environment", "weight": 1.5, "concept": "FC6", "section": "Psych/Soc"},
-    {"id": "6B", "name": "Making sense of the environment (perception and cognition)", "weight": 1.5, "concept": "FC6", "section": "Psych/Soc"},
-    {"id": "6C", "name": "Responding to the world (emotion and stress)", "weight": 1.5, "concept": "FC6", "section": "Psych/Soc"},
+        { "id": "6A", "name": "Sensing the environment", "weight": 1.5, "concept": "FC6", "section": "Psych/Soc" },
+        {
+            "id": "6B",
+            "name": "Making sense of the environment (perception and cognition)",
+            "weight": 1.5,
+            "concept": "FC6",
+            "section": "Psych/Soc"
+        },
+        {
+            "id": "6C",
+            "name": "Responding to the world (emotion and stress)",
+            "weight": 1.5,
+            "concept": "FC6",
+            "section": "Psych/Soc"
+        },
 
-    {"id": "7A", "name": "Individual influences on behavior", "weight": 1.5, "concept": "FC7", "section": "Psych/Soc"},
-    {"id": "7B", "name": "Social processes that influence behavior", "weight": 1.5, "concept": "FC7", "section": "Psych/Soc"},
-    {"id": "7C", "name": "Attitude and behavior change", "weight": 1.5, "concept": "FC7", "section": "Psych/Soc"},
+        {
+            "id": "7A",
+            "name": "Individual influences on behavior",
+            "weight": 1.5,
+            "concept": "FC7",
+            "section": "Psych/Soc"
+        },
+        {
+            "id": "7B",
+            "name": "Social processes that influence behavior",
+            "weight": 1.5,
+            "concept": "FC7",
+            "section": "Psych/Soc"
+        },
+        { "id": "7C", "name": "Attitude and behavior change", "weight": 1.5, "concept": "FC7", "section": "Psych/Soc" },
 
-    {"id": "8A", "name": "Self-identity", "weight": 1.5, "concept": "FC8", "section": "Psych/Soc"},
-    {"id": "8B", "name": "Social thinking", "weight": 1.5, "concept": "FC8", "section": "Psych/Soc"},
-    {"id": "8C", "name": "Social interactions", "weight": 1.5, "concept": "FC8", "section": "Psych/Soc"},
+        { "id": "8A", "name": "Self-identity", "weight": 1.5, "concept": "FC8", "section": "Psych/Soc" },
+        { "id": "8B", "name": "Social thinking", "weight": 1.5, "concept": "FC8", "section": "Psych/Soc" },
+        { "id": "8C", "name": "Social interactions", "weight": 1.5, "concept": "FC8", "section": "Psych/Soc" },
 
-    {"id": "9A", "name": "Understanding social structure", "weight": 1.0, "concept": "FC9", "section": "Psych/Soc"},
-    {"id": "9B", "name": "Demographic characteristics and processes", "weight": 1.0, "concept": "FC9", "section": "Psych/Soc"},
+        {
+            "id": "9A",
+            "name": "Understanding social structure",
+            "weight": 1.0,
+            "concept": "FC9",
+            "section": "Psych/Soc"
+        },
+        {
+            "id": "9B",
+            "name": "Demographic characteristics and processes",
+            "weight": 1.0,
+            "concept": "FC9",
+            "section": "Psych/Soc"
+        },
 
-    {"id": "10A", "name": "Social inequality", "weight": 1.0, "concept": "FC10", "section": "Psych/Soc"}
-  ]
+        { "id": "10A", "name": "Social inequality", "weight": 1.0, "concept": "FC10", "section": "Psych/Soc" }
+    ]
 }

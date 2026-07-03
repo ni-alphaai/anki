@@ -100,7 +100,9 @@ class Report:
 # --------------------------------------------------------------------------- #
 # Calibration maths (pure-Python mirror of the Rust engine)                    #
 # --------------------------------------------------------------------------- #
-def compute_calibration_py(pairs: list[tuple[float, bool]], n_bins: int = N_BINS) -> Report:
+def compute_calibration_py(
+    pairs: list[tuple[float, bool]], n_bins: int = N_BINS
+) -> Report:
     """Pure-Python re-implementation of rslib compute_calibration().
 
     Kept byte-for-byte faithful to the engine (same binning rule, Brier =
@@ -140,7 +142,9 @@ def compute_calibration_py(pairs: list[tuple[float, bool]], n_bins: int = N_BINS
             mean_outcome = bin_out[i] / count
         else:
             mean_predicted = mean_outcome = 0.0
-        bins.append(Bin(i / n_bins, (i + 1) / n_bins, count, mean_predicted, mean_outcome))
+        bins.append(
+            Bin(i / n_bins, (i + 1) / n_bins, count, mean_predicted, mean_outcome)
+        )
 
     sufficient = n >= MIN_PREDICTIONS
     note = (
@@ -292,8 +296,8 @@ def render_svg(calibrated: Report, overconfident: Report, n: int) -> str:
     parts.append(
         f'<text x="{cx_mid}" y="49" text-anchor="middle" font-size="12.5" '
         f'fill="#666666">Reliability diagram on held-out predictions '
-        f'(n={n} per scenario, {N_BINS} equal-width bins, abstain below '
-        f'{MIN_PREDICTIONS})</text>'
+        f"(n={n} per scenario, {N_BINS} equal-width bins, abstain below "
+        f"{MIN_PREDICTIONS})</text>"
     )
 
     # gridlines + ticks
@@ -367,7 +371,7 @@ def render_svg(calibrated: Report, overconfident: Report, n: int) -> str:
     parts.append(
         f'<text x="30" y="{cy_mid:.1f}" text-anchor="middle" font-size="13" '
         f'fill="{axis}" transform="rotate(-90 30 {cy_mid:.1f})">'
-        f'Observed recall (mean outcome)</text>'
+        f"Observed recall (mean outcome)</text>"
     )
 
     # legend, placed in the empty lower-right region of the plot
@@ -386,7 +390,7 @@ def render_svg(calibrated: Report, overconfident: Report, n: int) -> str:
     )
     parts.append(
         f'<text x="{lx + 48:.1f}" y="{row_y + 4:.1f}" font-size="11.5" fill="{axis}">'
-        f'ideal: perfectly calibrated (y = x)</text>'
+        f"ideal: perfectly calibrated (y = x)</text>"
     )
     row_y += 24
     parts.append(
@@ -399,8 +403,8 @@ def render_svg(calibrated: Report, overconfident: Report, n: int) -> str:
     )
     parts.append(
         f'<text x="{lx + 48:.1f}" y="{row_y + 4:.1f}" font-size="11.5" fill="{axis}">'
-        f'well-calibrated (Brier {calibrated.brier:.3f}, '
-        f'log-loss {calibrated.log_loss:.3f})</text>'
+        f"well-calibrated (Brier {calibrated.brier:.3f}, "
+        f"log-loss {calibrated.log_loss:.3f})</text>"
     )
     row_y += 24
     parts.append(
@@ -413,8 +417,8 @@ def render_svg(calibrated: Report, overconfident: Report, n: int) -> str:
     )
     parts.append(
         f'<text x="{lx + 48:.1f}" y="{row_y + 4:.1f}" font-size="11.5" fill="{axis}">'
-        f'over-confident (Brier {overconfident.brier:.3f}, '
-        f'log-loss {overconfident.log_loss:.3f})</text>'
+        f"over-confident (Brier {overconfident.brier:.3f}, "
+        f"log-loss {overconfident.log_loss:.3f})</text>"
     )
 
     parts.append("</svg>\n")
@@ -425,7 +429,9 @@ def render_svg(calibrated: Report, overconfident: Report, n: int) -> str:
 # Markdown report                                                             #
 # --------------------------------------------------------------------------- #
 def _bin_near(rep: Report, target: float) -> Bin:
-    return min((b for b in rep.bins if b.count), key=lambda b: abs(b.mean_predicted - target))
+    return min(
+        (b for b in rep.bins if b.count), key=lambda b: abs(b.mean_predicted - target)
+    )
 
 
 def render_report(
@@ -466,7 +472,9 @@ def render_report(
     lines.append("Reproduce:")
     lines.append("")
     lines.append("```bash")
-    lines.append("./tools/speedrun_calibration.sh          # default n=200 per scenario")
+    lines.append(
+        "./tools/speedrun_calibration.sh          # default n=200 per scenario"
+    )
     lines.append("./tools/speedrun_calibration.sh 500       # larger held-out set")
     lines.append("```")
     lines.append("")
@@ -509,15 +517,15 @@ def render_report(
     lines.append("")
     lines.append(
         f"- **Well-calibrated:** in the {hi_cal.lo:.1f}-{hi_cal.hi:.1f} band the "
-        f"model predicts on average **{hi_cal.mean_predicted*100:.0f}%** and the "
-        f"held-out recall is **{hi_cal.mean_outcome*100:.0f}%** - the points sit on "
+        f"model predicts on average **{hi_cal.mean_predicted * 100:.0f}%** and the "
+        f"held-out recall is **{hi_cal.mean_outcome * 100:.0f}%** - the points sit on "
         f"the diagonal, so a stated probability means what it says (say ~80%, get "
         f"~80% recall)."
     )
     lines.append(
         f"- **Over-confident:** in that same {hi_oc.lo:.1f}-{hi_oc.hi:.1f} band it "
-        f"still predicts **{hi_oc.mean_predicted*100:.0f}%**, but only "
-        f"**{hi_oc.mean_outcome*100:.0f}%** actually stick - confident predictions "
+        f"still predicts **{hi_oc.mean_predicted * 100:.0f}%**, but only "
+        f"**{hi_oc.mean_outcome * 100:.0f}%** actually stick - confident predictions "
         f"are systematically inflated, which is exactly what the higher Brier flags."
     )
     lines.append("")
@@ -581,9 +589,7 @@ def render_report(
         f"`predicted`-vs-`correct` pairs. Fixed RNG seed `{SEED}` -> the run is "
         f"reproducible."
     )
-    lines.append(
-        "- **Well-calibrated generator:** `outcome ~ Bernoulli(predicted)`."
-    )
+    lines.append("- **Well-calibrated generator:** `outcome ~ Bernoulli(predicted)`.")
     lines.append(
         "- **Over-confident generator:** the true recall is pulled halfway to a "
         "coin flip, `true = 0.5 + (predicted - 0.5) * 0.5` (a stated 90% is really "
@@ -650,11 +656,15 @@ def main() -> int:
     print_report("over-confident generator", overconfident)
 
     # Give-up rule: abstain below MIN_PREDICTIONS, compute at/above it.
-    abstain_few, _ = report_for_pairs(generate_pairs(MIN_PREDICTIONS // 2, "calibrated"))
+    abstain_few, _ = report_for_pairs(
+        generate_pairs(MIN_PREDICTIONS // 2, "calibrated")
+    )
     abstain_enough, _ = report_for_pairs(
         generate_pairs(MIN_PREDICTIONS + 5, "calibrated")
     )
-    print_report(f"abstain demo: {abstain_few.n} predictions (< {MIN_PREDICTIONS})", abstain_few)
+    print_report(
+        f"abstain demo: {abstain_few.n} predictions (< {MIN_PREDICTIONS})", abstain_few
+    )
     print_report(
         f"abstain demo: {abstain_enough.n} predictions (>= {MIN_PREDICTIONS})",
         abstain_enough,
@@ -677,7 +687,10 @@ def main() -> int:
     assert len(overconfident.bins) == N_BINS, len(overconfident.bins)
     assert calibrated.sufficient and overconfident.sufficient
     # the proper score detects miscalibration
-    assert calibrated.brier < overconfident.brier, (calibrated.brier, overconfident.brier)
+    assert calibrated.brier < overconfident.brier, (
+        calibrated.brier,
+        overconfident.brier,
+    )
     assert calibrated.log_loss < overconfident.log_loss, (
         calibrated.log_loss,
         overconfident.log_loss,

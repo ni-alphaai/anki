@@ -5,7 +5,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
 # Speedrun §7c — Topic coverage map (AI-off)
 
-**What this is.** A coverage map over the *full* AAMC MCAT content outline: every
+**What this is.** A coverage map over the _full_ AAMC MCAT content outline: every
 topic, whether the deck covers it, the percent covered (plain **and**
 weight-weighted), and a demonstration that readiness **abstains** from a score
 when coverage is below the give-up line.
@@ -55,18 +55,18 @@ Concepts). This artifact supplies the finer AAMC grain: the **31 discipline
   id/name/weight structure is reproduced; category names are short paraphrases,
   not the AAMC's copyrighted outline text. CARS is a skills-based section with no
   content categories and contributes no topics.
-- **Weights:** a *documented emphasis estimate* (not an official AAMC number).
+- **Weights:** a _documented emphasis estimate_ (not an official AAMC number).
   Natural-science concepts (biochemistry/biology/chemistry/physics) are weighted
   higher because that material is tested across the two science sections; the
   psychology/sociology concepts are weighted lower. Set every weight to `1.0` to
   disable weighting.
 
-| Section | Full name | Topics | Weight | % of exam weight |
-|---|---|--:|--:|--:|
-| Bio/Biochem | Biological and Biochemical Foundations of Living Systems | 9 | 24.5 | 37.1% |
-| Chem/Phys | Chemical and Physical Foundations of Biological Systems | 10 | 25.0 | 37.9% |
-| Psych/Soc | Psychological, Social, and Biological Foundations of Behavior | 12 | 16.5 | 25.0% |
-| **Total** | | **31** | **66.0** | **100%** |
+| Section     | Full name                                                     | Topics |   Weight | % of exam weight |
+| ----------- | ------------------------------------------------------------- | -----: | -------: | ---------------: |
+| Bio/Biochem | Biological and Biochemical Foundations of Living Systems      |      9 |     24.5 |            37.1% |
+| Chem/Phys   | Chemical and Physical Foundations of Biological Systems       |     10 |     25.0 |            37.9% |
+| Psych/Soc   | Psychological, Social, and Biological Foundations of Behavior |     12 |     16.5 |            25.0% |
+| **Total**   |                                                               | **31** | **66.0** |         **100%** |
 
 ## Result [1] — Coverage map for a partially-studied deck
 
@@ -124,68 +124,68 @@ from the JSON (topics_covered, plain coverage, weighted coverage all match).
 
 ## Result [2] — Abstain below the line (the "10,000-card" case)
 
-The spec case: *"A deck with 10,000 cards that skips a whole high-weight section
-should not show ready."* Built **10,000 mature review cards**, but every card
+The spec case: _"A deck with 10,000 cards that skips a whole high-weight section
+should not show ready."_ Built **10,000 mature review cards**, but every card
 lands in the low-weight **Psych/Soc** section — the entire science half is
 skipped. Memory and performance evidence were seeded so that **coverage is the
 dimension on show**.
 
 ```text
-    built 10000 cards across 12 Psych/Soc topics (10000 mature review cards)
-    topics covered     : 12/31  (1A, 1B, 1C... all skipped)
-    coverage (plain)   : 38.7%   (< 50.0% line)
-    weighted_coverage  : 25.0%   (heavier skip shows up here)
-    readiness.sufficient : False
-    readiness.blocking   : coverage
-    readiness.reason     : not enough evidence: need topic coverage 39%/50% (weighted 25%)
+built 10000 cards across 12 Psych/Soc topics (10000 mature review cards)
+topics covered     : 12/31  (1A, 1B, 1C... all skipped)
+coverage (plain)   : 38.7%   (< 50.0% line)
+weighted_coverage  : 25.0%   (heavier skip shows up here)
+readiness.sufficient : False
+readiness.blocking   : coverage
+readiness.reason     : not enough evidence: need topic coverage 39%/50% (weighted 25%)
 ```
 
 → **10,000 cards do not buy readiness.** `sufficient == False`, the blocking
 dimension is `coverage`, and the reason reports both figures (plain 39% and
 weighted 25%).
 
-## Result [3] — Cross the line (both plain *and* weighted must clear 50%)
+## Result [3] — Cross the line (both plain _and_ weighted must clear 50%)
 
 Because the gate is on `min(plain, weighted)`, adding a few low-weight topics is
 not enough. Covering the missing **high-weight sciences** (all Bio/Biochem +
 Chem/Phys topics) takes both metrics over the line:
 
 ```text
-    added coverage of  : the 19 Bio/Biochem + Chem/Phys science topics
-    coverage (plain)   : 100.0%   (>= 50.0% line)
-    weighted_coverage  : 100.0%   (>= 50.0% line)
-    effective coverage : min(plain, weighted) = 100.0%
-    readiness.sufficient : True
-    readiness.blocking   : none
-    readiness.reason     : enough evidence to estimate readiness
+added coverage of  : the 19 Bio/Biochem + Chem/Phys science topics
+coverage (plain)   : 100.0%   (>= 50.0% line)
+weighted_coverage  : 100.0%   (>= 50.0% line)
+effective coverage : min(plain, weighted) = 100.0%
+readiness.sufficient : True
+readiness.blocking   : none
+readiness.reason     : enough evidence to estimate readiness
 ```
 
 → Once **both** plain and weighted coverage clear 50% (and the other gates are
 satisfied), readiness stops abstaining on the coverage dimension
 (`blocking = none`) and becomes **sufficient**.
 
-> Note: under the *old* plain-only gate, covering just Foundational Concept 1
+> Note: under the _old_ plain-only gate, covering just Foundational Concept 1
 > (→ 51.6% plain / 43.2% weighted) was enough to "cross". Under the new gate that
 > deck still abstains (`weighted 43% < 50%`), which is the point of the fix.
 
 ## Result [4] — The engine abstains on a skipped high-weight section
 
-A deck can touch a *majority* of topics yet still be short on exam weight. Here
+A deck can touch a _majority_ of topics yet still be short on exam weight. Here
 the deck covers **all** of Psych/Soc plus all non-biochemistry Biology, but skips
 biomolecules (FC1) and the **entire Chem/Phys section**. Memory + performance are
 seeded (34 mature review cards, 30 exam attempts) so coverage is the binding
 dimension:
 
 ```text
-    seeded             : 34 mature review cards (>= 20), 30 exam attempts
-    topics covered     : 17/31
-    coverage (plain)   : 54.8%   (looks above the 50.0% line)
-    weighted_coverage  : 43.9%   (below it - the heavy skip shows)
-    effective coverage : min(plain, weighted) = 43.9%   <- engine gates here
-    skipped (heavy)    : 1A, 1B, 1C, 1D, 4A, 4B, 4C, 4D, 4E, 5A, 5B, 5C, 5D, 5E
-    readiness.sufficient : False
-    readiness.blocking   : coverage
-    readiness.reason     : not enough evidence: need topic coverage 55%/50% (weighted 44%)
+seeded             : 34 mature review cards (>= 20), 30 exam attempts
+topics covered     : 17/31
+coverage (plain)   : 54.8%   (looks above the 50.0% line)
+weighted_coverage  : 43.9%   (below it - the heavy skip shows)
+effective coverage : min(plain, weighted) = 43.9%   <- engine gates here
+skipped (heavy)    : 1A, 1B, 1C, 1D, 4A, 4B, 4C, 4D, 4E, 5A, 5B, 5C, 5D, 5E
+readiness.sufficient : False
+readiness.blocking   : coverage
+readiness.reason     : not enough evidence: need topic coverage 55%/50% (weighted 44%)
 ```
 
 → By raw topic count the deck looks ready (54.8% ≥ 50%), but weighted coverage

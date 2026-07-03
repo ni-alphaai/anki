@@ -55,7 +55,9 @@ MIN_GRADED_ATTEMPTS = 30
 
 SECTION_ORDER = ["Bio/Biochem", "Chem/Phys", "Psych/Soc"]
 
-OUTLINE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "speedrun_mcat_outline.json")
+OUTLINE_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "speedrun_mcat_outline.json"
+)
 
 
 class Checker:
@@ -88,7 +90,9 @@ def load_outline(path: str = OUTLINE_PATH) -> dict:
 def to_entries(outline: dict) -> list[speedrun_pb2.TopicMapEntry]:
     """Build the TopicMap entries the backend expects (topic=id, label=name)."""
     return [
-        speedrun_pb2.TopicMapEntry(topic=t["id"], label=t["name"], weight=float(t["weight"]))
+        speedrun_pb2.TopicMapEntry(
+            topic=t["id"], label=t["name"], weight=float(t["weight"])
+        )
         for t in outline["topics"]
     ]
 
@@ -133,7 +137,9 @@ def load_outline_into(col: Collection, outline: dict) -> int:
     return col._backend.set_topic_map(to_entries(outline))
 
 
-def add_tagged_cards(col: Collection, tag_counts: dict[str, int], mature: bool = True) -> int:
+def add_tagged_cards(
+    col: Collection, tag_counts: dict[str, int], mature: bool = True
+) -> int:
     """Add `count` notes tagged with each topic id. If mature, mark every card a
     mature review card so it counts toward the memory substrate."""
     model = col.models.by_name("Basic")
@@ -192,7 +198,7 @@ def print_coverage_table(cov, outline: dict) -> None:
     rows = {t.topic: t for t in cov.topics}
 
     print(f"  {'id':<4} {'wt':>4} {'cards':>6}  {'status':<9} name")
-    print(f"  {'-'*4} {'-'*4} {'-'*6}  {'-'*9} {'-'*40}")
+    print(f"  {'-' * 4} {'-' * 4} {'-' * 6}  {'-' * 9} {'-' * 40}")
     for section in SECTION_ORDER:
         sec_ids = [t["id"] for t in outline["topics"] if t["section"] == section]
         n_cov = sum(1 for tid in sec_ids if rows[tid].covered)
@@ -206,7 +212,9 @@ def print_coverage_table(cov, outline: dict) -> None:
         for tid in sec_ids:
             r = rows[tid]
             status = "COVERED" if r.covered else "gap"
-            print(f"  {tid:<4} {r.weight:>4.1f} {r.cards:>6}  {status:<9} {meta[tid]['name']}")
+            print(
+                f"  {tid:<4} {r.weight:>4.1f} {r.cards:>6}  {status:<9} {meta[tid]['name']}"
+            )
     print()
     print(f"  topics_total       : {cov.topics_total}")
     print(f"  topics_covered     : {cov.topics_covered}")
@@ -214,11 +222,15 @@ def print_coverage_table(cov, outline: dict) -> None:
     print(f"  weighted_coverage  : {pct(cov.weighted_coverage)}")
     covered = [t.topic for t in cov.topics if t.covered]
     gaps = [t.topic for t in cov.topics if not t.covered]
-    print(f"  covered  ({len(covered):>2}) : {', '.join(covered) if covered else '(none)'}")
+    print(
+        f"  covered  ({len(covered):>2}) : {', '.join(covered) if covered else '(none)'}"
+    )
     print(f"  gaps     ({len(gaps):>2}) : {', '.join(gaps) if gaps else '(none)'}")
 
 
-def assert_engine_matches_expected(check: Checker, cov, outline: dict, covered_ids, label: str) -> None:
+def assert_engine_matches_expected(
+    check: Checker, cov, outline: dict, covered_ids, label: str
+) -> None:
     """Cross-check the engine's CoverageReport against pure-Python expectations."""
     exp = expected_coverage(outline["topics"], covered_ids)
     check.ok(
@@ -253,26 +265,51 @@ def demo(outline: dict) -> int:
 
     print(f"\nLoaded outline: {outline['name']}")
     print(f"  source : {outline['source']}")
-    print(f"  topics : {n_topics} content categories (vs the engine's 10-concept placeholder)")
+    print(
+        f"  topics : {n_topics} content categories (vs the engine's 10-concept placeholder)"
+    )
     total_w = sum(t["weight"] for t in topics)
     for section in SECTION_ORDER:
         ids = [t for t in topics if t["section"] == section]
         w = sum(t["weight"] for t in ids)
-        print(f"    {section:<12} {len(ids):>2} topics, weight {w:>5.1f} ({pct(w / total_w)} of exam weight)")
+        print(
+            f"    {section:<12} {len(ids):>2} topics, weight {w:>5.1f} ({pct(w / total_w)} of exam weight)"
+        )
 
     # ------------------------------------------------------------------ #
     print("\n[1] Coverage map for a partially-studied deck")
     covered1 = [
-        "1A", "1B", "1D", "2A", "2C", "3A", "3B", "4A", "4B",
-        "5A", "5D", "6A", "6B", "7A", "8A", "8B", "9A", "10A",
+        "1A",
+        "1B",
+        "1D",
+        "2A",
+        "2C",
+        "3A",
+        "3B",
+        "4A",
+        "4B",
+        "5A",
+        "5D",
+        "6A",
+        "6B",
+        "7A",
+        "8A",
+        "8B",
+        "9A",
+        "10A",
     ]
     col = new_collection()
     try:
         loaded = load_outline_into(col, outline)
-        check.ok("SetTopicMap loaded the full custom outline", loaded == n_topics, f"{loaded} topics")
+        check.ok(
+            "SetTopicMap loaded the full custom outline",
+            loaded == n_topics,
+            f"{loaded} topics",
+        )
         check.ok(
             "GetTopicMap reads the custom ids back (1A..10A, not fc1..fc10)",
-            {e.topic for e in col._backend.get_topic_map()} == {t["id"] for t in topics},
+            {e.topic for e in col._backend.get_topic_map()}
+            == {t["id"] for t in topics},
         )
         add_tagged_cards(col, {tid: 1 for tid in covered1})
         cov = col._backend.get_coverage_report()
@@ -302,21 +339,33 @@ def demo(outline: dict) -> int:
         record_exam_attempts(col, MIN_GRADED_ATTEMPTS)  # clear memory+performance gates
         dt = time.time() - t0
         review_cards = col.db.scalar("select count(*) from cards where type = 2")
-        print(f"    built {made} cards across {len(psych_ids)} Psych/Soc topics in {dt:.1f}s"
-              f" ({review_cards} mature review cards)")
+        print(
+            f"    built {made} cards across {len(psych_ids)} Psych/Soc topics in {dt:.1f}s"
+            f" ({review_cards} mature review cards)"
+        )
 
         cov = col._backend.get_coverage_report()
         snap = col._backend.compute_readiness()
-        print(f"    topics covered     : {cov.topics_covered}/{cov.topics_total}"
-              f"  ({', '.join(science_ids[:3])}... all skipped)")
-        print(f"    coverage (plain)   : {pct(cov.coverage)}   (< {pct(MIN_COVERAGE)} line)")
-        print(f"    weighted_coverage  : {pct(cov.weighted_coverage)}   (heavier skip shows up here)")
+        print(
+            f"    topics covered     : {cov.topics_covered}/{cov.topics_total}"
+            f"  ({', '.join(science_ids[:3])}... all skipped)"
+        )
+        print(
+            f"    coverage (plain)   : {pct(cov.coverage)}   (< {pct(MIN_COVERAGE)} line)"
+        )
+        print(
+            f"    weighted_coverage  : {pct(cov.weighted_coverage)}   (heavier skip shows up here)"
+        )
         print(f"    readiness.sufficient : {snap.sufficient}")
         print(f"    readiness.blocking   : {snap.blocking_dimension}")
         print(f"    readiness.reason     : {snap.reason}")
 
         assert_engine_matches_expected(check, cov, outline, psych_ids, "abstain")
-        check.ok("plain coverage is below the line", cov.coverage < MIN_COVERAGE, pct(cov.coverage))
+        check.ok(
+            "plain coverage is below the line",
+            cov.coverage < MIN_COVERAGE,
+            pct(cov.coverage),
+        )
         check.ok(
             "10,000 cards do NOT buy readiness - it abstains",
             not snap.sufficient,
@@ -339,16 +388,28 @@ def demo(outline: dict) -> int:
         now_covered = psych_ids + add_ids
         cov2 = col._backend.get_coverage_report()
         snap2 = col._backend.compute_readiness()
-        print(f"    added coverage of  : the {len(add_ids)} Bio/Biochem + Chem/Phys science topics")
-        print(f"    coverage (plain)   : {pct(cov2.coverage)}   (>= {pct(MIN_COVERAGE)} line)")
-        print(f"    weighted_coverage  : {pct(cov2.weighted_coverage)}   (>= {pct(MIN_COVERAGE)} line)")
-        print(f"    effective coverage : min(plain, weighted) = {pct(min(cov2.coverage, cov2.weighted_coverage))}")
+        print(
+            f"    added coverage of  : the {len(add_ids)} Bio/Biochem + Chem/Phys science topics"
+        )
+        print(
+            f"    coverage (plain)   : {pct(cov2.coverage)}   (>= {pct(MIN_COVERAGE)} line)"
+        )
+        print(
+            f"    weighted_coverage  : {pct(cov2.weighted_coverage)}   (>= {pct(MIN_COVERAGE)} line)"
+        )
+        print(
+            f"    effective coverage : min(plain, weighted) = {pct(min(cov2.coverage, cov2.weighted_coverage))}"
+        )
         print(f"    readiness.sufficient : {snap2.sufficient}")
         print(f"    readiness.blocking   : {snap2.blocking_dimension}")
         print(f"    readiness.reason     : {snap2.reason}")
 
         assert_engine_matches_expected(check, cov2, outline, now_covered, "crossed")
-        check.ok("plain coverage is now at/above the line", cov2.coverage >= MIN_COVERAGE, pct(cov2.coverage))
+        check.ok(
+            "plain coverage is now at/above the line",
+            cov2.coverage >= MIN_COVERAGE,
+            pct(cov2.coverage),
+        )
         check.ok(
             "weighted coverage is now at/above the line too",
             cov2.weighted_coverage >= MIN_COVERAGE,
@@ -356,7 +417,8 @@ def demo(outline: dict) -> int:
         )
         check.ok(
             "both metrics cross, so readiness stops abstaining on the coverage dimension",
-            snap2.blocking_dimension != "coverage" and "topic coverage" not in snap2.reason,
+            snap2.blocking_dimension != "coverage"
+            and "topic coverage" not in snap2.reason,
             f"blocking={snap2.blocking_dimension}",
         )
         check.ok(
@@ -374,7 +436,9 @@ def demo(outline: dict) -> int:
     print("    + all non-biochem Biology, but skip biomolecules (FC1) and the")
     print("    entire Chem/Phys section. The give-up rule now gates on")
     print("    min(plain, weighted), so this deck must NOT show ready.")
-    covered4 = ids_for_sections(outline, ["Psych/Soc"]) + ids_for_concepts(outline, ["FC2", "FC3"])
+    covered4 = ids_for_sections(outline, ["Psych/Soc"]) + ids_for_concepts(
+        outline, ["FC2", "FC3"]
+    )
     col = new_collection()
     try:
         load_outline_into(col, outline)
@@ -389,12 +453,20 @@ def demo(outline: dict) -> int:
         snap = col._backend.compute_readiness()
         skipped = [t["id"] for t in topics if t["id"] not in set(covered4)]
         effective = min(cov.coverage, cov.weighted_coverage)
-        print(f"    seeded             : {review_cards} mature review cards (>= {MIN_REVIEW_CARDS}),"
-              f" {MIN_GRADED_ATTEMPTS} exam attempts")
+        print(
+            f"    seeded             : {review_cards} mature review cards (>= {MIN_REVIEW_CARDS}),"
+            f" {MIN_GRADED_ATTEMPTS} exam attempts"
+        )
         print(f"    topics covered     : {cov.topics_covered}/{cov.topics_total}")
-        print(f"    coverage (plain)   : {pct(cov.coverage)}   (looks above the {pct(MIN_COVERAGE)} line)")
-        print(f"    weighted_coverage  : {pct(cov.weighted_coverage)}   (below it - the heavy skip shows)")
-        print(f"    effective coverage : min(plain, weighted) = {pct(effective)}   <- engine gates here")
+        print(
+            f"    coverage (plain)   : {pct(cov.coverage)}   (looks above the {pct(MIN_COVERAGE)} line)"
+        )
+        print(
+            f"    weighted_coverage  : {pct(cov.weighted_coverage)}   (below it - the heavy skip shows)"
+        )
+        print(
+            f"    effective coverage : min(plain, weighted) = {pct(effective)}   <- engine gates here"
+        )
         print(f"    skipped (heavy)    : {', '.join(skipped)}")
         print(f"    readiness.sufficient : {snap.sufficient}")
         print(f"    readiness.blocking   : {snap.blocking_dimension}")

@@ -119,7 +119,11 @@ def main() -> int:
             card_of[tag] = note.cards()[0].id
             note_of[tag] = note.id
         cov = col._backend.get_coverage_report()
-        check.ok("coverage counts the 3 tagged concepts", cov.topics_covered == 3, f"of {cov.topics_total}")
+        check.ok(
+            "coverage counts the 3 tagged concepts",
+            cov.topics_covered == 3,
+            f"of {cov.topics_total}",
+        )
 
         print("\n[3] Reasoning passages (held-out questions) linked to concepts")
         for tag in ("fc1", "fc2", "fc3"):
@@ -134,57 +138,120 @@ def main() -> int:
         report = col._backend.get_performance_report()
         check.ok("held-out bank holds the 3 questions", report.question_items == 3)
         routed = col._backend.get_routed_practice(topic="fc1")
-        check.ok("routed practice returns the fc1 question", len(routed) == 1 and routed[0].topic == "fc1")
+        check.ok(
+            "routed practice returns the fc1 question",
+            len(routed) == 1 and routed[0].topic == "fc1",
+        )
 
         print("\n[4] The study workflow classifies every failure mode")
         exam_total = 0
         exam_correct = 0
 
         # A recall miss on a plain review -> memory gap, resurface sooner.
-        d = _attempt(col, card_id=card_of["fc1"], note_id=note_of["fc1"], correct=False,
-                     question_type=SRS, recall_failed=True)
+        d = _attempt(
+            col,
+            card_id=card_of["fc1"],
+            note_id=note_of["fc1"],
+            correct=False,
+            question_type=SRS,
+            recall_failed=True,
+        )
         check.ok("recall miss -> memory gap", d.diagnosis.kind == MEMORY)
-        check.ok("memory gap routes to resurface", d.diagnosis.routed_action == ACTION_RESURFACE)
+        check.ok(
+            "memory gap routes to resurface",
+            d.diagnosis.routed_action == ACTION_RESURFACE,
+        )
 
         # Missed the passage evidence -> passage-comprehension gap.
-        d = _attempt(col, card_id=card_of["fc1"], note_id=note_of["fc1"], correct=False,
-                     question_type=PASSAGE_MCQ, passage_evidence_missed=True)
+        d = _attempt(
+            col,
+            card_id=card_of["fc1"],
+            note_id=note_of["fc1"],
+            correct=False,
+            question_type=PASSAGE_MCQ,
+            passage_evidence_missed=True,
+        )
         exam_total += 1
         check.ok("missed passage evidence -> passage gap", d.diagnosis.kind == PASSAGE)
-        check.ok("passage gap routes to passage practice", d.diagnosis.routed_action == ACTION_PASSAGE)
+        check.ok(
+            "passage gap routes to passage practice",
+            d.diagnosis.routed_action == ACTION_PASSAGE,
+        )
 
         # Confident but rushed a question and got it wrong -> test-taking gap
         # (sure + fast = careless/misread, not a missing concept).
-        d = _attempt(col, card_id=card_of["fc2"], note_id=note_of["fc2"], correct=False,
-                     question_type=PASSAGE_MCQ, took_ms=3000, predicted=0.9)
+        d = _attempt(
+            col,
+            card_id=card_of["fc2"],
+            note_id=note_of["fc2"],
+            correct=False,
+            question_type=PASSAGE_MCQ,
+            took_ms=3000,
+            predicted=0.9,
+        )
         exam_total += 1
-        check.ok("confident rushed miss -> test-taking gap", d.diagnosis.kind == TEST_TAKING)
-        check.ok("test-taking gap routes to strategy", d.diagnosis.routed_action == ACTION_STRATEGY)
+        check.ok(
+            "confident rushed miss -> test-taking gap", d.diagnosis.kind == TEST_TAKING
+        )
+        check.ok(
+            "test-taking gap routes to strategy",
+            d.diagnosis.routed_action == ACTION_STRATEGY,
+        )
 
         # Rushed but NOT confident -> reasoning gap (they didn't actually have it).
-        d = _attempt(col, card_id=card_of["fc2"], note_id=note_of["fc2"], correct=False,
-                     question_type=PASSAGE_MCQ, took_ms=3000, predicted=0.3)
+        d = _attempt(
+            col,
+            card_id=card_of["fc2"],
+            note_id=note_of["fc2"],
+            correct=False,
+            question_type=PASSAGE_MCQ,
+            took_ms=3000,
+            predicted=0.3,
+        )
         exam_total += 1
         check.ok("unsure rushed miss -> reasoning gap", d.diagnosis.kind == REASONING)
 
         # Deliberated, knew the fact, still wrong -> reasoning gap.
-        d = _attempt(col, card_id=card_of["fc2"], note_id=note_of["fc2"], correct=False,
-                     question_type=PASSAGE_MCQ, took_ms=22000)
+        d = _attempt(
+            col,
+            card_id=card_of["fc2"],
+            note_id=note_of["fc2"],
+            correct=False,
+            question_type=PASSAGE_MCQ,
+            took_ms=22000,
+        )
         exam_total += 1
         check.ok("slow deliberate miss -> reasoning gap", d.diagnosis.kind == REASONING)
 
         # A correct application advances.
-        d = _attempt(col, card_id=card_of["fc3"], note_id=note_of["fc3"], correct=True,
-                     question_type=DISCRETE, took_ms=9000)
+        d = _attempt(
+            col,
+            card_id=card_of["fc3"],
+            note_id=note_of["fc3"],
+            correct=True,
+            question_type=DISCRETE,
+            took_ms=9000,
+        )
         exam_total += 1
         exam_correct += 1
         check.ok("correct application -> advance", d.diagnosis.kind == CORRECT)
-        check.ok("correct advances the action", d.diagnosis.routed_action == ACTION_ADVANCE)
+        check.ok(
+            "correct advances the action", d.diagnosis.routed_action == ACTION_ADVANCE
+        )
 
-        print("\n[5] Performance is measured separately from recall (held out from SRS)")
+        print(
+            "\n[5] Performance is measured separately from recall (held out from SRS)"
+        )
         perf = col._backend.get_performance_report()
-        check.ok("exam-style attempts counted", perf.exam_attempts == exam_total, f"{perf.exam_attempts}")
-        check.ok("performance is evaluated on the 3 linked concept cards", perf.cards_evaluated == 3)
+        check.ok(
+            "exam-style attempts counted",
+            perf.exam_attempts == exam_total,
+            f"{perf.exam_attempts}",
+        )
+        check.ok(
+            "performance is evaluated on the 3 linked concept cards",
+            perf.cards_evaluated == 3,
+        )
         # Per-card mean, not per-attempt: fc1 0/1, fc2 0/3, fc3 1/1 -> (0 + 0 + 1) / 3.
         check.ok(
             "performance rate is the per-card mean",
@@ -195,20 +262,28 @@ def main() -> int:
             "the recall-vs-performance gap abstains until >=5 cards are evaluated",
             not perf.sufficient and "not enough evidence" in perf.note,
         )
-        print("      held-out questions never touch SRS scheduling; a trustworthy "
-              "gap needs mature cards + \u22655 evaluated, so it abstains here")
+        print(
+            "      held-out questions never touch SRS scheduling; a trustworthy "
+            "gap needs mature cards + \u22655 evaluated, so it abstains here"
+        )
 
         print("\n[6] Evidence persists with its diagnosis")
         fc1_attempts = col._backend.get_attempts_for_card(card_id=card_of["fc1"])
         check.ok("fc1 kept both of its recorded attempts", len(fc1_attempts) == 2)
         kinds = sorted(a.diagnosis_kind for a in fc1_attempts)
-        check.ok("fc1 attempts carry memory + passage diagnoses", kinds == [MEMORY, PASSAGE])
+        check.ok(
+            "fc1 attempts carry memory + passage diagnoses", kinds == [MEMORY, PASSAGE]
+        )
 
         print("\n[7] Readiness recomputes coherently after the session")
         snap = col._backend.compute_readiness()
-        check.ok("readiness is still on the MCAT scale", 472 <= snap.readiness_scaled <= 528)
-        check.ok("readiness reports either a score or a reason",
-                 snap.sufficient or bool(snap.reason))
+        check.ok(
+            "readiness is still on the MCAT scale", 472 <= snap.readiness_scaled <= 528
+        )
+        check.ok(
+            "readiness reports either a score or a reason",
+            snap.sufficient or bool(snap.reason),
+        )
 
         print(f"\nspeedrun e2e: PASS ({check.n} checks)")
         return 0

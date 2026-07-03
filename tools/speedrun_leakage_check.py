@@ -194,9 +194,9 @@ def pack_label(path: str) -> str:
 def load_pack(path: str) -> tuple[dict, list[Item]]:
     """Load a pack into (metadata, items). Handles all three shapes:
 
-      * question pack: {questions:[{topic, card_tag, stem, ...}]}
-      * mmlu pack:     {questions:[{topic, stem, ...}]}  (no card_tag)
-      * gold set:      {items:[{id, topic, stem, gold_kind, ...}]}
+    * question pack: {questions:[{topic, card_tag, stem, ...}]}
+    * mmlu pack:     {questions:[{topic, stem, ...}]}  (no card_tag)
+    * gold set:      {items:[{id, topic, stem, gold_kind, ...}]}
     """
     with open(path, encoding="utf-8") as f:
         data = json.load(f)
@@ -267,7 +267,9 @@ def engine_scan_pack(Collection, speedrun_pb2, label: str, items: list[Item]) ->
         tag_card: dict[str, int] = {}
         for tag, expls in tag_expl.items():
             note = col.new_note(model)
-            note["Front"] = " ".join(e for e in expls if e) or f"study material for {tag}"
+            note["Front"] = (
+                " ".join(e for e in expls if e) or f"study material for {tag}"
+            )
             note.tags = [tag]
             col.add_note(note, did)
             tag_card[tag] = note.cards()[0].id
@@ -328,9 +330,7 @@ def run_neardup_layer(items: list[Item]) -> dict:
         if it.role != HELD_OUT or not it.explanation:
             continue
         if is_leaked_substring(it.stem, it.explanation):
-            study_verbatim.append(
-                {"pack": it.pack, "id": it.ident, "stem": it.stem}
-            )
+            study_verbatim.append({"pack": it.pack, "id": it.ident, "stem": it.stem})
         exp_norm = normalize(it.explanation)
         wj = jaccard(it.words, word_set(exp_norm))
         cj = jaccard(it.ngrams, char_ngrams(exp_norm))
@@ -402,8 +402,14 @@ def run_neardup_layer(items: list[Item]) -> dict:
 
 def _mk(stem: str, pack: str = "synthetic", role: str = HELD_OUT) -> Item:
     return Item(
-        pack=pack, role=role, idx=0, ident=pack, topic="", card_tag=None,
-        stem=stem, explanation="",
+        pack=pack,
+        role=role,
+        idx=0,
+        ident=pack,
+        topic="",
+        card_tag=None,
+        stem=stem,
+        explanation="",
     ).finalize()
 
 
@@ -420,22 +426,34 @@ def self_test(*, use_engine: bool) -> dict:
 
     # --- verbatim substring detector (mirrors the Rust engine) ---
     note = "The peptide bond is an amide bond between residues."
-    check("verbatim copy is flagged",
-          is_leaked_substring("the peptide bond is an amide bond", note))
-    check("reworded stem is NOT flagged as verbatim",
-          not is_leaked_substring(
-              "Which functional group links adjacent amino acids in a protein?", note))
+    check(
+        "verbatim copy is flagged",
+        is_leaked_substring("the peptide bond is an amide bond", note),
+    )
+    check(
+        "reworded stem is NOT flagged as verbatim",
+        not is_leaked_substring(
+            "Which functional group links adjacent amino acids in a protein?", note
+        ),
+    )
     check("too-short stem is ignored", not is_leaked_substring("amino", note))
 
     # --- near-duplicate detector ---
-    orig = _mk("A ball is thrown straight upward. At its highest point, its acceleration is:")
-    near = _mk("A ball is thrown straight up. At its highest point, its acceleration is:")
+    orig = _mk(
+        "A ball is thrown straight upward. At its highest point, its acceleration is:"
+    )
+    near = _mk(
+        "A ball is thrown straight up. At its highest point, its acceleration is:"
+    )
     far = _mk("Which cofactor is required by transaminase enzymes?")
     wj, cj = near_dup_scores(orig, near)
     check("reworded near-copy is flagged", is_near_dup(wj, cj))
     wj2, cj2 = near_dup_scores(orig, far)
     check("unrelated stem is NOT flagged", not is_near_dup(wj2, cj2))
-    results["planted_near_copy"] = {"word_jaccard": round(wj, 3), "char_jaccard": round(cj, 3)}
+    results["planted_near_copy"] = {
+        "word_jaccard": round(wj, 3),
+        "char_jaccard": round(cj, 3),
+    }
 
     # --- engine detector (only when the pylib bridge is available) ---
     engine: dict = {"ran": False}
@@ -458,20 +476,41 @@ def self_test(*, use_engine: bool) -> dict:
                 n1["Front"] = note
                 n1.tags = ["leak"]
                 col.add_note(n1, did)
-                col._backend.add_question_item(speedrun_pb2.QuestionItem(
-                    card_id=n1.cards()[0].id, topic="leak", provenance=0,
-                    payload=json.dumps({"stem": "the peptide bond is an amide bond"})))
+                col._backend.add_question_item(
+                    speedrun_pb2.QuestionItem(
+                        card_id=n1.cards()[0].id,
+                        topic="leak",
+                        provenance=0,
+                        payload=json.dumps(
+                            {"stem": "the peptide bond is an amide bond"}
+                        ),
+                    )
+                )
                 # A reworded item on the same card -> must NOT flag.
-                col._backend.add_question_item(speedrun_pb2.QuestionItem(
-                    card_id=n1.cards()[0].id, topic="leak", provenance=0,
-                    payload=json.dumps({"stem":
-                        "Which functional group links adjacent amino acids in a protein?"})))
+                col._backend.add_question_item(
+                    speedrun_pb2.QuestionItem(
+                        card_id=n1.cards()[0].id,
+                        topic="leak",
+                        provenance=0,
+                        payload=json.dumps(
+                            {
+                                "stem": "Which functional group links adjacent amino acids in a protein?"
+                            }
+                        ),
+                    )
+                )
                 rep = col._backend.get_leakage_report()
                 check("engine flags the planted verbatim item", rep.flagged == 1)
-                check("engine leaves the reworded item clean",
-                      rep.total_items == 2 and not rep.clean)
-                engine = {"ran": True, "total_items": rep.total_items,
-                          "flagged": rep.flagged, "clean": rep.clean}
+                check(
+                    "engine leaves the reworded item clean",
+                    rep.total_items == 2 and not rep.clean,
+                )
+                engine = {
+                    "ran": True,
+                    "total_items": rep.total_items,
+                    "flagged": rep.flagged,
+                    "clean": rep.clean,
+                }
             finally:
                 col.close()
     results["engine"] = engine
@@ -487,28 +526,38 @@ def scan(paths: list[str], *, use_engine: bool) -> dict:
     corpus: list[Item] = [it for _, items in packs for it in items]
 
     near = run_neardup_layer(corpus)
-    engine = run_engine_layer(packs) if use_engine else {"available": False,
-                                                          "reason": "disabled"}
+    engine = (
+        run_engine_layer(packs)
+        if use_engine
+        else {"available": False, "reason": "disabled"}
+    )
 
     verbatim_flagged = len(near["held_out_vs_study_verbatim"])
     if engine.get("available"):
         verbatim_flagged += sum(p["flagged"] for p in engine["packs"].values())
     study_neardup_flagged = len(near["held_out_vs_study_neardup"])
     gold_gold_flagged = len(near["gold_vs_gold"])
-    clean = (verbatim_flagged == 0 and study_neardup_flagged == 0
-             and gold_gold_flagged == 0)
+    clean = (
+        verbatim_flagged == 0 and study_neardup_flagged == 0 and gold_gold_flagged == 0
+    )
 
     per_pack = []
     for meta, items in packs:
-        eng = engine.get("packs", {}).get(meta["label"]) if engine.get("available") else None
-        per_pack.append({
-            "pack": meta["label"],
-            "name": meta["name"],
-            "role": meta["role"],
-            "items": meta["items"],
-            "engine_verbatim_flagged": (eng or {}).get("flagged"),
-            "engine_linked_study_cards": (eng or {}).get("linked_study_cards"),
-        })
+        eng = (
+            engine.get("packs", {}).get(meta["label"])
+            if engine.get("available")
+            else None
+        )
+        per_pack.append(
+            {
+                "pack": meta["label"],
+                "name": meta["name"],
+                "role": meta["role"],
+                "items": meta["items"],
+                "engine_verbatim_flagged": (eng or {}).get("flagged"),
+                "engine_linked_study_cards": (eng or {}).get("linked_study_cards"),
+            }
+        )
 
     return {
         "thresholds": {
@@ -536,9 +585,11 @@ def _banner(summary: dict, st: dict) -> str:
     audit = summary["near_dup_layer"]["audit"]
     eng = summary["engine_layer"]
     lines = ["", "=== Speedrun s7e leakage check ==="]
-    lines.append(f"self-test: {'PASS' if st.get('pass') else 'FAIL'} "
-                 f"({sum(c['pass'] for c in st['checks'])}/{len(st['checks'])} checks"
-                 f"{', engine detector fired' if st.get('engine', {}).get('ran') else ''})")
+    lines.append(
+        f"self-test: {'PASS' if st.get('pass') else 'FAIL'} "
+        f"({sum(c['pass'] for c in st['checks'])}/{len(st['checks'])} checks"
+        f"{', engine detector fired' if st.get('engine', {}).get('ran') else ''})"
+    )
     if eng.get("available"):
         lines.append("engine verbatim layer: RAN (get_leakage_report RPC)")
     else:
@@ -551,28 +602,44 @@ def _banner(summary: dict, st: dict) -> str:
         lines.append(f"{p['pack']:<16}{p['items']:>7}{p['role']:>18}  {ev}")
     lines.append("")
     lines.append("s7e leakage conditions (drive the verdict):")
-    lines.append(f"  L1 held-out stem is a VERBATIM copy of its study card : {v['held_out_vs_study_verbatim']}")
-    lines.append(f"  L2 held-out stem is a NEAR copy of its study card     : {v['held_out_vs_study_neardup']}")
-    lines.append(f"  L3 gold item duplicates another gold item             : {v['gold_vs_gold']}")
+    lines.append(
+        f"  L1 held-out stem is a VERBATIM copy of its study card : {v['held_out_vs_study_verbatim']}"
+    )
+    lines.append(
+        f"  L2 held-out stem is a NEAR copy of its study card     : {v['held_out_vs_study_neardup']}"
+    )
+    lines.append(
+        f"  L3 gold item duplicates another gold item             : {v['gold_vs_gold']}"
+    )
     lines.append(f"  => VERDICT: {'CLEAN' if v['clean'] else 'LEAKAGE FOUND'}")
     lines.append("")
     ipr = audit["intra_pack_redundancy"]
     cpr = audit["cross_pack_reuse"]
     lines.append("data-hygiene audit (NOT s7e leakage; informational):")
-    lines.append(f"  intra-pack redundancy pairs : {ipr['total']} "
-                 f"(near-exact {ipr['near_exact']}, structural twins {ipr['structural_twins']}) "
-                 f"by pack {ipr['by_pack']}")
+    lines.append(
+        f"  intra-pack redundancy pairs : {ipr['total']} "
+        f"(near-exact {ipr['near_exact']}, structural twins {ipr['structural_twins']}) "
+        f"by pack {ipr['by_pack']}"
+    )
     lines.append(f"  cross-pack scenario reuse   : {cpr['total']}")
     return "\n".join(lines)
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Speedrun s7e leakage check")
-    ap.add_argument("packs", nargs="*", help="pack JSON files (default: the 3 real packs)")
-    ap.add_argument("--no-engine", action="store_true",
-                    help="skip the engine layer even if the pylib bridge is available")
-    ap.add_argument("--quiet", action="store_true",
-                    help="print only the JSON summary (no human banner on stderr)")
+    ap.add_argument(
+        "packs", nargs="*", help="pack JSON files (default: the 3 real packs)"
+    )
+    ap.add_argument(
+        "--no-engine",
+        action="store_true",
+        help="skip the engine layer even if the pylib bridge is available",
+    )
+    ap.add_argument(
+        "--quiet",
+        action="store_true",
+        help="print only the JSON summary (no human banner on stderr)",
+    )
     args = ap.parse_args()
 
     use_engine = not args.no_engine

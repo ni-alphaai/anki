@@ -20,7 +20,10 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
+
+import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -54,6 +57,48 @@ def signals_of(item: dict) -> Signals:
         recall_failed=bool(s.get("recall_failed", False)),
         passage_evidence_missed=bool(s.get("passage_evidence_missed", False)),
     )
+
+
+def _doc_text(it: dict) -> str:
+    """The item's classifiable text (stem + explanation + options), matching what
+    keyword_classify reads, so the vector baseline sees the same evidence."""
+    return " ".join(
+        [it.get("stem", ""), it.get("explanation", ""), " ".join(it.get("options", []))]
+    )
+
+
+def vector_classify_all(items: list[dict]) -> list[str]:
+    """Pure-numpy TF-IDF + leave-one-out cosine nearest-neighbor baseline.
+
+    sklearn/scipy are unavailable in the eval venv and the only corpus is the
+    small gold set itself, so we build a TF-IDF matrix over every item's text and
+    predict each item's label from its nearest OTHER item's gold label. The LOO
+    step (masking the diagonal) is required: without it every item is its own
+    nearest neighbor and the baseline trivially scores 100%.
+    """
+    docs = [_doc_text(it).lower() for it in items]
+    vocab: dict[str, int] = {}
+    toks = [re.findall(r"[a-z0-9]+", d) for d in docs]
+    for t in toks:
+        for w in t:
+            vocab.setdefault(w, len(vocab))
+    n, v = len(docs), len(vocab)
+    tf = np.zeros((n, v))
+    for i, t in enumerate(toks):
+        for w in t:
+            tf[i, vocab[w]] += 1.0
+    df = (tf > 0).sum(axis=0)
+    idf = np.log((1 + n) / (1 + df)) + 1.0
+    X = tf * idf
+    norms = np.linalg.norm(X, axis=1, keepdims=True)
+    Xn = X / np.where(norms == 0, 1.0, norms)
+    sim = Xn @ Xn.T
+    np.fill_diagonal(sim, -1.0)  # leave-one-out: never match the item to itself
+    preds = []
+    for i in range(n):
+        j = int(np.argmax(sim[i]))
+        preds.append(items[j]["gold_kind"])
+    return preds
 
 
 def leakage_check(items: list[dict]) -> dict:
@@ -114,15 +159,17 @@ def run(model: str, cutoff: float) -> dict:
     golds = [it["gold_kind"] for it in items]
     llm = LLM(model=model)
 
+    vec = vector_classify_all(items)
+
     det, kw, ai = [], [], []
     rows = []
-    for it in items:
+    for i, it in enumerate(items):
         s = signals_of(it)
         det.append(KIND_NAME.get(deterministic_classify(s)))
         kw.append(KIND_NAME.get(keyword_classify(it, s)))
         d = diagnose(it, s, llm=llm, cutoff=cutoff)
         ai.append(None if d["abstained"] else d["kind_name"])
-        rows.append((it["id"], it["gold_kind"], det[-1], kw[-1], ai[-1], d))
+        rows.append((it["id"], it["gold_kind"], det[-1], kw[-1], vec[i], ai[-1], d))
 
     results = {
         "model": model,
@@ -131,6 +178,7 @@ def run(model: str, cutoff: float) -> dict:
         "leakage": leakage_check(items),
         "deterministic": compute_metrics(det, golds),
         "keyword": compute_metrics(kw, golds),
+        "vector": compute_metrics(vec, golds),
         "ai_coach": compute_metrics(ai, golds),
         "ai_confusion": confusion(ai, golds),
         "rows": rows,
@@ -157,11 +205,14 @@ def render(r: dict) -> str:
         f"{'CLEAN' if lk['clean'] else 'REVIEW'}.\n"
     )
     L.append("\n## Method comparison\n")
-    L.append("| Method | Coverage | Accuracy (overall) | Accuracy (answered) | Wrong-answer rate |")
+    L.append(
+        "| Method | Coverage | Accuracy (overall) | Accuracy (answered) | Wrong-answer rate |"
+    )
     L.append("| --- | --- | --- | --- | --- |")
     for name, key in [
         ("Deterministic (signals only, baseline)", "deterministic"),
         ("Keyword (baseline)", "keyword"),
+        ("Vector (TF-IDF cosine, LOO NN)", "vector"),
         ("AI coach (source-grounded)", "ai_coach"),
     ]:
         m = r[key]
@@ -169,11 +220,20 @@ def render(r: dict) -> str:
             f"| {name} | {_pct(m['coverage'])} | {_pct(m['accuracy_overall'])} | "
             f"{_pct(m['accuracy_answered'])} | {_pct(m['wrong_rate'])} |"
         )
-    best_base = max(r["deterministic"]["accuracy_overall"], r["keyword"]["accuracy_overall"])
+    best_base = max(
+        r["deterministic"]["accuracy_overall"],
+        r["keyword"]["accuracy_overall"],
+        r["vector"]["accuracy_overall"],
+    )
     delta = r["ai_coach"]["accuracy_overall"] - best_base
+    if delta > 0:
+        verdict = "AI wins"
+    elif delta == 0:
+        verdict = "AI ties the strongest baseline"
+    else:
+        verdict = "baseline beats AI"
     L.append(
-        f"\n**AI vs best baseline (overall accuracy):** {_pct(delta)} "
-        f"({'AI wins' if delta > 0 else 'no gain'}).\n"
+        f"\n**AI vs best baseline (overall accuracy):** {_pct(delta)} ({verdict}).\n"
     )
     L.append("\n## AI coach - per-class precision / recall\n")
     L.append("| Class | Precision | Recall |")
@@ -186,12 +246,19 @@ def render(r: dict) -> str:
     L.append("| gold \\ pred | " + " | ".join(cols) + " |")
     L.append("| " + " | ".join(["---"] * (len(cols) + 1)) + " |")
     for g in LABELS:
-        L.append(f"| {g} | " + " | ".join(str(r['ai_confusion'][g][c]) for c in cols) + " |")
-    L.append("\n## Per-item (id | gold | deterministic | keyword | AI | AI source)\n")
-    for rid, gold, det, kw, ai, d in r["rows"]:
+        L.append(
+            f"| {g} | " + " | ".join(str(r["ai_confusion"][g][c]) for c in cols) + " |"
+        )
+    L.append(
+        "\n## Per-item (id | gold | deterministic | keyword | vector | AI | AI source)\n"
+    )
+    for rid, gold, det, kw, vec, ai, d in r["rows"]:
         src = (d.get("source") or "").split("(")[0].strip()
         flag = "" if (ai == gold) else " <-"
-        L.append(f"- `{rid}` {gold} | det={det} kw={kw} ai={ai or 'ABSTAIN'}{flag} | src: {src}")
+        L.append(
+            f"- `{rid}` {gold} | det={det} kw={kw} vec={vec} "
+            f"ai={ai or 'ABSTAIN'}{flag} | src: {src}"
+        )
     return "\n".join(L) + "\n"
 
 
@@ -212,6 +279,22 @@ def main() -> int:
     else:
         print(report)
     print(f"[report written to {os.path.relpath(REPORT_PATH)}]")
+
+    # Gate: the source-grounded AI coach must at least tie the strongest baseline
+    # (deterministic / keyword / vector). This runs AFTER the report is written so
+    # the artifact is always produced, pass or fail. Do NOT weaken this gate to
+    # force a pass - a failure is a real result to surface to a human.
+    best_base = max(
+        r["deterministic"]["accuracy_overall"],
+        r["keyword"]["accuracy_overall"],
+        r["vector"]["accuracy_overall"],
+    )
+    ai_acc = r["ai_coach"]["accuracy_overall"]
+    print(f"[gate] AI {ai_acc:.3f} vs best baseline {best_base:.3f}")
+    if ai_acc < best_base:
+        print("[gate] FAIL: AI coach did not beat the strongest baseline.")
+        return 1
+    print("[gate] PASS: AI coach beats every baseline.")
     return 0
 
 

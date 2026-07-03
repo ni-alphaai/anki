@@ -58,7 +58,7 @@ REPORT_PATH = _HERE / "speedrun_cardcheck_report.md"
 N_CARDS = 50
 
 # --- The one real source (verbatim excerpt; see attribution in SOURCE_META) ---
-SOURCE_TEXT = "Cellular respiration is the process of oxidizing biological fuels using an inorganic electron acceptor, such as oxygen, to drive production of adenosine triphosphate (ATP), which stores chemical energy in a biologically accessible form. Cellular respiration may be described as a set of metabolic reactions and processes that take place in the cells to transfer chemical energy from nutrients to ATP, with the flow of electrons to an electron acceptor, and then release waste products. If the electron acceptor is oxygen, the process is more specifically known as aerobic cellular respiration. If the electron acceptor is a molecule other than oxygen, this is anaerobic cellular respiration \u2013 not to be confused with fermentation, which is also an anaerobic process, but it is not respiration, as no external electron acceptor is involved. The reactions involved in respiration are catabolic reactions, which break large molecules into smaller ones, producing ATP.\n\nNutrients that are commonly used by animal and plant cells in respiration include sugar, amino acids and fatty acids, and the most common oxidizing agent is molecular oxygen (O2).\n\nBiology textbooks often state that 38 ATP molecules can be made per oxidized glucose molecule during cellular respiration (2 from glycolysis, 2 from the Krebs cycle, and about 34 from the electron transport system). However, this maximum yield is never quite reached because of losses due to leaky membranes as well as the cost of moving pyruvate and ADP into the mitochondrial matrix, and current estimates range around 29 to 30 ATP per glucose.\n\nAerobic metabolism is up to 15 times more efficient than anaerobic metabolism (which yields 2 molecules of ATP per 1 molecule of glucose).\n\nThe post-glycolytic reactions take place in the mitochondria in eukaryotic cells, and in the cytoplasm in prokaryotic cells.\n\nGlycolysis is a metabolic pathway that takes place in the cytosol of cells in all living organisms. Glycolysis can be literally translated as \"sugar splitting\", and occurs regardless of oxygen's presence or absence. The process converts one molecule of glucose into two molecules of pyruvate (pyruvic acid), generating energy in the form of two net molecules of ATP. Four molecules of ATP per glucose are actually produced, but two are consumed as part of the preparatory phase.\n\nGlucose + 2 NAD+ + 2 Pi + 2 ADP \u2192 2 pyruvate + 2 NADH + 2 ATP + 2 H+ + 2 H2O + energy\n\nAn additional ATP is used to phosphorylate fructose 6-phosphate into fructose 1,6-bisphosphate by the help of phosphofructokinase.\n\nPyruvate is oxidized to acetyl-CoA and CO2 by the pyruvate dehydrogenase complex (PDC). The PDC contains multiple copies of three enzymes and is located in the mitochondria of eukaryotic cells and in the cytosol of prokaryotes. In the conversion of pyruvate to acetyl-CoA, one molecule of NADH and one molecule of CO2 is formed.\n\nThe citric acid cycle is also called the Krebs cycle or the tricarboxylic acid cycle.\n\nThe net gain from one cycle is 3 NADH and 1 FADH2 as hydrogen (proton plus electron) carrying compounds and 1 high-energy GTP, which may subsequently be used to produce ATP. Thus, the total yield from 1 glucose molecule (2 pyruvate molecules) is 6 NADH, 2 FADH2, and 2 ATP.\n\nIn eukaryotes, oxidative phosphorylation occurs in the mitochondrial cristae. It comprises the electron transport chain that establishes a proton gradient (chemiosmotic potential) across the boundary of the inner membrane by oxidizing the NADH produced from the Krebs cycle."
+SOURCE_TEXT = 'Cellular respiration is the process of oxidizing biological fuels using an inorganic electron acceptor, such as oxygen, to drive production of adenosine triphosphate (ATP), which stores chemical energy in a biologically accessible form. Cellular respiration may be described as a set of metabolic reactions and processes that take place in the cells to transfer chemical energy from nutrients to ATP, with the flow of electrons to an electron acceptor, and then release waste products. If the electron acceptor is oxygen, the process is more specifically known as aerobic cellular respiration. If the electron acceptor is a molecule other than oxygen, this is anaerobic cellular respiration \u2013 not to be confused with fermentation, which is also an anaerobic process, but it is not respiration, as no external electron acceptor is involved. The reactions involved in respiration are catabolic reactions, which break large molecules into smaller ones, producing ATP.\n\nNutrients that are commonly used by animal and plant cells in respiration include sugar, amino acids and fatty acids, and the most common oxidizing agent is molecular oxygen (O2).\n\nBiology textbooks often state that 38 ATP molecules can be made per oxidized glucose molecule during cellular respiration (2 from glycolysis, 2 from the Krebs cycle, and about 34 from the electron transport system). However, this maximum yield is never quite reached because of losses due to leaky membranes as well as the cost of moving pyruvate and ADP into the mitochondrial matrix, and current estimates range around 29 to 30 ATP per glucose.\n\nAerobic metabolism is up to 15 times more efficient than anaerobic metabolism (which yields 2 molecules of ATP per 1 molecule of glucose).\n\nThe post-glycolytic reactions take place in the mitochondria in eukaryotic cells, and in the cytoplasm in prokaryotic cells.\n\nGlycolysis is a metabolic pathway that takes place in the cytosol of cells in all living organisms. Glycolysis can be literally translated as "sugar splitting", and occurs regardless of oxygen\'s presence or absence. The process converts one molecule of glucose into two molecules of pyruvate (pyruvic acid), generating energy in the form of two net molecules of ATP. Four molecules of ATP per glucose are actually produced, but two are consumed as part of the preparatory phase.\n\nGlucose + 2 NAD+ + 2 Pi + 2 ADP \u2192 2 pyruvate + 2 NADH + 2 ATP + 2 H+ + 2 H2O + energy\n\nAn additional ATP is used to phosphorylate fructose 6-phosphate into fructose 1,6-bisphosphate by the help of phosphofructokinase.\n\nPyruvate is oxidized to acetyl-CoA and CO2 by the pyruvate dehydrogenase complex (PDC). The PDC contains multiple copies of three enzymes and is located in the mitochondria of eukaryotic cells and in the cytosol of prokaryotes. In the conversion of pyruvate to acetyl-CoA, one molecule of NADH and one molecule of CO2 is formed.\n\nThe citric acid cycle is also called the Krebs cycle or the tricarboxylic acid cycle.\n\nThe net gain from one cycle is 3 NADH and 1 FADH2 as hydrogen (proton plus electron) carrying compounds and 1 high-energy GTP, which may subsequently be used to produce ATP. Thus, the total yield from 1 glucose molecule (2 pyruvate molecules) is 6 NADH, 2 FADH2, and 2 ATP.\n\nIn eukaryotes, oxidative phosphorylation occurs in the mitochondrial cristae. It comprises the electron transport chain that establishes a proton gradient (chemiosmotic potential) across the boundary of the inner membrane by oxidizing the NADH produced from the Krebs cycle.'
 
 # Integrity guard: the committed generated-cards file must carry this exact
 # source. Mirrors the eval's leakage/integrity check.
@@ -143,38 +143,44 @@ GEN_SYSTEM = (
 # part of the 50 generated cards or the three headline counts.
 SELFTEST_PROBES = [
     {
-        "id": "p1", "expect": "WRONG",
+        "id": "p1",
+        "expect": "WRONG",
         "q": "How many net ATP does glycolysis produce per glucose?",
         "a": "38 net ATP.",
         "cite": "The process converts one molecule of glucose into two molecules of pyruvate (pyruvic acid), generating energy in the form of two net molecules of ATP.",
     },
     {
-        "id": "p2", "expect": "WRONG",
+        "id": "p2",
+        "expect": "WRONG",
         "q": "In which compartment does glycolysis take place?",
         "a": "The mitochondrial matrix.",
         "cite": "Glycolysis is a metabolic pathway that takes place in the cytosol of cells in all living organisms.",
     },
     {
-        "id": "p3", "expect": "CORRECT_BUT_BAD",
+        "id": "p3",
+        "expect": "CORRECT_BUT_BAD",
         "q": "The citric acid cycle is also called the Krebs cycle. What is it called?",
         "a": "the Krebs cycle",
         "cite": "The citric acid cycle is also called the Krebs cycle or the tricarboxylic acid cycle.",
     },
     {
-        "id": "p4", "expect": "CORRECT_BUT_BAD",
+        "id": "p4",
+        "expect": "CORRECT_BUT_BAD",
         "q": "Who discovered the citric acid cycle?",
         "a": "Hans Krebs.",
         "cite": "",
     },
     {
-        "id": "p5", "expect": "CORRECT_USEFUL",
+        "id": "p5",
+        "expect": "CORRECT_USEFUL",
         "q": "In eukaryotes, where does oxidative phosphorylation occur?",
         "a": "In the mitochondrial cristae (the inner mitochondrial membrane).",
         "cite": "In eukaryotes, oxidative phosphorylation occurs in the mitochondrial cristae.",
     },
     {
         # Same stem as p5 (canonical duplicate), answer reworded.
-        "id": "p6", "expect": "CORRECT_BUT_BAD",
+        "id": "p6",
+        "expect": "CORRECT_BUT_BAD",
         "q": "In eukaryotes, where does oxidative phosphorylation occur?",
         "a": "The mitochondrial cristae.",
         "cite": "In eukaryotes, oxidative phosphorylation occurs in the mitochondrial cristae.",
@@ -247,14 +253,48 @@ def grounding_score(cite: str) -> float:
         return 0.0
     if c in SOURCE_NORM:
         return 1.0
-    return max((difflib.SequenceMatcher(None, c, s).ratio() for s in SOURCE_SENTS_NORM), default=0.0)
+    return max(
+        (difflib.SequenceMatcher(None, c, s).ratio() for s in SOURCE_SENTS_NORM),
+        default=0.0,
+    )
 
 
 _STOP = {
-    "the", "a", "an", "of", "is", "are", "to", "in", "and", "what", "which",
-    "does", "do", "how", "many", "per", "for", "that", "this", "at", "by", "it",
-    "its", "be", "or", "from", "into", "during", "with", "as", "on", "was",
-    "were", "molecule", "molecules",
+    "the",
+    "a",
+    "an",
+    "of",
+    "is",
+    "are",
+    "to",
+    "in",
+    "and",
+    "what",
+    "which",
+    "does",
+    "do",
+    "how",
+    "many",
+    "per",
+    "for",
+    "that",
+    "this",
+    "at",
+    "by",
+    "it",
+    "its",
+    "be",
+    "or",
+    "from",
+    "into",
+    "during",
+    "with",
+    "as",
+    "on",
+    "was",
+    "were",
+    "molecule",
+    "molecules",
 }
 
 
@@ -280,8 +320,9 @@ def triviality(card: dict) -> tuple[bool, str]:
 # --------------------------- generation ----------------------------------
 
 
-def generate_cards(llm: CardCheckLLM, n: int = N_CARDS, batch: int = 25,
-                   max_rounds: int = 6) -> list[dict]:
+def generate_cards(
+    llm: CardCheckLLM, n: int = N_CARDS, batch: int = 25, max_rounds: int = 6
+) -> list[dict]:
     """Generate n cards in deterministic rounds.
 
     temperature=0 makes an identical prompt return identical cards, so to reach
@@ -302,8 +343,11 @@ def generate_cards(llm: CardCheckLLM, n: int = N_CARDS, batch: int = 25,
             f"Write {ask} MCAT flashcards grounded ONLY in the SOURCE above, "
             "covering as many distinct facts as possible. Every 'cite' must be "
             "copied verbatim from the SOURCE."
-            + (f"\n\nThese questions are already written - do NOT repeat them:\n{avoid}"
-               if avoid else "")
+            + (
+                f"\n\nThese questions are already written - do NOT repeat them:\n{avoid}"
+                if avoid
+                else ""
+            )
         )
         out = llm.complete_json(GEN_SYSTEM, user)
         raw = out.get("cards", []) if isinstance(out, dict) else out
@@ -315,14 +359,16 @@ def generate_cards(llm: CardCheckLLM, n: int = N_CARDS, batch: int = 25,
             if not q:
                 continue
             collected.append(
-                {"q": q, "a": str(c.get("a", "")).strip(), "cite": str(c.get("cite", "")).strip()}
+                {
+                    "q": q,
+                    "a": str(c.get("a", "")).strip(),
+                    "cite": str(c.get("cite", "")).strip(),
+                }
             )
             added += 1
         if added == 0:  # no progress - avoid an infinite loop on a spent source
             break
-    return [
-        {"id": f"c{i + 1:02d}", **c} for i, c in enumerate(collected[:n])
-    ]
+    return [{"id": f"c{i + 1:02d}", **c} for i, c in enumerate(collected[:n])]
 
 
 def write_generated(cards: list[dict], from_cache: bool, new_calls: int) -> None:
@@ -390,8 +436,12 @@ def judge_card(llm: CardCheckLLM, card: dict, gold_ref: dict | None) -> dict:
         out = llm.complete_json(JUDGE_SYSTEM, user)
     except Exception as e:  # no key / offline cold-cache -> conservative block
         return {
-            "verdict": "unknown", "grounded": False, "teaching": "bad",
-            "confidence": 0.0, "evidence": "", "reason": f"judge unavailable: {e}",
+            "verdict": "unknown",
+            "grounded": False,
+            "teaching": "bad",
+            "confidence": 0.0,
+            "evidence": "",
+            "reason": f"judge unavailable: {e}",
             "error": True,
         }
     try:
@@ -409,8 +459,15 @@ def judge_card(llm: CardCheckLLM, card: dict, gold_ref: dict | None) -> dict:
     }
 
 
-def classify(card: dict, judge: dict, cite_score: float, is_dup: bool,
-             dup_of: str | None, trivial: bool, trivial_reason: str) -> dict:
+def classify(
+    card: dict,
+    judge: dict,
+    cite_score: float,
+    is_dup: bool,
+    dup_of: str | None,
+    trivial: bool,
+    trivial_reason: str,
+) -> dict:
     """Fold judge + deterministic gates into one class + blocking reasons."""
     grounded = (cite_score >= TAU_GROUND) and bool(judge.get("grounded"))
     reasons: list[str] = []
@@ -447,7 +504,9 @@ def classify(card: dict, judge: dict, cite_score: float, is_dup: bool,
     }
 
 
-def check_sequence(llm: CardCheckLLM, cards: list[dict], gold: list[dict]) -> list[dict]:
+def check_sequence(
+    llm: CardCheckLLM, cards: list[dict], gold: list[dict]
+) -> list[dict]:
     """Run the full per-card pipeline over an ordered list of cards.
 
     Duplicate detection compares each card only to earlier ADMITTED cards, so a
@@ -472,8 +531,15 @@ def check_sequence(llm: CardCheckLLM, cards: list[dict], gold: list[dict]) -> li
         gref = gref if gsim >= TAU_GOLD else None
         judge = judge_card(llm, card, gref)
 
-        verdict = classify(card, judge, cite_score, is_dup,
-                            dup_of if is_dup else None, trivial, treason)
+        verdict = classify(
+            card,
+            judge,
+            cite_score,
+            is_dup,
+            dup_of if is_dup else None,
+            trivial,
+            treason,
+        )
         row = {
             "card": card,
             "judge": judge,
@@ -505,8 +571,14 @@ def _example(rows: list[dict], label: str, n: int = 3) -> list[dict]:
     return [r for r in rows if r["label"] == label][:n]
 
 
-def render(gen: dict, rows: list[dict], counts: dict, selftest: list[dict],
-           ran_from_cache: bool, new_calls: int) -> str:
+def render(
+    gen: dict,
+    rows: list[dict],
+    counts: dict,
+    selftest: list[dict],
+    ran_from_cache: bool,
+    new_calls: int,
+) -> str:
     src = gen["source"]
     L: list[str] = []
     L.append("# Speedrun s7f - AI Card Check\n")
@@ -524,28 +596,46 @@ def render(gen: dict, rows: list[dict], counts: dict, selftest: list[dict],
     L.append("\n## Headline counts (the three the task asks for)\n")
     L.append(f"- **Correct + useful (admitted):** {counts['CORRECT_USEFUL']}")
     L.append(f"- **Wrong (factually incorrect vs source/gold):** {counts['WRONG']}")
-    L.append(f"- **Correct but bad teaching (vague / trivial / duplicate / ungrounded):** {counts['CORRECT_BUT_BAD']}")
-    L.append(f"- **Blocked by the cutoff:** {counts['BLOCKED']} of {counts['TOTAL']} "
-             f"(admitted {counts['ADMITTED']}).\n")
+    L.append(
+        f"- **Correct but bad teaching (vague / trivial / duplicate / ungrounded):** {counts['CORRECT_BUT_BAD']}"
+    )
+    L.append(
+        f"- **Blocked by the cutoff:** {counts['BLOCKED']} of {counts['TOTAL']} "
+        f"(admitted {counts['ADMITTED']}).\n"
+    )
 
     L.append("\n## Pre-registered rubric + passing cutoff (fixed before results)\n")
     L.append("Each card is placed in exactly one class:")
-    L.append("- **CORRECT_USEFUL** - correct per the source (and gold anchors where "
-             "topics overlap), grounded in a citable source sentence, specific, "
-             "non-trivial, non-duplicate.")
-    L.append("- **WRONG** - factually incorrect vs the source or a gold anchor, or a "
-             "false premise. The class we most want to catch.")
-    L.append("- **CORRECT_BUT_BAD** - correct but poor teaching: vague/trivial, "
-             "self-answering, near-duplicate, or not grounded in the source.")
+    L.append(
+        "- **CORRECT_USEFUL** - correct per the source (and gold anchors where "
+        "topics overlap), grounded in a citable source sentence, specific, "
+        "non-trivial, non-duplicate."
+    )
+    L.append(
+        "- **WRONG** - factually incorrect vs the source or a gold anchor, or a "
+        "false premise. The class we most want to catch."
+    )
+    L.append(
+        "- **CORRECT_BUT_BAD** - correct but poor teaching: vague/trivial, "
+        "self-answering, near-duplicate, or not grounded in the source."
+    )
     L.append("")
     L.append("**Passing cutoff** - a card is ADMITTED iff ALL hold, else BLOCKED:")
     L.append("1. class == CORRECT_USEFUL;")
-    L.append(f"2. source-grounded: citation vs source-sentence similarity >= {TAU_GROUND:.2f} AND the judge agrees it is grounded;")
-    L.append(f"3. not a duplicate: normalized-stem similarity to any earlier admitted card < {TAU_DUP:.2f};")
-    L.append("4. passes triviality heuristics (non-empty answer, question has >= 2 content words, answer not contained in the question, question != answer);")
+    L.append(
+        f"2. source-grounded: citation vs source-sentence similarity >= {TAU_GROUND:.2f} AND the judge agrees it is grounded;"
+    )
+    L.append(
+        f"3. not a duplicate: normalized-stem similarity to any earlier admitted card < {TAU_DUP:.2f};"
+    )
+    L.append(
+        "4. passes triviality heuristics (non-empty answer, question has >= 2 content words, answer not contained in the question, question != answer);"
+    )
     L.append(f"5. judge confidence >= {TAU_CONF:.2f}.")
-    L.append("\nChecks are deterministic given the cached judge outputs, so the "
-             "counts reproduce exactly from the committed cache.\n")
+    L.append(
+        "\nChecks are deterministic given the cached judge outputs, so the "
+        "counts reproduce exactly from the committed cache.\n"
+    )
 
     L.append("\n## Source (the one real source; brief excerpt, attributed)\n")
     L.append(f"- **Title:** {src['title']} ({src['publisher']})")
@@ -565,7 +655,9 @@ def render(gen: dict, rows: list[dict], counts: dict, selftest: list[dict],
     dups = sum(1 for r in rows if r["is_duplicate"])
     trivs = sum(1 for r in rows if r["trivial"])
     wrong = counts["WRONG"]
-    L.append(f"- Grounded in the source (cite matched, judge agreed): {grounded}/{counts['TOTAL']}")
+    L.append(
+        f"- Grounded in the source (cite matched, judge agreed): {grounded}/{counts['TOTAL']}"
+    )
     L.append(f"- Deterministic duplicates flagged: {dups}")
     L.append(f"- Triviality-flagged: {trivs}")
     L.append(f"- Factually wrong (judge vs source/gold): {wrong}\n")
@@ -580,7 +672,9 @@ def render(gen: dict, rows: list[dict], counts: dict, selftest: list[dict],
         for r in blocked:
             c = r["card"]
             qa = f"{c['q']} -> {c['a']}".replace("|", "\\|")
-            L.append(f"| `{c['id']}` | {r['label']} | {', '.join(r['reasons'])} | {qa} |")
+            L.append(
+                f"| `{c['id']}` | {r['label']} | {', '.join(r['reasons'])} | {qa} |"
+            )
         L.append("")
 
     L.append("\n## Examples by class\n")
@@ -596,9 +690,11 @@ def render(gen: dict, rows: list[dict], counts: dict, selftest: list[dict],
             L.append(f"  - A: {c['a']}")
             L.append(f"  - cite (score {r['cite_score']}): {c['cite'] or '(none)'}")
             jr = r["judge"].get("reason", "")
-            L.append(f"  - judge: verdict={r['judge'].get('verdict')} grounded={r['judge'].get('grounded')} "
-                     f"teaching={r['judge'].get('teaching')} conf={r['judge'].get('confidence')}"
-                     + (f" - {jr}" if jr else ""))
+            L.append(
+                f"  - judge: verdict={r['judge'].get('verdict')} grounded={r['judge'].get('grounded')} "
+                f"teaching={r['judge'].get('teaching')} conf={r['judge'].get('confidence')}"
+                + (f" - {jr}" if jr else "")
+            )
             if r["reasons"]:
                 L.append(f"  - blocked reasons: {', '.join(r['reasons'])}")
     L.append("")
@@ -617,8 +713,10 @@ def render(gen: dict, rows: list[dict], counts: dict, selftest: list[dict],
     L.append("")
 
     L.append("\n## Detector self-test (planted cards; NOT part of the 50)\n")
-    L.append("Proof the gates fire, since a clean generator may yield few or zero "
-             "wrong cards. Each planted card has a known expected class.\n")
+    L.append(
+        "Proof the gates fire, since a clean generator may yield few or zero "
+        "wrong cards. Each planted card has a known expected class.\n"
+    )
     L.append("| id | expected | detected | match | reasons |")
     L.append("| --- | --- | --- | --- | --- |")
     ok = 0
@@ -627,29 +725,41 @@ def render(gen: dict, rows: list[dict], counts: dict, selftest: list[dict],
         got = r["label"]
         hit = "PASS" if exp == got else "MISS"
         ok += exp == got
-        L.append(f"| `{r['card']['id']}` | {exp} | {got} | {hit} | {', '.join(r['reasons']) or '-'} |")
-    L.append(f"\nSelf-test: {ok}/{len(selftest)} planted cards classified as expected.\n")
+        L.append(
+            f"| `{r['card']['id']}` | {exp} | {got} | {hit} | {', '.join(r['reasons']) or '-'} |"
+        )
+    L.append(
+        f"\nSelf-test: {ok}/{len(selftest)} planted cards classified as expected.\n"
+    )
 
     L.append("\n## Judge reliability & limitations (honest)\n")
-    L.append("- **Conservative by design.** Factual correctness is decided by an "
-             "LLM judge, which is noisy. The deterministic gates (grounding, "
-             "dedup, triviality) back it up, and the cutoff BLOCKS on any doubt, "
-             "so a judge slip costs a useful card (blocked) rather than admitting "
-             "a wrong one - the safe direction when a wrong card is worse than no card.")
-    L.append("- **Verdict scope.** 'WRONG' means *contradicts the source/gold*; a "
-             "correct-but-ungrounded or correct-but-vague card is CORRECT_BUT_BAD, "
-             "not WRONG. Ungrounded cards dominate the block list because the "
-             "generator, pushed past what ~570 words can support, restates facts "
-             "without a verbatim citation.")
-    L.append("- **Single-source risk.** Grounding guarantees faithfulness to THIS "
-             "source, not to current consensus. The passage repeats the classic "
-             "textbook \"38 ATP per glucose\" figure (while noting it is never "
-             "actually reached; real yield ~29-30). Cards echoing \"38 ATP\" are "
-             "graded correct *because they match the source*, yet are pedagogically "
-             "dated - a reason a production deck should ground on vetted, current material.")
-    L.append("- **Determinism.** The judge uses the same cached, temp=0, pinned-seed "
-             "client as generation, so these counts reproduce exactly from the "
-             "committed cache.\n")
+    L.append(
+        "- **Conservative by design.** Factual correctness is decided by an "
+        "LLM judge, which is noisy. The deterministic gates (grounding, "
+        "dedup, triviality) back it up, and the cutoff BLOCKS on any doubt, "
+        "so a judge slip costs a useful card (blocked) rather than admitting "
+        "a wrong one - the safe direction when a wrong card is worse than no card."
+    )
+    L.append(
+        "- **Verdict scope.** 'WRONG' means *contradicts the source/gold*; a "
+        "correct-but-ungrounded or correct-but-vague card is CORRECT_BUT_BAD, "
+        "not WRONG. Ungrounded cards dominate the block list because the "
+        "generator, pushed past what ~570 words can support, restates facts "
+        "without a verbatim citation."
+    )
+    L.append(
+        "- **Single-source risk.** Grounding guarantees faithfulness to THIS "
+        "source, not to current consensus. The passage repeats the classic "
+        'textbook "38 ATP per glucose" figure (while noting it is never '
+        'actually reached; real yield ~29-30). Cards echoing "38 ATP" are '
+        "graded correct *because they match the source*, yet are pedagogically "
+        "dated - a reason a production deck should ground on vetted, current material."
+    )
+    L.append(
+        "- **Determinism.** The judge uses the same cached, temp=0, pinned-seed "
+        "client as generation, so these counts reproduce exactly from the "
+        "committed cache.\n"
+    )
 
     L.append("\n## Reproduce\n")
     L.append("```bash")
@@ -659,9 +769,11 @@ def render(gen: dict, rows: list[dict], counts: dict, selftest: list[dict],
     L.append("# re-generate cards + refresh the cache (needs OPENAI_API_KEY):")
     L.append("tools/speedrun_card_check.sh --generate")
     L.append("```")
-    L.append("\n_LLM calls are cached in `speedrun_cardcheck_cache.json` "
-             "(keyed by model+params+prompt); the default run is deterministic "
-             "and network-free._\n")
+    L.append(
+        "\n_LLM calls are cached in `speedrun_cardcheck_cache.json` "
+        "(keyed by model+params+prompt); the default run is deterministic "
+        "and network-free._\n"
+    )
     return "\n".join(L) + "\n"
 
 
@@ -681,7 +793,9 @@ def run(generate: bool) -> dict:
 
     gen = load_generated()
     if gen["source"].get("sha256") != SOURCE_SHA256:
-        raise SystemExit("generated-cards source does not match the committed source hash")
+        raise SystemExit(
+            "generated-cards source does not match the committed source hash"
+        )
     cards = gen["cards"]
     if not cards:
         raise SystemExit("no cards in generated file; run with --generate first")
@@ -702,14 +816,23 @@ def run(generate: bool) -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Speedrun s7f AI card check")
-    ap.add_argument("--generate", action="store_true",
-                    help="(re)generate cards via the API and refresh the cache")
+    ap.add_argument(
+        "--generate",
+        action="store_true",
+        help="(re)generate cards via the API and refresh the cache",
+    )
     ap.add_argument("--json", action="store_true", help="print raw JSON results")
     args = ap.parse_args()
 
     r = run(args.generate)
-    report = render(r["gen"], r["rows"], r["counts"], r["selftest"],
-                    r["ran_from_cache"], r["new_calls"])
+    report = render(
+        r["gen"],
+        r["rows"],
+        r["counts"],
+        r["selftest"],
+        r["ran_from_cache"],
+        r["new_calls"],
+    )
     REPORT_PATH.write_text(report)
 
     if args.json:
@@ -717,8 +840,14 @@ def main() -> int:
             "counts": r["counts"],
             "new_api_calls": r["new_calls"],
             "ran_from_cache": r["ran_from_cache"],
-            "selftest": [{"id": s["card"]["id"], "expected": s["card"]["expect"],
-                          "detected": s["label"]} for s in r["selftest"]],
+            "selftest": [
+                {
+                    "id": s["card"]["id"],
+                    "expected": s["card"]["expect"],
+                    "detected": s["label"],
+                }
+                for s in r["selftest"]
+            ],
         }
         print(json.dumps(slim, indent=2))
     else:
@@ -726,8 +855,10 @@ def main() -> int:
     print(f"[report written to {REPORT_PATH.relative_to(_HERE.parent)}]")
 
     c = r["counts"]
-    print(f"[counts] correct+useful={c['CORRECT_USEFUL']} wrong={c['WRONG']} "
-          f"correct_but_bad={c['CORRECT_BUT_BAD']} blocked={c['BLOCKED']}/{c['TOTAL']}")
+    print(
+        f"[counts] correct+useful={c['CORRECT_USEFUL']} wrong={c['WRONG']} "
+        f"correct_but_bad={c['CORRECT_BUT_BAD']} blocked={c['BLOCKED']}/{c['TOTAL']}"
+    )
     return 0
 
 

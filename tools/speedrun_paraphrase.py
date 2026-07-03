@@ -185,7 +185,9 @@ def simulate(col: Collection, built: list[dict], correct_fn) -> None:
         for j, q in enumerate(card["questions"]):
             correct = correct_fn(card["index"], j)
             n_opts = len(q["options"])
-            selected = q["correct_index"] if correct else (q["correct_index"] + 1) % n_opts
+            selected = (
+                q["correct_index"] if correct else (q["correct_index"] + 1) % n_opts
+            )
             col._backend.record_attempt(
                 speedrun_pb2.RecordAttemptRequest(
                     card_id=card["card_id"],
@@ -351,9 +353,7 @@ def render_report(pack: dict, main: dict, control: dict) -> str:
     )
     L.append("\n| metric | main arm | control arm |")
     L.append("| --- | --- | --- |")
-    L.append(
-        f"| recall_rate | {_fmt(mr['recall_rate'])} | {_fmt(cr['recall_rate'])} |"
-    )
+    L.append(f"| recall_rate | {_fmt(mr['recall_rate'])} | {_fmt(cr['recall_rate'])} |")
     L.append(
         f"| performance_rate | {_fmt(mr['performance_rate'])} | "
         f"{_fmt(cr['performance_rate'])} |"
@@ -384,13 +384,13 @@ def render_report(pack: dict, main: dict, control: dict) -> str:
         "collection as cards, so answering them cannot change scheduling. The two "
         "signals come from different evidence.\n"
         "- **They diverge.** A "
-        f"{_fmt(gap)} gap (well above the engine's 0.10 \"aligned\" band) shows the "
+        f'{_fmt(gap)} gap (well above the engine\'s 0.10 "aligned" band) shows the '
         "numbers can pull apart. If performance were just copying memory it would "
         f"read \u2248{_fmt(mr['recall_rate'])} like recall and the gap would be "
         "\u22480.\n"
         "- **The gap tracks application, not memory.** The control arm holds memory "
         "constant and lifts only the reworded-answer accuracy; performance and the "
-        "gap move accordingly. That is the manipulation that rules out \"copying.\"\n"
+        'gap move accordingly. That is the manipulation that rules out "copying."\n'
         f"- **The rewording is real.** All {lk['total_items']} questions passed the "
         "engine's leakage check (none is a verbatim substring of its source card), "
         "so the divergence reflects genuine application, not the student re-reading "
@@ -399,7 +399,7 @@ def render_report(pack: dict, main: dict, control: dict) -> str:
     L.append(
         "\n**Honest caveats.** Recall here is a binary maturity proxy (interval "
         "\u2265 21d), not a graded retrieval probability, so the recall arm is "
-        "saturated at 1.0 by construction. The \"student\" is simulated with a "
+        'saturated at 1.0 by construction. The "student" is simulated with a '
         "fixed, documented answer pattern to produce a controlled, reproducible "
         "gap. And a *zero* gap on its own would be ambiguous \u2014 it could mean a "
         "genuinely strong student *or* a metric that merely echoes memory \u2014 "
@@ -414,7 +414,9 @@ def render_report(pack: dict, main: dict, control: dict) -> str:
         "Recall proxy vs. reworded-question accuracy per source card, read back "
         "from the engine's stored attempts.\n"
     )
-    L.append("\n| tag | topic | ivl (d) | mature | recall | reworded correct | reworded accuracy |")
+    L.append(
+        "\n| tag | topic | ivl (d) | mature | recall | reworded correct | reworded accuracy |"
+    )
     L.append("| --- | --- | --- | --- | --- | --- | --- |")
     for r in main["rows"]:
         L.append(
@@ -462,9 +464,19 @@ def main() -> int:
     mr = main_arm["report"]
     exp = main_arm["expected_performance"]
     print("  " + json.dumps(mr))
-    check.ok("every source card is evaluated", mr["cards_evaluated"] == n, f"{mr['cards_evaluated']}/{n}")
-    check.ok("two exam-style attempts per card", mr["exam_attempts"] == 2 * n, f"{mr['exam_attempts']}")
-    check.ok("recall proxy is saturated (all mature)", abs(mr["recall_rate"] - 1.0) < 1e-6)
+    check.ok(
+        "every source card is evaluated",
+        mr["cards_evaluated"] == n,
+        f"{mr['cards_evaluated']}/{n}",
+    )
+    check.ok(
+        "two exam-style attempts per card",
+        mr["exam_attempts"] == 2 * n,
+        f"{mr['exam_attempts']}",
+    )
+    check.ok(
+        "recall proxy is saturated (all mature)", abs(mr["recall_rate"] - 1.0) < 1e-6
+    )
     check.ok(
         "engine performance matches the hand-computed per-card mean",
         abs(mr["performance_rate"] - exp) < 1e-3,
@@ -472,7 +484,8 @@ def main() -> int:
     )
     check.ok(
         "recall_perf_gap = recall - performance",
-        abs(mr["recall_perf_gap"] - (mr["recall_rate"] - mr["performance_rate"])) < 1e-4,
+        abs(mr["recall_perf_gap"] - (mr["recall_rate"] - mr["performance_rate"]))
+        < 1e-4,
         f"gap={mr['recall_perf_gap']:.4f}",
     )
     check.ok("a meaningful positive gap exists (> 0.1)", mr["recall_perf_gap"] > 0.1)
@@ -489,9 +502,17 @@ def main() -> int:
     cr = control_arm["report"]
     print("  " + json.dumps(cr))
     check.ok("control recall is still saturated", abs(cr["recall_rate"] - 1.0) < 1e-6)
-    check.ok("control performance reaches ~1.0", abs(cr["performance_rate"] - 1.0) < 1e-6)
-    check.ok("control gap collapses to ~0", abs(cr["recall_perf_gap"]) < 1e-3, f"{cr['recall_perf_gap']:.4f}")
-    check.ok("engine calls the control arm aligned", "aligned" in cr["note"], cr["note"])
+    check.ok(
+        "control performance reaches ~1.0", abs(cr["performance_rate"] - 1.0) < 1e-6
+    )
+    check.ok(
+        "control gap collapses to ~0",
+        abs(cr["recall_perf_gap"]) < 1e-3,
+        f"{cr['recall_perf_gap']:.4f}",
+    )
+    check.ok(
+        "engine calls the control arm aligned", "aligned" in cr["note"], cr["note"]
+    )
     check.ok(
         "same memory, different performance across arms",
         abs(mr["recall_rate"] - cr["recall_rate"]) < 1e-6
@@ -508,7 +529,9 @@ def main() -> int:
         f"performance={mr['performance_rate']:.3f}  gap={mr['recall_perf_gap']:.3f}  "
         f"(control gap={cr['recall_perf_gap']:.3f})"
     )
-    print(f"[paraphrase] PASS ({check.n} checks) \u2014 report written to {os.path.relpath(REPORT_PATH, _HERE)}")
+    print(
+        f"[paraphrase] PASS ({check.n} checks) \u2014 report written to {os.path.relpath(REPORT_PATH, _HERE)}"
+    )
     return 0
 
 

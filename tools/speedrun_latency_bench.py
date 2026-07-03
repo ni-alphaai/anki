@@ -49,8 +49,8 @@ import sys
 import tempfile
 import time
 
-from anki.collection import AddNoteRequest, Collection
 from anki import speedrun_pb2
+from anki.collection import AddNoteRequest, Collection
 
 DEFAULT_N_CARDS = 2000
 DEFAULT_ITERATIONS = 200
@@ -62,7 +62,9 @@ _TAGS = [f"fc{i}" for i in range(1, 11)]
 _CARD_TYPE_REVIEW = 2
 _QUEUE_REVIEW = 2
 
-REPORT_PATH = os.path.join(os.path.dirname(__file__), "speedrun_latency_bench_report.md")
+REPORT_PATH = os.path.join(
+    os.path.dirname(__file__), "speedrun_latency_bench_report.md"
+)
 
 # The product spec's per-action latency budgets, mapped to the action that
 # implements each one. (label, action_key, metric, budget_ms).
@@ -184,9 +186,7 @@ def build_synthetic_collection(col: Collection, n_cards: int) -> dict:
     # Seed a few hundred graded attempts across distinct cards: half exam-style
     # (question_type=1), half SRS reviews (0); ~2/3 correct; all with a
     # prediction so calibration/readiness have real evidence.
-    pairs = col.db.all(
-        "select id, nid from cards where did = ? limit 400", deck_id
-    )
+    pairs = col.db.all("select id, nid from cards where did = ? limit 400", deck_id)
     n_seed = min(300, len(pairs))
     for k in range(n_seed):
         cid, nid = pairs[k % len(pairs)]
@@ -490,9 +490,9 @@ def _assert_invariants(result: dict) -> None:
             continue
         for field in ("p50", "p95", "worst", "iterations"):
             assert field in stats, f"{key} missing {field}: {stats}"
-        assert (
-            stats["p50"] <= stats["p95"] <= stats["worst"]
-        ), f"{key} distribution out of order: {stats}"
+        assert stats["p50"] <= stats["p95"] <= stats["worst"], (
+            f"{key} distribution out of order: {stats}"
+        )
         assert stats["iterations"] > 0, f"{key} ran zero iterations"
     for t in result["targets"]:
         assert isinstance(t["pass"], bool), t
