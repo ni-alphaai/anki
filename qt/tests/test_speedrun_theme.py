@@ -136,15 +136,6 @@ class TestPanelHtml:
         assert "Weakest dimension right now" in html
 
 
-class TestDashboardHtml:
-    def test_dashboard_has_header_and_stack(self) -> None:
-        html = theme.dashboard_html(SUFFICIENT)
-        assert "sr-dash-title" in html
-        assert "Speedrun" in html
-        # It reuses the same stack, so the readout is present too.
-        assert "508" in html
-
-
 class TestResolved:
     def test_light_mode_tokens(self) -> None:
         assert theme.resolved("accent", night=False) == "#2E7BF6"

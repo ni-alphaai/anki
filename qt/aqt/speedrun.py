@@ -41,7 +41,6 @@ from aqt import speedrun_voice as voice
 from aqt.qt import (
     QAction,
     QButtonGroup,
-    QCheckBox,
     QComboBox,
     QDate,
     QDateEdit,
@@ -208,14 +207,15 @@ def setup(mw: aqt.AnkiQt) -> None:
     """Register the reviewer hooks, native-screen hooks, and a slim menu."""
     _register_fonts()
     _install_finished_screen_override()
+    _install_deckbrowser_import_button()
+    _install_sync_button_override(mw)
     gui_hooks.reviewer_did_show_question.append(_on_show_question)
     gui_hooks.reviewer_did_show_answer.append(_on_show_answer)
     gui_hooks.reviewer_did_answer_card.append(_on_answer_card)
     gui_hooks.reviewer_will_end.append(_on_reviewer_will_end)
     gui_hooks.webview_did_receive_js_message.append(_on_js_message)
-    # Tear the dashboard's webview down before Qt shutdown to avoid a
-    # QtWebEngine teardown segfault from a webview still alive at exit.
-    gui_hooks.profile_will_close.append(_cleanup_dashboard)
+    # Any real Anki state move (Decks/overview/review) exits the in-place workspace.
+    gui_hooks.state_did_change.append(_on_state_changed)
 
     # In-place native integration.
     gui_hooks.webview_will_set_content.append(_on_will_set_content)
@@ -247,7 +247,7 @@ def setup(mw: aqt.AnkiQt) -> None:
     menu.addAction(home)
 
     practice = QAction("Practice questions", mw)
-    qconnect(practice.triggered, lambda: _start_practice(mw))
+    qconnect(practice.triggered, lambda: _show_workspace(mw, "practice"))
     menu.addAction(practice)
 
     lib = QAction("Content library…", mw)
@@ -313,6 +313,18 @@ def _install_finished_screen_override() -> None:
             return original(self)
 
     Overview._show_finished_screen = patched  # type: ignore[method-assign]
+
+
+def _install_deckbrowser_import_button() -> None:
+    """Surface a prominent 'Import MCAT / popular decks' button on the deck-list
+    bottom bar (next to Get Shared / Create / Import File) so onboarding + the
+    content library aren't buried under Tools > Speedrun. Routes to the library
+    via the global speedrun: bridge handler."""
+    from aqt.deckbrowser import DeckBrowser
+
+    entry = ["", "speedrun:library", "Import MCAT / popular decks"]
+    if entry not in DeckBrowser.drawLinks:
+        DeckBrowser.drawLinks = DeckBrowser.drawLinks + [entry]
 
 
 def _modern_on(col) -> bool:
@@ -446,7 +458,7 @@ def _on_toolbar_links(links, toolbar) -> None:
         toolbar.create_link(
             "speedrun",
             "Dashboard",
-            lambda: _open_dashboard(mw),
+            lambda: _show_workspace(mw, "dashboard"),
             tip=tip,
             id="speedrun",
         ),
@@ -528,10 +540,9 @@ def _reapply_app_style() -> None:
 
 
 def _on_theme_did_change() -> None:
-    """Re-apply the global chrome + re-render the dashboard on a night-mode
-    toggle so already-open Speedrun surfaces track the theme."""
+    """Re-apply the global chrome on a night-mode toggle so already-open
+    Speedrun surfaces track the theme."""
     _reapply_app_style()
-    _refresh_dashboard()
 
 
 # --- data collection --------------------------------------------------------
@@ -849,17 +860,30 @@ def _on_js_message(handled: tuple[bool, object], message: str, context: object):
     elif message == "speedrun:exam":
         _set_exam_target(mw)
     elif message == "speedrun:practice":
-        _start_practice(mw)
+        _show_workspace(mw, "practice")
     elif message == "speedrun:report":
         _show_feedback_report(mw)
     elif message == "speedrun:library":
         library.open_library(mw)
     elif message == "speedrun:settings":
-        _open_settings(mw)
+        _show_workspace(mw, "settings")
     elif message == "speedrun:dashboard":
-        _open_dashboard(mw)
+        _show_workspace(mw, "dashboard")
     elif message == "speedrun:decks":
-        _open_home()
+        _leave_workspace(mw)
+    elif message.startswith("speedrun:ws:"):
+        _show_workspace(mw, message.rsplit(":", 1)[-1])
+    elif message == "speedrun:back":
+        _leave_workspace(mw)
+    elif message.startswith("speedrun:set:"):
+        _ws_set(mw, message.split(":", 2)[2])
+    elif message.startswith("speedrun:sync:"):
+        _ws_sync(mw, message[len("speedrun:sync:") :])
+    elif message.startswith("speedrun:pq:submit:"):
+        _ws_practice_submit(message[len("speedrun:pq:submit:") :])
+    elif message == "speedrun:pq:next":
+        if _ws_practice is not None:
+            _ws_practice.advance()
     elif message == "speedrun:customstudy":
         try:
             from aqt.customstudy import CustomStudy
@@ -873,7 +897,6 @@ def _on_js_message(handled: tuple[bool, object], message: str, context: object):
         except Exception:
             pass
         _refresh(mw)
-        _refresh_dashboard()
     elif message.startswith("speedrun:toggle:"):
         _toggle(mw, message.rsplit(":", 1)[-1])
 
@@ -903,6 +926,17 @@ def _toggle(mw: aqt.AnkiQt, key: str) -> None:
 
 
 def _refresh(mw: aqt.AnkiQt, msg: str | None = None) -> None:
+    # If a Speedrun workspace tab is showing in the main webview, re-render it in
+    # place rather than letting Anki paint the deck list over it.
+    if _ws_active is not None:
+        try:
+            _show_workspace(mw, _ws_active)
+            mw.toolbar.redraw()
+        except Exception:
+            pass
+        if msg:
+            tooltip(msg)
+        return
     try:
         if mw.state == "overview":
             mw.overview.refresh()
@@ -914,153 +948,8 @@ def _refresh(mw: aqt.AnkiQt, msg: str | None = None) -> None:
         mw.toolbar.redraw()
     except Exception:
         pass
-    _refresh_dashboard()
     if msg:
         tooltip(msg)
-
-
-# --- settings (config toggles, moved out of the panel) ----------------------
-
-
-def _open_settings(mw: aqt.AnkiQt) -> None:
-    """The study levers + appearance, moved off the panel to keep it uncluttered."""
-    col = mw.col
-    if col is None:
-        return
-    dialog = QDialog(mw)
-    dialog.setWindowTitle("Speedrun settings")
-    disable_help_button(dialog)
-    dialog.resize(480, 420)
-
-    layout = QVBoxLayout(dialog)
-    layout.setContentsMargins(*_DIALOG_MARGINS)
-    layout.setSpacing(8)
-    layout.addWidget(_mark(QLabel("Settings"), role="display"))
-    layout.addWidget(
-        _mark(
-            QLabel("Study levers and appearance. Changes apply immediately."),
-            role="muted",
-        )
-    )
-
-    def add_toggle(cfg: str, default: bool, title: str, desc: str) -> None:
-        check = QCheckBox(title)
-        check.setChecked(bool(col.get_config(cfg, default)))
-        qconnect(
-            check.stateChanged,
-            lambda _s, c=cfg, cb=check: col.set_config(c, cb.isChecked()),
-        )
-        sub = _mark(QLabel(desc), role="muted")
-        sub.setWordWrap(True)
-        layout.addSpacing(6)
-        layout.addWidget(check)
-        layout.addWidget(sub)
-
-    add_toggle(
-        _CFG_POINTS,
-        False,
-        "Points-at-stake queue",
-        "Order due cards by weakness \u00d7 topic weight, so the highest-value cards come first.",
-    )
-    add_toggle(
-        _CFG_INTERLEAVE,
-        False,
-        "Spaced + interleaved practice",
-        "Interleave confusable sibling topics (same parent tag) across reviews and new cards.",
-    )
-    add_toggle(
-        _CFG_AUTO_ROUND,
-        False,
-        "Auto reasoning round",
-        "After you finish a deck's reviews, jump straight into a reasoning check (otherwise it's offered).",
-    )
-    add_toggle(
-        _CFG_DELAYED_FB,
-        False,
-        "Delayed feedback (experiment)",
-        "Experimental, not established: once you're proficient, reasoning questions "
-        "hold back whether you were right until your feedback report, so you re-derive it.",
-    )
-    add_toggle(
-        _CFG_MODERN,
-        True,
-        "Modern UI",
-        "Apple-style reskin of Anki's deck list, overview, and toolbar.",
-    )
-    add_toggle(
-        srai._CFG_AI_DIAGNOSIS,
-        False,
-        "AI diagnosis (beta)",
-        "Explain misses with the source-grounded AI coach. Falls back to the "
-        "built-in classifier when off or unavailable; every AI diagnosis cites its source.",
-    )
-
-    layout.addStretch(1)
-    box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
-    qconnect(box.rejected, dialog.reject)
-    layout.addWidget(box)
-    _style_dialog(dialog)
-    dialog.exec()
-    # Apply once on close: config affects the queue and the reskin.
-    try:
-        mw.reset()
-    except Exception:
-        pass
-    _reapply_app_style()
-    _refresh(mw)
-
-
-# --- dashboard (top-toolbar window, always available) -----------------------
-
-_dashboard: _DashboardDialog | None = None
-
-
-class _DashboardDialog(QDialog):
-    """A standalone Speedrun dashboard, opened from the top toolbar like Stats.
-    Renders the same signals as the panel but independent of any deck, so it is
-    reachable even when every deck is finished (no congrats-page dead-end)."""
-
-    def __init__(self, mw: aqt.AnkiQt) -> None:
-        super().__init__(mw)
-        from aqt.webview import AnkiWebView
-
-        self.mw = mw
-        self.setWindowTitle("Speedrun")
-        disable_help_button(self)
-        self.resize(860, 760)
-        self.web = AnkiWebView(mw)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self.web)
-        self.web.set_bridge_command(self._on_cmd, self)
-        self.render()
-
-    def render(self) -> None:  # type: ignore[override]
-        if self.mw.col is None:
-            return
-        try:
-            data = _collect(self.mw.col, fresh=True)
-            self.web.stdHtml(
-                theme.dashboard_html(data), head=theme.page_style(), context=self
-            )
-        except Exception as exc:  # pragma: no cover
-            print(f"speedrun: dashboard render failed: {exc}")
-
-    def _on_cmd(self, message: str) -> object:
-        if isinstance(message, str) and message.startswith("speedrun:"):
-            _on_js_message((False, None), message, self)
-            # reflect any state change (an action dialog just closed)
-            self.render()
-        return None
-
-    def closeEvent(self, event) -> None:  # noqa: N802 (Qt override)
-        global _dashboard
-        _dashboard = None
-        try:
-            self.web.cleanup()
-        except Exception:
-            pass
-        super().closeEvent(event)
 
 
 def _redraw_toolbar() -> None:
@@ -1075,36 +964,431 @@ def _redraw_toolbar() -> None:
         pass
 
 
-def _open_dashboard(mw: aqt.AnkiQt) -> None:
-    global _dashboard
+# --- in-place workspace router (Dashboard / Practice / Settings tabs) --------
+#
+# Instead of each Speedrun surface opening its own dialog window, they render
+# into Anki's main webview as tabs of one workspace with a "Decks" back button,
+# so navigation switches in place (matching the mobile bottom-nav model).
+
+_ws_active: str | None = None
+_ws_practice: "_WsPractice | None" = None
+
+_CFG_DEFAULTS = {
+    _CFG_POINTS: False,
+    _CFG_INTERLEAVE: False,
+    _CFG_AUTO_ROUND: False,
+    _CFG_DELAYED_FB: False,
+    _CFG_MODERN: True,
+    srai._CFG_AI_DIAGNOSIS: False,
+}
+
+
+class _WsContext:
+    """Sentinel render/bridge context for the workspace webview, so the
+    will_set_content hook doesn't treat it as the deck browser."""
+
+
+_ws_ctx = _WsContext()
+
+
+def _render_ws(mw: aqt.AnkiQt, tab: str, body: str) -> None:
+    """Render a workspace tab into the main webview and empty the deck-list
+    bottom bar, so it reads as an in-window screen with a way back to Decks."""
+    html = theme.workspace_html(tab, body)
+    mw.web.stdHtml(html, head=theme.page_style(), context=_ws_ctx)
+    try:
+        mw.bottomWeb.stdHtml("")
+    except Exception:
+        pass
+
+
+def _settings_items(col) -> list[dict]:
+    def on(key: str, default: bool) -> bool:
+        return bool(col.get_config(key, default))
+
+    return [
+        {
+            "key": _CFG_POINTS,
+            "title": "Points-at-stake queue",
+            "on": on(_CFG_POINTS, False),
+            "desc": "Order due cards by weakness \u00d7 topic weight, so the "
+            "highest-value cards come first.",
+        },
+        {
+            "key": _CFG_INTERLEAVE,
+            "title": "Spaced + interleaved practice",
+            "on": on(_CFG_INTERLEAVE, False),
+            "desc": "Interleave confusable sibling topics (same parent tag) "
+            "across reviews and new cards.",
+        },
+        {
+            "key": _CFG_AUTO_ROUND,
+            "title": "Auto reasoning round",
+            "on": on(_CFG_AUTO_ROUND, False),
+            "desc": "After you finish a deck's reviews, jump straight into a "
+            "reasoning check (otherwise it's offered).",
+        },
+        {
+            "key": _CFG_DELAYED_FB,
+            "title": "Delayed feedback (experiment)",
+            "on": on(_CFG_DELAYED_FB, False),
+            "desc": "Experimental, not established: once you're proficient, "
+            "reasoning questions hold back whether you were right until your "
+            "feedback report.",
+        },
+        {
+            "key": _CFG_MODERN,
+            "title": "Modern UI",
+            "on": on(_CFG_MODERN, True),
+            "desc": "Apple-style reskin of Anki's deck list, overview, and toolbar.",
+        },
+        {
+            "key": srai._CFG_AI_DIAGNOSIS,
+            "title": "AI diagnosis (beta)",
+            "on": on(srai._CFG_AI_DIAGNOSIS, False),
+            "desc": "Explain misses with the source-grounded AI coach. Falls back "
+            "to the built-in classifier when off; every AI diagnosis cites its source.",
+        },
+    ]
+
+
+def _install_sync_button_override(mw: aqt.AnkiQt) -> None:
+    """Route the toolbar Sync button to the self-hosted Speedrun sync setup when
+    the profile isn't signed in, instead of AnkiWeb's 'Account Required' dialog
+    (this fork's modified schema can't sync to AnkiWeb anyway). Once signed in to
+    a self-hosted server, the normal sync runs."""
+    original = mw.on_sync_button_clicked
+
+    def patched() -> None:
+        try:
+            signed_in = mw.pm.sync_auth() is not None
+        except Exception:
+            signed_in = False
+        if not signed_in:
+            _show_workspace(mw, "settings")
+            tooltip("Set up self-hosted sync below, then press Sync now.")
+            return
+        original()
+
+    mw.on_sync_button_clicked = patched  # type: ignore[method-assign]
+
+
+def _sync_info(mw: aqt.AnkiQt) -> dict:
+    """Prefill + status for the in-place self-hosted sync section."""
+    col = mw.col
+    url = str(col.get_config("speedrunSyncUrl", "") or "") if col else ""
+    user = str(col.get_config("speedrunSyncUser", "") or "") if col else ""
+    status = ""
+    try:
+        if mw.pm.sync_auth() is not None:
+            who = user or "your server"
+            status = (
+                f"Signed in to {who}. The toolbar Sync button now uses this "
+                "self-hosted server \u2014 no AnkiWeb account."
+            )
+    except Exception:
+        pass
+    return {"url": url, "username": user, "status": status}
+
+
+def _ws_sync(mw: aqt.AnkiQt, raw: str) -> None:
+    """Sign in to a self-hosted Anki sync server and sync, mirroring the phone.
+    Stores the auth + custom URL so Anki's own Sync button then works silently
+    (no AnkiWeb 'Account Required')."""
+    from urllib.parse import unquote
+
+    col = mw.col
+    if col is None:
+        return
+    try:
+        data = json.loads(unquote(raw))
+    except Exception:
+        return
+    url = str(data.get("url", "")).strip()
+    user = str(data.get("user", "")).strip()
+    password = str(data.get("pass", ""))
+    if not url or not user:
+        tooltip("Enter a server URL and username.")
+        return
+    col.set_config("speedrunSyncUrl", url)
+    col.set_config("speedrunSyncUser", user)
+    mw.pm.set_custom_sync_url(url)
+
+    def do_login():
+        return mw.col.sync_login(username=user, password=password, endpoint=url)
+
+    def on_done(fut) -> None:
+        try:
+            auth = fut.result()
+        except Exception as exc:
+            tooltip(f"Sync sign-in failed: {exc}")
+            _show_workspace(mw, "settings")
+            return
+        mw.pm.set_sync_key(auth.hkey)
+        try:
+            mw.pm.set_sync_username(user)
+        except Exception:
+            pass
+        tooltip("Signed in \u2014 syncing\u2026")
+        try:
+            mw.on_sync_button_clicked()
+        except Exception as exc:
+            tooltip(f"Sync failed: {exc}")
+        _show_workspace(mw, "settings")
+
+    mw.taskman.with_progress(do_login, on_done, parent=mw)
+
+
+def _ws_set(mw: aqt.AnkiQt, key: str) -> None:
+    """Flip a settings toggle from the in-place settings page and re-render it."""
+    col = mw.col
+    if col is None:
+        return
+    default = _CFG_DEFAULTS.get(key, False)
+    col.set_config(key, not bool(col.get_config(key, default)))
+    if key == _CFG_MODERN:
+        _reapply_app_style()
+    _show_workspace(mw, "settings")
+
+
+def _fetch_practice_questions(mw: aqt.AnkiQt) -> list[dict]:
+    try:
+        raw = list(mw.col._backend.get_practice_questions(limit=20, topic=""))
+    except Exception as exc:
+        tooltip(f"Could not load practice questions: {exc}")
+        return []
+    return _parse_question_items(raw)
+
+
+def _show_workspace(mw: aqt.AnkiQt, tab: str) -> None:
+    """Show a Speedrun workspace tab in place in the main window."""
+    global _ws_active, _ws_practice
     if mw.col is None:
         return
-    if _dashboard is None:
-        _dashboard = _DashboardDialog(mw)
-    else:
-        _dashboard.render()
-    _dashboard.show()
-    _dashboard.raise_()
-    _dashboard.activateWindow()
+    if tab == "practice":
+        _ws_active = "practice"
+        if _ws_practice is None or _ws_practice.done():
+            _ws_practice = _WsPractice(mw, _fetch_practice_questions(mw))
+        _ws_practice.render()
+        return
+    if tab == "settings":
+        _ws_active = "settings"
+        _render_ws(
+            mw,
+            "settings",
+            theme.settings_body(_settings_items(mw.col), _sync_info(mw)),
+        )
+        return
+    _ws_active = "dashboard"
+    _render_ws(mw, "dashboard", theme._stack(_collect(mw.col, fresh=True)))
 
 
-def _refresh_dashboard() -> None:
-    if _dashboard is not None:
+def _leave_workspace(mw: aqt.AnkiQt) -> None:
+    global _ws_active
+    _ws_active = None
+    _open_home()
+
+
+def _on_state_changed(new_state: str, old_state: str) -> None:
+    """Any real Anki state move (Decks/overview/review) exits the workspace."""
+    global _ws_active
+    _ws_active = None
+
+
+def _ws_practice_submit(raw: str) -> None:
+    from urllib.parse import unquote
+
+    if _ws_practice is None:
+        return
+    try:
+        data = json.loads(unquote(raw))
+        sel = int(data.get("sel", -1))
+    except Exception:
+        return
+    if sel < 0:
+        return
+    _ws_practice.submit(sel, int(data.get("conf", 0)), str(data.get("explain", "")))
+
+
+class _WsPractice:
+    """In-place counterpart of _PracticeDialog: records each answer as an
+    exam-style attempt (question_type=2) and renders question/verdict/AI into
+    the main webview instead of a popup dialog."""
+
+    _CONFIDENCE = {1: 0.35, 2: 0.6, 3: 0.85}
+
+    def __init__(self, mw: aqt.AnkiQt, questions: list[dict]) -> None:
+        self.mw = mw
+        self.questions = questions
+        self.index = 0
+        self.answered = False
+        self.correct_count = 0
+        self.shown_at = time.monotonic()
+        self.selected: int | None = None
+        self.verdict: str | None = None
+        self.verdict_text = ""
+        self.feedback = ""
+        self.ai: dict | None = None
+        self._ai_index: int | None = None
+        self._withhold = False
+        if questions and bool(mw.col.get_config(_CFG_DELAYED_FB, False)):
+            try:
+                perf = mw.col._backend.get_performance_report().performance_rate
+                self._withhold = _should_withhold_feedback(perf, True)
+            except Exception:
+                self._withhold = False
+
+    def done(self) -> bool:
+        return not self.questions or self.index >= len(self.questions)
+
+    def _view(self) -> dict:
+        if not self.questions:
+            return {"empty": True}
+        return {
+            "empty": False,
+            "index": self.index,
+            "total": len(self.questions),
+            "answered": self.answered,
+            "selected": self.selected,
+            "q": self.questions[self.index],
+            "verdict": self.verdict,
+            "verdict_text": self.verdict_text,
+            "feedback": self.feedback,
+            "ai": self.ai,
+            "is_last": self.index + 1 >= len(self.questions),
+        }
+
+    def render(self) -> None:
+        _render_ws(self.mw, "practice", theme.practice_body(self._view()))
+
+    def submit(self, sel: int, conf_index: int, explanation: str) -> None:
+        if self.answered or self.done():
+            return
+        q = self.questions[self.index]
+        correct = sel == q["correct_index"]
+        if correct:
+            self.correct_count += 1
+        self.selected = sel
+        took_ms = max(int((time.monotonic() - self.shown_at) * 1000), 0)
+        predicted = self._CONFIDENCE.get(conf_index)
+        req = speedrun_pb2.RecordAttemptRequest(
+            card_id=q["card_id"],
+            note_id=0,
+            session_id=_state.session_id,
+            answered_at_ms=int(time.time() * 1000),
+            took_ms=took_ms,
+            question_type=2,
+            selected=sel,
+            correct=correct,
+            signals=speedrun_pb2.ClassifyAttemptRequest(
+                correct=correct,
+                took_ms=took_ms,
+                recall_failed=False,
+                passage_evidence_missed=False,
+                question_type=2,
+            ),
+            data=json.dumps({"self_explanation": explanation}),
+        )
+        if predicted is not None:
+            req.predicted = predicted
+        diagnosis = None
         try:
-            _dashboard.render()
-        except Exception:
-            pass
+            diagnosis = self.mw.col._backend.record_attempt(req).diagnosis
+        except Exception as exc:
+            tooltip(f"Could not record attempt: {exc}")
+        self.answered = True
+        if self._withhold:
+            self.verdict = "muted"
+            self.verdict_text = "Answer banked"
+            self.feedback = (
+                "Delayed feedback is on. You'll find out whether you were right in "
+                "your feedback report \u2014 try to re-derive it before then."
+            )
+            self.render()
+            return
+        ci = q["correct_index"]
+        self.verdict = "good" if correct else "bad"
+        self.verdict_text = "Correct" if correct else "Not quite"
+        parts = [f"Answer: {chr(65 + ci)}. {q['options'][ci]}"]
+        if q["explanation"]:
+            parts.append(q["explanation"])
+        if diagnosis is not None and not correct and diagnosis.kind in _DIAGNOSIS_LABEL:
+            parts.append(_DIAGNOSIS_LABEL[diagnosis.kind])
+            action = _ACTION_LABEL.get(diagnosis.routed_action, "")
+            if action:
+                parts.append(action)
+        self.feedback = "\n".join(parts)
+        self.render()
+        self._maybe_ai(q, sel, took_ms, predicted, correct)
 
+    def _maybe_ai(self, q, selected, took_ms, predicted, correct) -> None:
+        if correct or self.mw.col is None:
+            return
+        if not (srai.enabled(self.mw.col) and srai.available()):
+            return
+        item = {
+            "topic": q["topic"],
+            "stem": q["stem"],
+            "options": q["options"],
+            "correct_index": q["correct_index"],
+            "selected_index": selected,
+            "explanation": q["explanation"],
+        }
+        signals = {
+            "took_ms": took_ms,
+            "confidence": float(predicted or 0.0),
+            "question_type": 2,
+        }
+        self._ai_index = self.index
+        self.ai = {"status": "Analyzing your miss against the source\u2026"}
+        self.render()
+        srai.diagnose_in_background(self.mw, item, signals, self._on_ai)
 
-def _cleanup_dashboard() -> None:
-    """Close + clean the dashboard webview before app/profile shutdown."""
-    global _dashboard
-    dialog, _dashboard = _dashboard, None
-    if dialog is not None:
-        try:
-            dialog.close()
-        except Exception:
-            pass
+    def _on_ai(self, result) -> None:
+        if self._ai_index != self.index or not self.answered:
+            return
+        if not result or result.get("error"):
+            self.ai = {
+                "status": "AI coach unavailable \u2014 using the rule-based diagnosis."
+            }
+        elif result.get("abstained"):
+            self.ai = {
+                "status": "Not confident enough \u2014 deferring to the rule-based diagnosis."
+            }
+        else:
+            name = (result.get("kind_name") or "").replace("_", " ").strip()
+            rationale = (result.get("rationale") or "").strip()
+            body = (
+                f"{name}: {rationale}"
+                if name
+                else (rationale or "No rationale returned.")
+            )
+            self.ai = {"body": body, "source": (result.get("source") or "").strip()}
+        if _ws_active == "practice":
+            self.render()
+
+    def advance(self) -> None:
+        self.index += 1
+        if self.index >= len(self.questions):
+            tooltip(
+                f"Practice complete: {self.correct_count}/{len(self.questions)} correct. "
+                "These now feed your performance signal and calibration."
+            )
+            try:
+                self.mw.col._backend.compute_readiness()
+            except Exception:
+                pass
+            _show_workspace(self.mw, "dashboard")
+            return
+        self.answered = False
+        self.selected = None
+        self.verdict = None
+        self.verdict_text = ""
+        self.feedback = ""
+        self.ai = None
+        self._ai_index = None
+        self.shown_at = time.monotonic()
+        self.render()
 
 
 # --- self-explanation (voice or text) ---------------------------------------
@@ -1354,22 +1638,6 @@ def _merge_questions(primary: list[dict], extra: list[dict], target: int) -> lis
             seen.add(key)
             merged.append(q)
     return merged[:target]
-
-
-def _start_practice(mw: aqt.AnkiQt) -> None:
-    """Open the held-out question-practice dialog (performance signal loop)."""
-    if mw.col is None:
-        return
-    try:
-        raw = list(mw.col._backend.get_practice_questions(limit=20, topic=""))
-    except Exception as exc:
-        tooltip(f"Could not load practice questions: {exc}")
-        return
-    questions = _parse_question_items(raw)
-    if not questions:
-        tooltip("No practice questions yet — import a question pack to begin.")
-        return
-    _PracticeDialog(mw, questions).exec()
 
 
 # --- end-of-session reasoning round (memory -> reasoning) --------------------

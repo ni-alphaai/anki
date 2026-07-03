@@ -326,7 +326,7 @@ mod test {
         let debt = reasoning_debt(&state);
         assert!(approx(debt, MIN_REASONING_DEBT));
 
-        assert_eq!(rank_due_topics(&[state.clone()], debt).len(), 1);
+        assert_eq!(rank_due_topics(std::slice::from_ref(&state), debt).len(), 1);
         assert_eq!(rank_due_topics(&[state], debt + EPS).len(), 0);
     }
 }

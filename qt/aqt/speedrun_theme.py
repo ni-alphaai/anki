@@ -654,14 +654,61 @@ def _signal(name: str, frac: float, color: str, thin: bool) -> str:
     )
 
 
-def _bridge(memory: float, performance: float, gap: float) -> str:
+def _bridge(data: dict) -> str:
+    """Recall -> performance bridge. When recall (or performance) evidence is
+    still thin, the numeric gap is meaningless, so we show a neutral 'gathering
+    data' state and a plain-language caption instead of a misleading '-N pts'."""
+    memory = data.get("memory", 0.0)
+    performance = data.get("performance", 0.0)
+    gap = data.get("gap", 0.0)
+    memory_ok = bool(data.get("memory_ok"))
+    perf_ok = bool(data.get("perf_ok"))
+    m, p = _pct(memory), _pct(performance)
+    g = int(round(gap * 100))
+
+    recall_disp = f"{m}%" if memory_ok else "\u2014"
+    perf_disp = f"{p}%" if perf_ok else "\u2014"
+    if not memory_ok:
+        span = '<div class="sr-span"><em>gathering recall data</em></div>'
+        caption = (
+            "Not enough graded reviews yet to measure recall, so the "
+            "memory-to-application gap isn\u2019t meaningful. Keep reviewing to "
+            "unlock it."
+        )
+    elif not perf_ok:
+        span = '<div class="sr-span"><em>gathering question data</em></div>'
+        caption = (
+            f"You recall {m}% of the facts. Answer more held-out exam-style "
+            "questions to measure whether that transfers to new questions."
+        )
+    elif g > 2:
+        span = f'<div class="sr-span"><em>{g:+d} pts</em></div>'
+        caption = (
+            f"You recall {m}% of the facts but apply only {p}% on new exam-style "
+            f"questions \u2014 a {g}-point gap. That gap is the bridge to close: "
+            "it needs application practice, not more flashcards."
+        )
+    elif g < -2:
+        span = f'<div class="sr-span"><em>{g:+d} pts</em></div>'
+        caption = (
+            f"You apply {p}% on new questions versus {m}% recall \u2014 strong "
+            "transfer; keep broadening coverage."
+        )
+    else:
+        span = f'<div class="sr-span"><em>{g:+d} pts</em></div>'
+        caption = (
+            "Recall and application are about even \u2014 what you remember is "
+            "translating into new-question performance."
+        )
     return (
         '<div class="sr-card"><p class="sr-eyebrow">Recall &rarr; performance bridge</p>'
         '<div class="sr-bridge">'
-        f'<div class="sr-node"><b>{_pct(memory)}%</b><span>Memory</span></div>'
-        f'<div class="sr-span"><em>{gap * 100:+.0f} pts</em></div>'
-        f'<div class="sr-node"><b>{_pct(performance)}%</b><span>Performance</span></div>'
-        "</div></div>"
+        f'<div class="sr-node"><b>{recall_disp}</b><span>Recall</span></div>'
+        f"{span}"
+        f'<div class="sr-node"><b>{perf_disp}</b><span>New questions</span></div>'
+        "</div>"
+        '<p style="margin:12px 0 0;font-size:13px;line-height:1.5;'
+        f'color:var(--sr-secondary)">{caption}</p></div>'
     )
 
 
@@ -917,14 +964,16 @@ def _next_action(data: dict) -> str:
     )
 
 
-def _actions(data: dict) -> str:
+def _actions(data: dict, *, hide_practice: bool = False) -> str:
     """A secondary utility row. The single primary CTA is the Next Best Action
     above; these are all secondary so they never compete with it, and Practice is
-    omitted here when it is already the recommended next step (no duplicate CTA).
+    omitted here when it is already the recommended next step (no duplicate CTA)
+    or when the surrounding screen already shows a Practice button
+    (``hide_practice``, e.g. the finished screen's congrats row).
     Config toggles live behind Settings to keep the panel uncluttered."""
     na_cmd = (data.get("next_action") or {}).get("cmd")
     practice = ""
-    if na_cmd != "speedrun:practice":
+    if na_cmd != "speedrun:practice" and not hide_practice:
         practice = '<button class="sr-btn" onclick="pycmd(\'speedrun:practice\')">Practice questions</button>'
     seed = ""
     if data.get("cov_total", 0) == 0:
@@ -945,20 +994,27 @@ def _actions(data: dict) -> str:
     )
 
 
-def _stack(data: dict, *, lead: str = "", panel_class: str = "sr-panel") -> str:
+def _stack(
+    data: dict,
+    *,
+    lead: str = "",
+    panel_class: str = "sr-panel",
+    hide_practice: bool = False,
+) -> str:
     """The one shared readiness stack (hero instrument -> signals -> bridge ->
     mini grid -> next action -> actions), so the panel, dashboard, and finished
     screen can never drift. ``lead`` is optional content placed above the hero
-    (a dashboard header or a finished-deck congrats card)."""
+    (a dashboard header or a finished-deck congrats card). ``hide_practice``
+    drops the secondary Practice button when the lead already shows one."""
     return (
         f'<div class="{panel_class}">'
         + lead
         + _hero(data)
         + _signals(data)
-        + _bridge(data["memory"], data["performance"], data.get("gap", 0.0))
+        + _bridge(data)
         + _mini_grid(data)
         + _next_action(data)
-        + _actions(data)
+        + _actions(data, hide_practice=hide_practice)
         + "</div>"
     )
 
@@ -967,18 +1023,6 @@ def panel_html(data: dict) -> str:
     """Full Speedrun panel for the per-deck overview. The token/component sheet
     is injected once per page by ``page_style`` (not embedded here)."""
     return _stack(data)
-
-
-def dashboard_html(data: dict) -> str:
-    """The standalone Speedrun dashboard (top-toolbar window). Same stack with a
-    title header so it reads as a first-class screen, not a deck embed."""
-    header = (
-        '<div class="sr-dash-head">'
-        '<h1 class="sr-dash-title">Speedrun</h1>'
-        '<p class="sr-dash-sub">Memory, performance, and readiness \u2014 honest, '
-        "always up to date.</p></div>"
-    )
-    return _stack(data, lead=header, panel_class="sr-panel sr-dash")
 
 
 def finished_html(data: dict, deck_name: str) -> str:
@@ -995,7 +1039,303 @@ def finished_html(data: dict, deck_name: str) -> str:
         '<button class="sr-btn sr-primary" onclick="pycmd(\'speedrun:practice\')">Practice questions</button>'
         '<button class="sr-btn" onclick="pycmd(\'speedrun:dashboard\')">Open dashboard</button>'
         '<button class="sr-btn" onclick="pycmd(\'speedrun:decks\')">Back to decks</button>'
-        '<button class="sr-btn" onclick="pycmd(\'speedrun:customstudy\')">Custom study</button>'
         "</div></div>"
     )
-    return _stack(data, lead=congrats)
+    # The congrats row already offers the primary Practice CTA (and Custom study
+    # lives on the native overview bottom bar), so drop the duplicate here.
+    return _stack(data, lead=congrats, hide_practice=True)
+
+
+# --- in-place workspace (Dashboard / Practice / Settings as main-window tabs) --
+
+_WORKSPACE_CSS = """
+.sr-ws { max-width: 940px; margin: 0 auto; padding: 18px 20px 72px;
+  font-family: var(--sr-font); color: var(--sr-ink); }
+.sr-ws-head { display:flex; align-items:center; gap:12px; margin-bottom:20px; }
+.sr-ws-back { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--sr-hairline);
+  background:var(--sr-surface); color:var(--sr-ink); border-radius:var(--sr-radius-pill);
+  padding:9px 16px; font-family:var(--sr-font); font-size:14px; font-weight:600; cursor:pointer; }
+.sr-ws-back:hover { box-shadow:var(--sr-shadow-sm); border-color:var(--sr-accent); }
+.sr-ws-spacer { flex:1; }
+.sr-ws-tabs { display:flex; gap:4px; background:var(--sr-elevated); border:1px solid var(--sr-hairline);
+  border-radius:var(--sr-radius-pill); padding:4px; }
+.sr-ws-tab { border:none; background:transparent; color:var(--sr-secondary); font-family:var(--sr-font);
+  font-size:14px; font-weight:600; padding:8px 20px; border-radius:var(--sr-radius-pill); cursor:pointer; }
+.sr-ws-tab:hover { color:var(--sr-ink); }
+.sr-ws-tab.active { background:var(--sr-accent); color:#fff; }
+/* settings */
+.sr-set-item { display:flex; align-items:flex-start; gap:20px; padding:18px 4px;
+  border-bottom:1px solid var(--sr-hairline); }
+.sr-set-item:last-child { border-bottom:none; }
+.sr-set-txt { flex:1; min-width:0; }
+.sr-set-title { font-size:16px; font-weight:600; color:var(--sr-ink); }
+.sr-set-desc { font-size:13px; color:var(--sr-secondary); margin-top:5px; line-height:1.5; }
+.sr-switch { flex:none; width:48px; height:28px; border-radius:999px; border:none; cursor:pointer;
+  background:var(--sr-hairline); position:relative; transition:background .18s; margin-top:2px; }
+.sr-switch.on { background:var(--sr-perf); }
+.sr-switch i { position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%;
+  background:#fff; box-shadow:var(--sr-shadow-sm); transition:left .18s; }
+.sr-switch.on i { left:23px; }
+/* practice */
+.sr-pq-stem { font-family:var(--sr-display); font-size:22px; font-weight:600; line-height:1.35;
+  margin:6px 0 18px; }
+.sr-pq-opt { display:flex; align-items:center; gap:13px; width:100%; text-align:left;
+  border:1px solid var(--sr-hairline); background:var(--sr-surface); color:var(--sr-ink);
+  border-radius:var(--sr-radius-input); padding:14px 16px; margin:9px 0; font-size:15px;
+  font-family:var(--sr-font); cursor:pointer; transition:border-color .12s, box-shadow .12s; }
+.sr-pq-opt:hover { border-color:var(--sr-accent); }
+.sr-pq-opt.sel { border-color:var(--sr-accent);
+  box-shadow:0 0 0 2px color-mix(in srgb, var(--sr-accent) 32%, transparent); }
+.sr-pq-opt.correct { border-color:var(--sr-perf);
+  background:color-mix(in srgb, var(--sr-perf) 12%, var(--sr-surface)); }
+.sr-pq-opt.wrong { border-color:var(--sr-danger);
+  background:color-mix(in srgb, var(--sr-danger) 12%, var(--sr-surface)); }
+.sr-pq-opt[disabled] { cursor:default; }
+.sr-pq-letter { flex:none; width:26px; height:26px; border-radius:50%; border:1px solid var(--sr-hairline);
+  display:inline-flex; align-items:center; justify-content:center; font-size:13px; font-weight:600;
+  color:var(--sr-secondary); }
+.sr-pq-row { display:flex; align-items:center; gap:10px; margin:16px 0 6px; color:var(--sr-secondary);
+  font-size:14px; }
+.sr-pq-row select { font-family:var(--sr-font); border:1px solid var(--sr-hairline);
+  border-radius:var(--sr-radius-input); padding:8px 12px; background:var(--sr-field); color:var(--sr-ink); }
+.sr-pq-explain { width:100%; box-sizing:border-box; min-height:66px; font-family:var(--sr-font);
+  font-size:14px; border:1px solid var(--sr-hairline); border-radius:var(--sr-radius-input); padding:12px;
+  background:var(--sr-field); color:var(--sr-ink); resize:vertical; margin:6px 0 4px; }
+.sr-pq-verdict { font-family:var(--sr-display); font-size:22px; font-weight:600; margin:14px 0 6px; }
+.sr-pq-verdict.good { color:var(--sr-perf); }
+.sr-pq-verdict.bad { color:var(--sr-danger); }
+.sr-pq-verdict.muted { color:var(--sr-secondary); }
+.sr-pq-feedback { color:var(--sr-secondary); line-height:1.55; white-space:pre-line; }
+.sr-pq-foot { display:flex; justify-content:flex-end; margin-top:22px; }
+/* inputs (sync) */
+.sr-field-label { display:block; font-size:13px; font-weight:600; color:var(--sr-secondary);
+  margin:14px 0 6px; }
+.sr-inp { width:100%; box-sizing:border-box; font-family:var(--sr-font); font-size:15px;
+  border:1px solid var(--sr-hairline); border-radius:var(--sr-radius-input); padding:11px 13px;
+  background:var(--sr-field); color:var(--sr-ink); }
+.sr-inp:focus { outline:none; border-color:var(--sr-accent);
+  box-shadow:0 0 0 2px color-mix(in srgb, var(--sr-accent) 24%, transparent); }
+.sr-sync-status { margin-top:14px; font-size:13px; color:var(--sr-secondary); }
+"""
+
+
+_SYNC_JS = """
+<script>
+function srSync(){
+  var u=document.getElementById('sr-sync-url');
+  var n=document.getElementById('sr-sync-user');
+  var p=document.getElementById('sr-sync-pass');
+  var payload={url:u?u.value:'', user:n?n.value:'', pass:p?p.value:''};
+  pycmd('speedrun:sync:'+encodeURIComponent(JSON.stringify(payload)));
+}
+</script>
+"""
+
+
+def workspace_html(active: str, body: str) -> str:
+    """Wrap a Speedrun screen in the in-place workspace shell: a header with a
+    'Decks' back button and Dashboard/Practice/Settings tabs, so the surfaces
+    switch inside the main window instead of opening separate dialogs."""
+    tabs = (
+        ("dashboard", "Dashboard"),
+        ("practice", "Practice"),
+        ("settings", "Settings"),
+    )
+    tabs_html = "".join(
+        f'<button class="sr-ws-tab{" active" if key == active else ""}" '
+        f"onclick=\"pycmd('speedrun:ws:{key}')\">{label}</button>"
+        for key, label in tabs
+    )
+    head = (
+        '<div class="sr-ws-head">'
+        '<button class="sr-ws-back" onclick="pycmd(\'speedrun:back\')">'
+        "\u2190 Decks</button>"
+        '<div class="sr-ws-spacer"></div>'
+        f'<div class="sr-ws-tabs">{tabs_html}</div>'
+        "</div>"
+    )
+    return f'<style>{_WORKSPACE_CSS}</style><div class="sr-ws">{head}{body}</div>'
+
+
+def settings_body(items: list[dict], sync: dict | None = None) -> str:
+    """The settings screen as clean HTML rows (title + description + a real
+    toggle switch), replacing the cramped native dialog whose text collided.
+    Includes a self-hosted Sync section (no AnkiWeb account)."""
+    rows = "".join(
+        '<div class="sr-set-item"><div class="sr-set-txt">'
+        f'<div class="sr-set-title">{escape(it["title"])}</div>'
+        f'<div class="sr-set-desc">{escape(it["desc"])}</div></div>'
+        f'<button class="sr-switch{" on" if it["on"] else ""}" '
+        f"onclick=\"pycmd('speedrun:set:{it['key']}')\"><i></i></button></div>"
+        for it in items
+    )
+    header = (
+        '<div class="sr-dash-head"><h1 class="sr-dash-title">Settings</h1>'
+        '<p class="sr-dash-sub">Study levers and appearance. Changes apply '
+        "immediately.</p></div>"
+    )
+    return (
+        f'<div class="sr-panel sr-dash">{header}'
+        f'<div class="sr-card" style="padding:2px 20px">{rows}</div>'
+        f"{_sync_section(sync or {})}</div>"
+    )
+
+
+def _sync_section(sync: dict) -> str:
+    url = escape(sync.get("url") or "")
+    user = escape(sync.get("username") or "")
+    status = escape(sync.get("status") or "")
+    placeholder = "http://192.168.1.20:27701/  (or your server's address)"
+    header = (
+        '<div class="sr-dash-head" style="margin-top:26px">'
+        '<h1 class="sr-dash-title" style="font-size:21px">Sync</h1>'
+        '<p class="sr-dash-sub">Sync this device with your phone through a '
+        "self-hosted Anki sync server. Reviews flow both ways \u2014 no AnkiWeb "
+        "account, and once you sign in here the toolbar Sync button uses it too."
+        "</p></div>"
+    )
+    status_html = f'<div class="sr-sync-status">{status}</div>' if status else ""
+    body = (
+        '<div class="sr-card" style="padding:6px 20px 20px">'
+        '<label class="sr-field-label">Server URL</label>'
+        f'<input id="sr-sync-url" class="sr-inp" value="{url}" '
+        f'placeholder="{escape(placeholder)}">'
+        '<label class="sr-field-label">Username</label>'
+        f'<input id="sr-sync-user" class="sr-inp" value="{user}" '
+        'placeholder="demo">'
+        '<label class="sr-field-label">Password</label>'
+        '<input id="sr-sync-pass" class="sr-inp" type="password" '
+        'placeholder="\u2022\u2022\u2022\u2022">'
+        '<div class="sr-pq-foot"><button class="sr-btn sr-primary" '
+        'onclick="srSync()">Sync now</button></div>'
+        f"{status_html}</div>"
+    )
+    return header + body + _SYNC_JS
+
+
+_PRACTICE_JS = """
+<script>
+window._srSel = (typeof window._srSel === 'undefined') ? null : window._srSel;
+function srSel(el, i){
+  window._srSel = i;
+  var opts = document.querySelectorAll('.sr-pq-opt');
+  for (var k=0;k<opts.length;k++){ opts[k].classList.remove('sel'); }
+  el.classList.add('sel');
+  var b = document.getElementById('sr-pq-submit'); if(b){ b.removeAttribute('disabled'); }
+}
+function srSubmit(){
+  if(window._srSel===null){ return; }
+  var conf = document.getElementById('sr-conf');
+  var ex = document.getElementById('sr-explain');
+  var payload = {sel: window._srSel, conf: conf?parseInt(conf.value):0, explain: ex?ex.value:''};
+  window._srSel = null;
+  pycmd('speedrun:pq:submit:'+encodeURIComponent(JSON.stringify(payload)));
+}
+</script>
+"""
+
+
+def practice_body(s: dict) -> str:
+    """Render the in-place practice screen from a plain state dict built by
+    speedrun.py (mirrors the old dialog's question/verdict/AI regions)."""
+    header = (
+        '<div class="sr-dash-head"><h1 class="sr-dash-title">Practice</h1>'
+        '<p class="sr-dash-sub">Held-out, exam-style questions \u2014 these feed '
+        "your performance signal and calibration.</p></div>"
+    )
+    if s.get("empty"):
+        body = (
+            '<div class="sr-card" style="text-align:center;padding:44px 24px">'
+            '<div class="sr-set-title">No practice questions yet</div>'
+            '<p class="sr-set-desc" style="max-width:420px;margin:8px auto 18px">'
+            "Import a question pack from the Content Library to start measuring "
+            "performance separately from recall.</p>"
+            '<button class="sr-btn sr-primary" '
+            "onclick=\"pycmd('speedrun:library')\">Open Content Library</button></div>"
+        )
+        return f'<div class="sr-panel sr-dash">{header}{body}</div>'
+
+    q = s["q"]
+    answered = s["answered"]
+    total = s["total"]
+    idx = s["index"]
+    progress = (
+        f"Question {idx + 1} of {total}  \u00b7  "
+        f"{escape(str(q['topic']).replace('_', ' '))}"
+    )
+    opts = ""
+    for i, opt in enumerate(q["options"]):
+        cls = "sr-pq-opt"
+        attrs = f'onclick="srSel(this,{i})"'
+        if answered:
+            attrs = "disabled"
+            if i == q["correct_index"]:
+                cls += " correct"
+            elif i == s.get("selected"):
+                cls += " wrong"
+        opts += (
+            f'<button class="{cls}" {attrs}>'
+            f'<span class="sr-pq-letter">{chr(65 + i)}</span>'
+            f"<span>{escape(str(opt))}</span></button>"
+        )
+
+    inner = [
+        f'<p class="sr-eyebrow">{progress}</p>',
+        f'<div class="sr-pq-stem">{escape(str(q["stem"]))}</div>',
+        opts,
+    ]
+
+    if not answered:
+        inner.append(
+            '<div class="sr-pq-row"><span>Confidence</span>'
+            '<select id="sr-conf"><option value="0">(skip)</option>'
+            '<option value="1">Low</option><option value="2">Medium</option>'
+            '<option value="3">High</option></select></div>'
+        )
+        inner.append(
+            '<textarea id="sr-explain" class="sr-pq-explain" '
+            'placeholder="Self-explain your reasoning (optional)"></textarea>'
+        )
+        inner.append(
+            '<div class="sr-pq-foot"><button id="sr-pq-submit" class="sr-btn sr-primary" '
+            'disabled onclick="srSubmit()">Submit answer</button></div>'
+        )
+        inner.append(_PRACTICE_JS)
+    else:
+        vclass = s.get("verdict") or "muted"
+        inner.append(
+            f'<div class="sr-pq-verdict {vclass}">{escape(s.get("verdict_text", ""))}</div>'
+        )
+        if s.get("feedback"):
+            inner.append(f'<div class="sr-pq-feedback">{escape(s["feedback"])}</div>')
+        ai = s.get("ai")
+        if ai:
+            inner.append(_ai_card(ai))
+        label = "Finish" if s.get("is_last") else "Next question"
+        inner.append(
+            '<div class="sr-pq-foot"><button class="sr-btn sr-primary" '
+            f"onclick=\"pycmd('speedrun:pq:next')\">{escape(label)}</button></div>"
+        )
+
+    body = f'<div class="sr-card">{"".join(inner)}</div>'
+    return f'<div class="sr-panel sr-dash">{header}{body}</div>'
+
+
+def _ai_card(ai: dict) -> str:
+    """The AI-coach region inside the practice verdict (spinner -> rationale +
+    source citation), matching the old dialog's dedicated card."""
+    inner = '<p class="sr-eyebrow">AI coach</p>'
+    status = ai.get("status")
+    if status:
+        inner += f'<p class="sr-pq-feedback">{escape(status)}</p>'
+    if ai.get("body"):
+        inner += f'<p style="line-height:1.55;margin:4px 0">{escape(ai["body"])}</p>'
+    if ai.get("source"):
+        inner += (
+            '<p style="margin-top:8px;font-size:12px;color:var(--sr-secondary)">'
+            f"Source: {escape(ai['source'])}</p>"
+        )
+    return (
+        '<div class="sr-card" style="margin-top:16px;'
+        f'background:var(--sr-elevated)">{inner}</div>'
+    )
