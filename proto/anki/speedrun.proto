@@ -177,7 +177,8 @@ message GetDueReasoningRequest {
   uint32 limit = 1;
 }
 
-// Aggregated end-of-session / periodic feedback report over exam-style attempts.
+// Aggregated end-of-session / periodic feedback report over exam-style
+// attempts.
 message FeedbackReport {
   uint32 total = 1;
   uint32 correct = 2;

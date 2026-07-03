@@ -426,7 +426,8 @@ impl crate::services::SpeedrunService for Collection {
             input.limit
         };
         let outline = self.outline_topic_set()?;
-        let mut cache: std::collections::HashMap<i64, Vec<String>> = std::collections::HashMap::new();
+        let mut cache: std::collections::HashMap<i64, Vec<String>> =
+            std::collections::HashMap::new();
 
         // Per-topic performance rows, attributed to topics via the card->topic
         // heuristic, so the recall-vs-performance gap is measured per topic.
@@ -521,7 +522,8 @@ impl crate::services::SpeedrunService for Collection {
 
     fn get_feedback_report(&mut self) -> error::Result<anki_proto::speedrun::FeedbackReport> {
         let outline = self.outline_topic_set()?;
-        let mut cache: std::collections::HashMap<i64, Vec<String>> = std::collections::HashMap::new();
+        let mut cache: std::collections::HashMap<i64, Vec<String>> =
+            std::collections::HashMap::new();
         let mut rows: Vec<crate::speedrun::feedback::ReportRow> = Vec::new();
         for (cid, kind, correct, _ms) in self.storage.sr_exam_attempts_brief()? {
             // A single primary topic per attempt keeps the totals honest; the
@@ -657,8 +659,9 @@ impl Collection {
     }
 
     /// The topics a card belongs to, via the deck-name heuristic plus note tags
-    /// that are in the outline (mirrors `get_session_reasoning_round`). Cached by
-    /// card id because the reasoning-due / feedback aggregations revisit cards.
+    /// that are in the outline (mirrors `get_session_reasoning_round`). Cached
+    /// by card id because the reasoning-due / feedback aggregations revisit
+    /// cards.
     fn topics_for_card_cached(
         &mut self,
         cid: CardId,
@@ -1187,7 +1190,8 @@ mod test {
 
         // Due-reasoning: the positive recall-vs-performance gap makes "biology"
         // due, so its held-out questions are returned.
-        let due = col.get_due_reasoning(anki_proto::speedrun::GetDueReasoningRequest { limit: 5 })?;
+        let due =
+            col.get_due_reasoning(anki_proto::speedrun::GetDueReasoningRequest { limit: 5 })?;
         assert_eq!(due.items.len(), 2);
         assert!(due.items.iter().all(|q| q.topic == "biology"));
 
