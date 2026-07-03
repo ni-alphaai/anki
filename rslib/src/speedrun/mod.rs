@@ -12,12 +12,14 @@
 pub mod calibration;
 pub mod coverage;
 pub mod exam;
+pub mod feedback;
 pub mod interleave;
 pub mod leakage;
 pub mod performance;
 pub mod points_at_stake;
 pub mod readiness;
 pub mod reasoning_round;
+pub mod reasoning_schedule;
 pub(crate) mod service;
 
 // Diagnosis kinds, mirroring sr_attempts.diagnosis_kind.
