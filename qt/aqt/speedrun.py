@@ -237,6 +237,12 @@ def setup(mw: aqt.AnkiQt) -> None:
     # Tear the embedded sync server down when the profile closes (atexit is a
     # backstop for hard exits).
     gui_hooks.profile_will_close.append(srsync.stop_server)
+    # Auto-sync to the local server when the desktop regains focus (paired +
+    # signed in only), so returning from the phone pulls its changes.
+    try:
+        mw.app.applicationStateChanged.connect(_on_app_state_changed)
+    except Exception:  # pragma: no cover - never block startup
+        pass
 
     # Home / Practice / Library are primary destinations in the app-shell
     # sidebar, so the Tools menu keeps only the card-context and setup actions.
@@ -1227,6 +1233,33 @@ def _sync_now_from_screen(mw: aqt.AnkiQt) -> None:
     _sync_to_local(
         mw, on_done=lambda: _show_sync_pair(mw, start=False, status_msg="Synced.")
     )
+
+
+_last_autosync: float = 0.0
+
+
+def _on_app_state_changed(state: object) -> None:
+    """Auto-sync to the local server when the desktop regains focus, so returning
+    from the phone pulls its changes. Kept unobtrusive: only when paired and
+    already signed in (reuses cached auth, no login modal), never mid-review, and
+    debounced to at most once every 30s."""
+    global _last_autosync
+    from aqt.qt import Qt
+
+    if state != Qt.ApplicationState.ApplicationActive:
+        return
+    mw = aqt.mw
+    if mw is None or mw.col is None or mw.state == "review":
+        return
+    if not srsync.is_paired(mw.col) or mw.pm.sync_auth() is None:
+        return
+    now = time.monotonic()
+    if now - _last_autosync < 30:
+        return
+    if not srsync.start_server(mw):
+        return
+    _last_autosync = now
+    _run_native_sync(mw)
 
 
 def _settings_items(col) -> list[dict]:

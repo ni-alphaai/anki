@@ -55,6 +55,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import kotlinx.coroutines.launch
+import net.speedrun.app.SyncDiscovery
 import net.speedrun.app.SyncPairing
 import net.speedrun.app.SyncResult
 import java.text.SimpleDateFormat
@@ -227,6 +228,17 @@ private fun SyncSection(context: Context) {
         )
 
         if (AppSettings.isPaired) {
+            // Re-find the desktop over mDNS in case its LAN IP changed, so the
+            // stored URL stays fresh without a re-scan.
+            LaunchedEffect(Unit) {
+                SyncDiscovery.findServer(context) { url ->
+                    if (url.isNotBlank() && url != AppSettings.syncUrl) {
+                        AppSettings.setPairing(
+                            context, url, AppSettings.syncUsername, AppSettings.syncToken,
+                        )
+                    }
+                }
+            }
             Text(
                 "Paired with ${AppSettings.syncUrl}",
                 color = c.textPrimary,

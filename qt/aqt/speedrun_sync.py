@@ -170,6 +170,7 @@ def start_server(mw: aqt.AnkiQt) -> bool:
             _port = None
             return False
         if _health_ok(port):
+            _advertise_mdns(lan_ip(), port)
             return True
         loop = QEventLoop()
         QTimer.singleShot(200, loop.quit)
@@ -180,6 +181,7 @@ def start_server(mw: aqt.AnkiQt) -> bool:
 
 def stop_server() -> None:
     global _proc, _port, _log_file
+    _withdraw_mdns()
     proc, _proc, _port = _proc, None, None
     if proc is not None and proc.poll() is None:
         try:
@@ -199,6 +201,53 @@ def stop_server() -> None:
 
 
 atexit.register(stop_server)
+
+
+# --- mDNS advertising -------------------------------------------------------
+#
+# Advertise the running server as `_speedrun-sync._tcp` on the LAN so the phone
+# can re-find the desktop after its IP changes, without re-scanning the QR. Only
+# the address is broadcast -- the credential still comes from the QR pairing.
+
+_MDNS_TYPE = "_speedrun-sync._tcp.local."
+_zc: Any = None
+_svc_info: Any = None
+
+
+def _advertise_mdns(ip: str, port: int) -> None:
+    global _zc, _svc_info
+    _withdraw_mdns()
+    try:
+        from zeroconf import ServiceInfo, Zeroconf
+
+        host = socket.gethostname()
+        info = ServiceInfo(
+            _MDNS_TYPE,
+            f"Speedrun ({host}).{_MDNS_TYPE}",
+            addresses=[socket.inet_aton(ip)],
+            port=port,
+            properties={b"v": b"1"},
+            server=f"{host}.local.",
+        )
+        zc = Zeroconf()
+        zc.register_service(info)
+        _zc, _svc_info = zc, info
+    except Exception as exc:  # pragma: no cover - discovery is best-effort
+        print(f"speedrun: mDNS advertise failed: {exc}")
+
+
+def _withdraw_mdns() -> None:
+    global _zc, _svc_info
+    zc, info = _zc, _svc_info
+    _zc, _svc_info = None, None
+    if zc is None:
+        return
+    try:
+        if info is not None:
+            zc.unregister_service(info)
+        zc.close()
+    except Exception:
+        pass
 
 
 # --- addressing + pairing payload -------------------------------------------

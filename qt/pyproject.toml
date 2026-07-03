@@ -28,6 +28,9 @@ dependencies = [
   # Speedrun: pure-Python, zero-dependency QR generation for one-button phone
   # pairing (the "Sync with phone" flow renders the pairing payload as a QR).
   "segno>=1.6",
+  # Speedrun: advertise the embedded sync server over mDNS/Bonjour so the phone
+  # re-finds the desktop after its LAN IP changes (no re-pairing needed).
+  "zeroconf>=0.130",
   # anki dependency is added dynamically in hatch_build.py with exact version
 ]
 
