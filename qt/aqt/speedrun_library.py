@@ -65,6 +65,10 @@ _PAYLOAD_KEYS = ("stem", "options", "correct_index", "explanation")
 
 _CFG_ONBOARDED = "speedrunOnboarded"
 
+# Shared dialog content margins, matching ``speedrun._DIALOG_MARGINS`` so every
+# Speedrun dialog reads with the same gutter (radii unified via dialog_qss).
+_DIALOG_MARGINS = (24, 22, 24, 20)
+
 
 # --- styling helpers --------------------------------------------------------
 
@@ -78,7 +82,9 @@ def _night() -> bool:
         return False
 
 
-def _mark(widget: QWidget, *, role: str | None = None, primary: bool = False) -> QWidget:
+def _mark(
+    widget: QWidget, *, role: str | None = None, primary: bool = False
+) -> QWidget:
     if role is not None:
         widget.setProperty("srRole", role)
     if primary:
@@ -104,7 +110,9 @@ def _bundled_pack_path(name: str) -> Path | None:
         candidates += [base / "web" / "imgs" / name, base / "speedrun" / name]
     except Exception:
         pass
-    candidates.append(Path(aqt.__file__).resolve().parent / "data" / "web" / "imgs" / name)
+    candidates.append(
+        Path(aqt.__file__).resolve().parent / "data" / "web" / "imgs" / name
+    )
     for path in candidates:
         if path.exists():
             return path
@@ -184,9 +192,13 @@ def _download_to(url: str, dest: str) -> None:
     with urllib.request.urlopen(req, timeout=60) as resp:  # noqa: S310 (user-initiated)
         ctype = resp.headers.get("Content-Type", "")
         if "text/html" in ctype:
-            confirmed = _parse_google_confirm(resp.read(200_000).decode("utf-8", "ignore"))
+            confirmed = _parse_google_confirm(
+                resp.read(200_000).decode("utf-8", "ignore")
+            )
             if not confirmed:
-                raise RuntimeError("This link needs a manual confirmation step in a browser.")
+                raise RuntimeError(
+                    "This link needs a manual confirmation step in a browser."
+                )
             req = urllib.request.Request(confirmed, headers=headers)
             with urllib.request.urlopen(req, timeout=60) as resp2:  # noqa: S310
                 _stream(resp2, dest)
@@ -327,7 +339,9 @@ def import_e2e_pack(mw: aqt.AnkiQt) -> None:
         return
     _refresh(mw)
     if result == (0, 0):
-        tooltip("The biology example deck is already imported \u2014 open it and review.")
+        tooltip(
+            "The biology example deck is already imported \u2014 open it and review."
+        )
     elif result:
         tooltip(
             f"Imported {result[0]} biology cards + {result[1]} matched questions. "
@@ -428,7 +442,7 @@ class LibraryDialog(QDialog):
         self.resize(560, 520)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(22, 20, 22, 18)
+        layout.setContentsMargins(*_DIALOG_MARGINS)
         layout.setSpacing(12)
 
         layout.addWidget(_mark(QLabel("Library"), role="display"))
@@ -448,7 +462,9 @@ class LibraryDialog(QDialog):
         e2e_meta.addWidget(_mark(QLabel("Biology e2e test"), role="title"))
         e2e_meta.addWidget(
             _mark(
-                QLabel("15 biology cards + 6 topic-matched questions. Review, finish, and the reasoning round pulls matched (not random) questions."),
+                QLabel(
+                    "15 biology cards + 6 topic-matched questions. Review, finish, and the reasoning round pulls matched (not random) questions."
+                ),
                 role="muted",
             )
         )
@@ -494,7 +510,9 @@ class LibraryDialog(QDialog):
         layout.addLayout(own_row)
         layout.addWidget(
             _mark(
-                QLabel(".apkg / .colpkg decks or .json question packs. Drive links work."),
+                QLabel(
+                    ".apkg / .colpkg decks or .json question packs. Drive links work."
+                ),
                 role="muted",
             )
         )
@@ -519,7 +537,9 @@ class LibraryDialog(QDialog):
         btn = _mark(QPushButton("Download & import"), primary=True)
         qconnect(
             btn.clicked,
-            lambda _=False, d=deck: download_and_import_deck(self.mw, d["url"], d["name"]),
+            lambda _=False, d=deck: download_and_import_deck(
+                self.mw, d["url"], d["name"]
+            ),
         )
         row.addWidget(btn)
         return card
@@ -539,7 +559,9 @@ class LibraryDialog(QDialog):
 
     def _paste_link(self) -> None:
         url, ok = QInputDialog.getText(
-            self, "Import from a link", "Direct .apkg/.colpkg/.json link (Drive links work):"
+            self,
+            "Import from a link",
+            "Direct .apkg/.colpkg/.json link (Drive links work):",
         )
         if ok and url.strip():
             name = url.strip().rsplit("/", 1)[-1][:40] or "deck"
@@ -581,7 +603,7 @@ class OnboardingDialog(QDialog):
         self.resize(480, 360)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 22, 24, 18)
+        layout.setContentsMargins(*_DIALOG_MARGINS)
         layout.setSpacing(12)
 
         layout.addWidget(_mark(QLabel("Let's set your target"), role="display"))
@@ -641,7 +663,9 @@ class OnboardingDialog(QDialog):
         exam_ms = int(exam_dt.timestamp() * 1000)
         try:
             self.mw.col._backend.set_exam_profile(
-                speedrun_pb2.ExamProfile(exam_date_ms=exam_ms, target_score=self._target)
+                speedrun_pb2.ExamProfile(
+                    exam_date_ms=exam_ms, target_score=self._target
+                )
             )
             self.mw.col.set_config(_CFG_ONBOARDED, True)
             _refresh(self.mw)

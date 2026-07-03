@@ -32,13 +32,11 @@ from datetime import datetime, timezone
 import aqt
 from anki import speedrun_pb2
 from anki.cards import Card
-from aqt import (
-    gui_hooks,
-    speedrun_ai as srai,
-    speedrun_library as library,
-    speedrun_theme as theme,
-    speedrun_voice as voice,
-)
+from aqt import gui_hooks
+from aqt import speedrun_ai as srai
+from aqt import speedrun_library as library
+from aqt import speedrun_theme as theme
+from aqt import speedrun_voice as voice
 from aqt.qt import (
     QAction,
     QButtonGroup,
@@ -48,11 +46,13 @@ from aqt.qt import (
     QDateEdit,
     QDialog,
     QDialogButtonBox,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QMenu,
     QObject,
     QPlainTextEdit,
+    QProgressBar,
     QPushButton,
     QRadioButton,
     QSpinBox,
@@ -91,9 +91,15 @@ _ACTION_LABEL = {
 _EXPLAIN_CMD = "speedrun:explain"
 
 # Question-side self-explain button, injected into the card web view and removed
-# on reveal (self-explanation is pre-reveal). Styled to match the Speedrun look.
-_EXPLAIN_BUTTON_JS = (
-    r"""
+# on reveal (self-explanation is pre-reveal). Retokened to the Speedrun accent +
+# Geist (dropping the orphan indigo #5E5CE6); the colour is baked in per-mode
+# since the card page may not carry the --sr-* custom properties. Single-quoted
+# font family so it is safe inside the double-quoted JS cssText.
+_EXPLAIN_FONT = (
+    "'Geist',-apple-system,'SF Pro Text',system-ui,'Segoe UI',Roboto,sans-serif"
+)
+
+_EXPLAIN_BUTTON_TMPL = r"""
 (function () {
   var id = "speedrun-explain-btn";
   var old = document.getElementById(id);
@@ -104,14 +110,24 @@ _EXPLAIN_BUTTON_JS = (
   btn.title = "Say your reasoning out loud before revealing (Ctrl+Shift+E)";
   btn.style.cssText =
     "position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:2147483647;" +
-    "padding:10px 18px;border-radius:980px;border:none;" +
-    "background:#5E5CE6;color:#fff;box-shadow:0 4px 14px rgba(94,92,230,.4);" +
-    "font:600 14px -apple-system,system-ui,sans-serif;cursor:pointer;";
+    "padding:10px 18px;border-radius:999px;border:none;" +
+    "background:__ACCENT__;color:#fff;box-shadow:0 6px 18px rgba(0,0,0,.18);" +
+    "font:600 14px __FONT__;cursor:pointer;";
   btn.addEventListener("click", function () { pycmd("__CMD__"); });
   document.body.appendChild(btn);
 })();
-""".replace("__CMD__", _EXPLAIN_CMD)
-)
+"""
+
+
+def _explain_button_js() -> str:
+    """The pre-reveal self-explain button JS, with the accent colour resolved for
+    the current light/dark mode."""
+    return (
+        _EXPLAIN_BUTTON_TMPL.replace("__CMD__", _EXPLAIN_CMD)
+        .replace("__ACCENT__", theme.resolved("accent", _night()))
+        .replace("__FONT__", _EXPLAIN_FONT)
+    )
+
 
 _REMOVE_BUTTON_JS = r"""
 (function () {
@@ -187,10 +203,19 @@ def setup(mw: aqt.AnkiQt) -> None:
 
     # In-place native integration.
     gui_hooks.webview_will_set_content.append(_on_will_set_content)
-    gui_hooks.deck_browser_will_render_content.append(_on_deck_browser_content)
+    # The deck-browser home intentionally carries no readiness banner: its white
+    # block clashed with the deck UI below it. Readiness now lives in the per-deck
+    # overview panel and the toolbar Dashboard, so we no longer inject anything
+    # into deck_browser_will_render_content.
     gui_hooks.overview_will_render_content.append(_on_overview_content)
     gui_hooks.top_toolbar_did_init_links.append(_on_toolbar_links)
     gui_hooks.reviewer_will_init_answer_buttons.append(_on_answer_buttons)
+    # Theme Anki's Svelte pages (graphs, deck options, congrats fallback) and the
+    # global Qt chrome (menus, tables, inputs) from the same tokens, re-applying
+    # on night-mode toggles so the whole app reads as one product.
+    gui_hooks.webview_did_inject_style_into_page.append(_on_style_injected)
+    gui_hooks.style_did_init.append(_on_style_did_init)
+    gui_hooks.theme_did_change.append(_on_theme_did_change)
     # The toolbar's first draw (finish_ui_setup) fires top_toolbar_did_init_links
     # BEFORE this setup() registers our handler, so the Dashboard link is missed.
     # Redraw once after the window is fully initialized to include it.
@@ -236,6 +261,10 @@ def _on_collection_loaded(_col) -> None:
     if mw is None:
         return
 
+    # Anki's first setupStyle() ran before our style_did_init hook registered, so
+    # rebuild the app stylesheet now that the collection (and toggle) are loaded.
+    _reapply_app_style()
+
     def first_run() -> None:
         library.maybe_load_example_deck(mw)
         library.maybe_show_onboarding(mw)
@@ -277,18 +306,29 @@ def _modern_on(col) -> bool:
         return True
 
 
-def _style_dialog(dialog: QDialog) -> None:
-    """Apply the Speedrun token palette to a native Qt dialog (light/dark aware)."""
+# Unified dialog content margins (spec spacing scale) so every Speedrun dialog
+# shares the same generous gutter; radii are unified via ``theme.dialog_qss``.
+_DIALOG_MARGINS = (24, 22, 24, 20)
+
+
+def _night() -> bool:
+    """Current Anki dark-mode state (defaults to light if unavailable)."""
     try:
         from aqt.theme import theme_manager
 
-        night = bool(theme_manager.night_mode)
+        return bool(theme_manager.night_mode)
     except Exception:
-        night = False
-    dialog.setStyleSheet(theme.dialog_qss(night))
+        return False
 
 
-def _mark(widget: QWidget, *, role: str | None = None, primary: bool = False) -> QWidget:
+def _style_dialog(dialog: QDialog) -> None:
+    """Apply the Speedrun token palette to a native Qt dialog (light/dark aware)."""
+    dialog.setStyleSheet(theme.dialog_qss(_night()))
+
+
+def _mark(
+    widget: QWidget, *, role: str | None = None, primary: bool = False
+) -> QWidget:
     """Tag a widget with Speedrun QSS roles (see ``theme.dialog_qss``)."""
     if role is not None:
         widget.setProperty("srRole", role)
@@ -307,22 +347,38 @@ def _open_home() -> None:
 
 
 def _on_will_set_content(web_content, context) -> None:
-    """Inject the opt-in Apple/3.0 reskin into Anki's own chrome (not the card)."""
+    """Inject Speedrun tokens/components + the opt-in native reskin into Anki's
+    own chrome. The reviewer *card* content is never touched (only the calm
+    background behind it), and the token+component sheet is injected exactly once
+    per page here rather than by each embed."""
     mw = aqt.mw
-    if mw is None or mw.col is None or not _modern_on(mw.col):
+    if mw is None or mw.col is None:
         return
     from aqt.deckbrowser import DeckBrowser
     from aqt.overview import Overview
-    from aqt.reviewer import ReviewerBottomBar
+    from aqt.reviewer import Reviewer, ReviewerBottomBar
     from aqt.toolbar import TopToolbar
 
+    modern = _modern_on(mw.col)
     if isinstance(context, (DeckBrowser, Overview)):
-        web_content.head += theme.reskin_style("screen")
-    elif isinstance(context, TopToolbar):
-        web_content.head += theme.reskin_style("toolbar")
+        # The banner / panel / finished embeds always render, so their tokens +
+        # component styles must always be present -- injected once per page.
+        web_content.head += theme.page_style()
+        if modern:
+            web_content.head += theme.screen_reskin()
+        return
+    # Everything below is pure chrome polish, so it stays behind the toggle.
+    if not modern:
+        return
+    if isinstance(context, TopToolbar):
+        web_content.head += theme.toolbar_reskin()
     elif isinstance(context, ReviewerBottomBar):
-        # Color-code + restyle the answer buttons (chrome, not the card).
-        web_content.head += theme.answer_buttons_css()
+        # The answer-bar surface + color-coded answer buttons (chrome, not card).
+        web_content.head += theme.bottombar_reskin()
+    elif isinstance(context, Reviewer):
+        # Calm neutral behind the card only; NON-!important so any note/template
+        # styling wins the cascade and the card layout is never shifted.
+        web_content.head += theme.reviewer_chrome_css()
 
 
 def _on_answer_buttons(buttons, reviewer, card):
@@ -337,17 +393,6 @@ def _on_answer_buttons(buttons, reviewer, card):
         tr.studying_easy(): "Easy",
     }
     return tuple((ease, remap.get(label, label)) for ease, label in buttons)
-
-
-def _on_deck_browser_content(deck_browser, content) -> None:
-    """Embed the compact readiness banner on the deck-list home."""
-    mw = aqt.mw
-    if mw is None or mw.col is None:
-        return
-    try:
-        content.stats += theme.banner_html(_collect(mw.col, fresh=False))
-    except Exception as exc:  # pragma: no cover - never break the home screen
-        print(f"speedrun: deck-browser render failed: {exc}")
 
 
 def _on_overview_content(overview, content) -> None:
@@ -375,15 +420,101 @@ def _on_toolbar_links(links, toolbar) -> None:
             tip = f"Speedrun dashboard \u2014 projected MCAT {snap.readiness_scaled}"
     except Exception:
         pass
-    links.append(
+    # Place Dashboard at the FRONT of the link list so it renders immediately to
+    # the left of Decks. The default links (Decks/Add/Browse/Stats/Sync) are
+    # already present in order when this hook fires, and the toolbar joins them
+    # left-to-right, so index 0 is the leftmost primary destination.
+    links.insert(
+        0,
         toolbar.create_link(
             "speedrun",
             "Dashboard",
             lambda: _open_dashboard(mw),
             tip=tip,
             id="speedrun",
-        )
+        ),
     )
+
+
+# --- Svelte pages + global Qt chrome ----------------------------------------
+
+
+def _on_style_injected(webview) -> None:
+    """Theme Anki's Svelte/SvelteKit pages (graphs, deck options, and the
+    congrats fallback) with the Speedrun tokens by appending a <style> after
+    their own styling. We never edit the Svelte source; keyed on webview kind."""
+    mw = aqt.mw
+    if mw is None or mw.col is None or not _modern_on(mw.col):
+        return
+    try:
+        from aqt.webview import AnkiWebViewKind
+
+        kind = webview.kind
+    except Exception:  # pragma: no cover - defensive
+        return
+    if kind == AnkiWebViewKind.MAIN:
+        # The main webview fires this for the congrats SvelteKit page; guard on
+        # the URL so the stdHtml deck browser/overview (themed elsewhere, and
+        # which leave this webview's dynamic-styling flag set) are never touched.
+        guard = "if(!location.href.includes('congrats'))return;"
+    elif kind in (AnkiWebViewKind.DECK_STATS, AnkiWebViewKind.DECK_OPTIONS):
+        guard = ""
+    else:
+        return
+    js = (
+        "(function(){%s var id='speedrun-svelte-style';"
+        "var s=document.getElementById(id);"
+        "if(!s){s=document.createElement('style');s.id=id;document.head.appendChild(s);}"
+        "s.textContent=%s;})();" % (guard, json.dumps(theme.svelte_page_css()))
+    )
+    try:
+        webview.eval(js)
+    except Exception as exc:  # pragma: no cover - cosmetic only
+        print(f"speedrun: svelte page theming skipped: {exc}")
+
+
+def _global_reskin_on() -> bool:
+    """Whether to apply the global Qt chrome (needs a loaded collection so the
+    per-profile toggle is readable; defaults off until then)."""
+    mw = aqt.mw
+    return mw is not None and mw.col is not None and _modern_on(mw.col)
+
+
+def _on_style_did_init(style: str) -> str:
+    """Append Speedrun's global Qt chrome (menus, tooltips, tables, inputs) to
+    Anki's app stylesheet, built from the same tokens. Returns the style
+    unchanged when the collection isn't ready or the toggle is off."""
+    if not _global_reskin_on():
+        return style
+    try:
+        from aqt.theme import theme_manager
+
+        return style + theme.global_qss(bool(theme_manager.night_mode))
+    except Exception:  # pragma: no cover - never break app styling
+        return style
+
+
+def _reapply_app_style() -> None:
+    """Force Anki to rebuild its app stylesheet so our ``style_did_init`` hook
+    (registered after Anki's first ``setupStyle``) and the current night value
+    are included. ``apply_style`` early-returns when nothing changed, so we call
+    the private builder directly. Never fires ``theme_did_change`` (no recursion)."""
+    mw = aqt.mw
+    if mw is None:
+        return
+    try:
+        from aqt.theme import theme_manager
+
+        theme_manager._apply_style(mw.app)
+    except Exception as exc:  # pragma: no cover - cosmetic only
+        print(f"speedrun: could not reapply app style: {exc}")
+
+
+def _on_theme_did_change() -> None:
+    """Re-apply the global chrome + re-render the dashboard on a night-mode
+    toggle so already-open Speedrun surfaces track the theme."""
+    _reapply_app_style()
+    _refresh_dashboard()
 
 
 # --- data collection --------------------------------------------------------
@@ -497,7 +628,11 @@ def _next_action(data: dict) -> dict:
             "cta": "Practice now",
         }
     exam = data.get("exam") or {}
-    if exam.get("has") and exam.get("readiness_sufficient") and not exam.get("on_track"):
+    if (
+        exam.get("has")
+        and exam.get("readiness_sufficient")
+        and not exam.get("on_track")
+    ):
         return {
             "title": "Pick up the pace",
             "detail": f"You need about +{exam.get('needed', 0)} points "
@@ -525,7 +660,9 @@ def _on_show_question(card: Card) -> None:
     web = mw.reviewer.web
     if web is not None:
         try:
-            web.eval(_EXPLAIN_BUTTON_JS)
+            # Clear any prior post-miss cue, then offer pre-reveal self-explain.
+            web.eval(theme.REMOVE_DIAGNOSIS_JS)
+            web.eval(_explain_button_js())
         except Exception as exc:  # pragma: no cover - never break the review loop
             print(f"speedrun: failed to inject self-explain button: {exc}")
 
@@ -584,11 +721,34 @@ def _on_answer_card(reviewer, card: Card, ease: int) -> None:
 
 
 def _surface_diagnosis(diagnosis, correct: bool) -> None:
-    """Quiet, native post-miss cue: name the failure mode + the next action."""
+    """Themed, kind-aware post-miss cue rendered in the reviewer webview.
+
+    Names the failure mode with its per-kind colour + icon (spec: "Diagnosis cue
+    (kind-aware)"), shows the routed action, and offers an inline "Practice this"
+    affordance. It is a fixed overlay (never shifts card layout) that stays until
+    dismissed or the next question, so it can be read. Falls back to a plain
+    tooltip if the webview injection is unavailable, so the cue is never lost."""
     if correct or diagnosis.kind not in _DIAGNOSIS_LABEL:
         return
     label = _DIAGNOSIS_LABEL[diagnosis.kind]
     action = _ACTION_LABEL.get(diagnosis.routed_action, "")
+    mw = aqt.mw
+    web = mw.reviewer.web if (mw is not None and mw.reviewer is not None) else None
+    kind_key, icon = theme.DIAGNOSIS_STYLE.get(diagnosis.kind, ("accent", "\U0001f4a1"))
+    if web is not None:
+        try:
+            web.eval(
+                theme.diagnosis_cue_js(
+                    kind_key=kind_key,
+                    icon=icon,
+                    title=label,
+                    action=action,
+                    night=_night(),
+                )
+            )
+            return
+        except Exception as exc:  # pragma: no cover - fall back to a tooltip
+            print(f"speedrun: diagnosis cue injection failed: {exc}")
     msg = f"Speedrun: {label}"
     if action:
         msg += f"\n{action}"
@@ -662,6 +822,9 @@ def _toggle(mw: aqt.AnkiQt, key: str) -> None:
     col.set_config(cfg, not current)
     # Config affects the queue and/or the reskin, so rebuild + re-render.
     mw.reset()
+    if cfg == _CFG_MODERN:
+        # The global Qt chrome is gated on the toggle, so re-apply it now.
+        _reapply_app_style()
     tooltip("On." if not current else "Off.")
 
 
@@ -696,17 +859,23 @@ def _open_settings(mw: aqt.AnkiQt) -> None:
     dialog.resize(480, 420)
 
     layout = QVBoxLayout(dialog)
-    layout.setContentsMargins(22, 20, 22, 16)
+    layout.setContentsMargins(*_DIALOG_MARGINS)
     layout.setSpacing(8)
     layout.addWidget(_mark(QLabel("Settings"), role="display"))
     layout.addWidget(
-        _mark(QLabel("Study levers and appearance. Changes apply immediately."), role="muted")
+        _mark(
+            QLabel("Study levers and appearance. Changes apply immediately."),
+            role="muted",
+        )
     )
 
     def add_toggle(cfg: str, default: bool, title: str, desc: str) -> None:
         check = QCheckBox(title)
         check.setChecked(bool(col.get_config(cfg, default)))
-        qconnect(check.stateChanged, lambda _s, c=cfg, cb=check: col.set_config(c, cb.isChecked()))
+        qconnect(
+            check.stateChanged,
+            lambda _s, c=cfg, cb=check: col.set_config(c, cb.isChecked()),
+        )
         sub = _mark(QLabel(desc), role="muted")
         sub.setWordWrap(True)
         layout.addSpacing(6)
@@ -714,23 +883,33 @@ def _open_settings(mw: aqt.AnkiQt) -> None:
         layout.addWidget(sub)
 
     add_toggle(
-        _CFG_POINTS, False, "Points-at-stake queue",
+        _CFG_POINTS,
+        False,
+        "Points-at-stake queue",
         "Order due cards by weakness \u00d7 topic weight, so the highest-value cards come first.",
     )
     add_toggle(
-        _CFG_INTERLEAVE, False, "Spaced + interleaved practice",
+        _CFG_INTERLEAVE,
+        False,
+        "Spaced + interleaved practice",
         "Interleave confusable sibling topics (same parent tag) across reviews and new cards.",
     )
     add_toggle(
-        _CFG_AUTO_ROUND, False, "Auto reasoning round",
+        _CFG_AUTO_ROUND,
+        False,
+        "Auto reasoning round",
         "After you finish a deck's reviews, jump straight into a reasoning check (otherwise it's offered).",
     )
     add_toggle(
-        _CFG_MODERN, True, "Modern UI",
+        _CFG_MODERN,
+        True,
+        "Modern UI",
         "Apple-style reskin of Anki's deck list, overview, and toolbar.",
     )
     add_toggle(
-        srai._CFG_AI_DIAGNOSIS, False, "AI diagnosis (beta)",
+        srai._CFG_AI_DIAGNOSIS,
+        False,
+        "AI diagnosis (beta)",
         "Explain misses with the source-grounded AI coach. Falls back to the "
         "built-in classifier when off or unavailable; every AI diagnosis cites its source.",
     )
@@ -746,6 +925,7 @@ def _open_settings(mw: aqt.AnkiQt) -> None:
         mw.reset()
     except Exception:
         pass
+    _reapply_app_style()
     _refresh(mw)
 
 
@@ -779,7 +959,9 @@ class _DashboardDialog(QDialog):
             return
         try:
             data = _collect(self.mw.col, fresh=True)
-            self.web.stdHtml(theme.dashboard_html(data), context=self)
+            self.web.stdHtml(
+                theme.dashboard_html(data), head=theme.page_style(), context=self
+            )
         except Exception as exc:  # pragma: no cover
             print(f"speedrun: dashboard render failed: {exc}")
 
@@ -889,7 +1071,9 @@ class _ExplainDialog(QDialog):
         self.status.setWordWrap(True)
 
         self.edit = QPlainTextEdit()
-        self.edit.setPlaceholderText("Your spoken reasoning appears here — or just type.")
+        self.edit.setPlaceholderText(
+            "Your spoken reasoning appears here — or just type."
+        )
         self.edit.setPlainText(_state.pending_explanation)
 
         self.action_btn = QPushButton()
@@ -905,7 +1089,7 @@ class _ExplainDialog(QDialog):
             _mark(ok_btn, primary=True)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 18, 20, 16)
+        layout.setContentsMargins(*_DIALOG_MARGINS)
         layout.setSpacing(12)
         layout.addWidget(title)
         layout.addWidget(self.status)
@@ -1024,7 +1208,9 @@ class _ExplainDialog(QDialog):
                     return
                 if text:
                     current = self.edit.toPlainText().strip()
-                    self.edit.setPlainText((current + " " + text).strip() if current else text)
+                    self.edit.setPlainText(
+                        (current + " " + text).strip() if current else text
+                    )
 
             self.mw.taskman.run_in_background(task, done)
 
@@ -1163,7 +1349,7 @@ def _offer_reasoning_round(mw: aqt.AnkiQt, questions: list[dict]) -> None:
     row.addWidget(start)
 
     layout = QVBoxLayout(dialog)
-    layout.setContentsMargins(22, 20, 22, 16)
+    layout.setContentsMargins(*_DIALOG_MARGINS)
     layout.setSpacing(14)
     layout.addWidget(title)
     layout.addWidget(body)
@@ -1213,8 +1399,40 @@ class _PracticeDialog(QDialog):
         self.explain_btn = QPushButton("Self-explain (optional)")
         qconnect(self.explain_btn.clicked, self._self_explain)
 
+        # Verdict headline (coloured performance-green / danger-red on submit).
+        self.verdict = _mark(QLabel(), role="title")
+        self.verdict.setVisible(False)
         self.feedback = _mark(QLabel(), role="muted")
         self.feedback.setWordWrap(True)
+
+        # AI coach gets its own card region (spinner while analysing, then the
+        # rationale + a "Source: …" citation chip) instead of appended text.
+        self.ai_card = QFrame()
+        self.ai_card.setProperty("srCard", "1")
+        self.ai_card.setVisible(False)
+        ai_layout = QVBoxLayout(self.ai_card)
+        ai_layout.setContentsMargins(14, 12, 14, 12)
+        ai_layout.setSpacing(6)
+        ai_layout.addWidget(_mark(QLabel("AI coach"), role="eyebrow"))
+        self.ai_spinner = QProgressBar()
+        self.ai_spinner.setRange(0, 0)  # indeterminate = spinner/skeleton
+        self.ai_spinner.setTextVisible(False)
+        self.ai_spinner.setVisible(False)
+        ai_layout.addWidget(self.ai_spinner)
+        self.ai_status = _mark(QLabel(), role="muted")
+        self.ai_status.setWordWrap(True)
+        ai_layout.addWidget(self.ai_status)
+        self.ai_body = QLabel()
+        self.ai_body.setWordWrap(True)
+        self.ai_body.setVisible(False)
+        ai_layout.addWidget(self.ai_body)
+        self.ai_source = _mark(QLabel(), role="chip")
+        self.ai_source.setVisible(False)
+        self.ai_source.setWordWrap(True)
+        ai_source_row = QHBoxLayout()
+        ai_source_row.addWidget(self.ai_source)
+        ai_source_row.addStretch(1)
+        ai_layout.addLayout(ai_source_row)
 
         self.action_btn = _mark(QPushButton("Submit answer"), primary=True)
         qconnect(self.action_btn.clicked, self._on_action)
@@ -1223,14 +1441,16 @@ class _PracticeDialog(QDialog):
         qconnect(close_box.rejected, self.reject)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 18, 20, 16)
+        layout.setContentsMargins(*_DIALOG_MARGINS)
         layout.setSpacing(12)
         layout.addWidget(self.progress)
         layout.addWidget(self.stem)
         layout.addWidget(options_container)
         layout.addLayout(conf_row)
         layout.addWidget(self.explain_btn)
+        layout.addWidget(self.verdict)
         layout.addWidget(self.feedback)
+        layout.addWidget(self.ai_card)
         layout.addWidget(self.action_btn)
         layout.addWidget(close_box)
         _style_dialog(self)
@@ -1247,6 +1467,25 @@ class _PracticeDialog(QDialog):
             if widget is not None:
                 widget.deleteLater()
 
+    @staticmethod
+    def _repolish(widget: QWidget) -> None:
+        """Re-evaluate QSS after a dynamic property (srState/srRole) changed."""
+        style = widget.style()
+        if style is not None:
+            style.unpolish(widget)
+            style.polish(widget)
+        widget.update()
+
+    def _reset_ai_card(self) -> None:
+        self.ai_card.setVisible(False)
+        self.ai_spinner.setVisible(False)
+        self.ai_status.setVisible(True)
+        self.ai_status.setText("")
+        self.ai_body.setVisible(False)
+        self.ai_body.setText("")
+        self.ai_source.setVisible(False)
+        self.ai_source.setText("")
+
     def _load(self) -> None:
         q = self.questions[self.index]
         self.answered = False
@@ -1258,7 +1497,9 @@ class _PracticeDialog(QDialog):
             f"  ·  {q['topic'].replace('_', ' ')}"
         )
         self.stem.setText(q["stem"])
+        self.verdict.setVisible(False)
         self.feedback.setText("")
+        self._reset_ai_card()
         self.confidence.setCurrentIndex(0)
         self.confidence.setEnabled(True)
         self.explain_btn.setEnabled(True)
@@ -1328,6 +1569,23 @@ class _PracticeDialog(QDialog):
         self.explain_btn.setEnabled(False)
 
         ci = q["correct_index"]
+        # Highlight the correct option (green) and, on a miss, the user's pick (red).
+        correct_btn = self.group.button(ci)
+        if correct_btn is not None:
+            correct_btn.setProperty("srState", "correct")
+            self._repolish(correct_btn)
+        if not correct:
+            wrong_btn = self.group.button(selected)
+            if wrong_btn is not None:
+                wrong_btn.setProperty("srState", "wrong")
+                self._repolish(wrong_btn)
+
+        # Coloured verdict headline (performance-green / danger-red).
+        _mark(self.verdict, role=("good" if correct else "bad"))
+        self.verdict.setText("Correct" if correct else "Not quite")
+        self.verdict.setVisible(True)
+        self._repolish(self.verdict)
+
         parts = [f"Answer: {chr(65 + ci)}. {q['options'][ci]}"]
         if q["explanation"]:
             parts.append(q["explanation"])
@@ -1344,8 +1602,9 @@ class _PracticeDialog(QDialog):
 
     def _maybe_ai_diagnose(self, q, selected, took_ms, predicted, correct) -> None:
         """Non-blocking: enrich a miss with the source-grounded AI coach if it's
-        enabled + available. The deterministic diagnosis is already shown; this
-        appends the AI call when it returns (or a soft note on abstain/error)."""
+        enabled + available. The deterministic diagnosis is already shown; the AI
+        result lands in its own card region (spinner while it runs, then rationale
+        + a Source citation), so it never overwrites the rule-based feedback."""
         if correct or self.mw.col is None:
             return
         if not (srai.enabled(self.mw.col) and srai.available()):
@@ -1364,27 +1623,41 @@ class _PracticeDialog(QDialog):
             "question_type": 2,
         }
         self._ai_index = self.index
-        self._base_feedback = self.feedback.text()
-        self.feedback.setText(self._base_feedback + "\n\nAI coach: analyzing\u2026")
+        # Show the AI card with a spinner/skeleton while the coach runs.
+        self.ai_card.setVisible(True)
+        self.ai_spinner.setVisible(True)
+        self.ai_status.setVisible(True)
+        self.ai_status.setText("Analyzing your miss against the source\u2026")
+        self.ai_body.setVisible(False)
+        self.ai_source.setVisible(False)
         srai.diagnose_in_background(self.mw, item, signals, self._on_ai_diagnosis)
 
     def _on_ai_diagnosis(self, result) -> None:
         # Ignore stale callbacks (the user advanced or closed the dialog).
         if getattr(self, "_ai_index", None) != self.index or not self.answered:
             return
-        base = getattr(self, "_base_feedback", "") or self.feedback.text()
+        self.ai_spinner.setVisible(False)
         if not result or result.get("error"):
-            line = "AI coach unavailable \u2014 using the rule-based diagnosis."
-        elif result.get("abstained"):
-            line = "AI coach: not confident enough \u2014 deferring to the rule-based diagnosis."
-        else:
-            name = (result.get("kind_name") or "").replace("_", " ")
-            rationale = (result.get("rationale") or "").strip()
-            source = (result.get("source") or "").strip()
-            line = f"AI diagnosis \u2014 {name}: {rationale}"
-            if source:
-                line += f"\nSource: {source}"
-        self.feedback.setText(base + "\n\n" + line)
+            self.ai_status.setText(
+                "AI coach unavailable \u2014 using the rule-based diagnosis."
+            )
+            return
+        if result.get("abstained"):
+            self.ai_status.setText(
+                "Not confident enough \u2014 deferring to the rule-based diagnosis."
+            )
+            return
+        name = (result.get("kind_name") or "").replace("_", " ").strip()
+        rationale = (result.get("rationale") or "").strip()
+        source = (result.get("source") or "").strip()
+        self.ai_status.setVisible(False)
+        self.ai_body.setText(
+            f"{name}: {rationale}" if name else rationale or "No rationale returned."
+        )
+        self.ai_body.setVisible(True)
+        if source:
+            self.ai_source.setText(f"Source: {source}")
+            self.ai_source.setVisible(True)
 
     def _next(self) -> None:
         self.index += 1
@@ -1438,10 +1711,12 @@ def _set_exam_target(mw: aqt.AnkiQt) -> None:
         _mark(ok_btn, primary=True)
 
     layout = QVBoxLayout(dialog)
-    layout.setContentsMargins(20, 18, 20, 16)
+    layout.setContentsMargins(*_DIALOG_MARGINS)
     layout.setSpacing(10)
     layout.addWidget(_mark(QLabel("Exam target"), role="display"))
-    layout.addWidget(_mark(QLabel("Anchor your plan to a date and a target score."), role="muted"))
+    layout.addWidget(
+        _mark(QLabel("Anchor your plan to a date and a target score."), role="muted")
+    )
     layout.addWidget(_mark(QLabel("Exam date"), role="eyebrow"))
     layout.addWidget(date_edit)
     layout.addWidget(_mark(QLabel("Target score (472–528)"), role="eyebrow"))
@@ -1456,7 +1731,9 @@ def _set_exam_target(mw: aqt.AnkiQt) -> None:
     exam_ms = int(dt.timestamp() * 1000)
     try:
         mw.col._backend.set_exam_profile(
-            speedrun_pb2.ExamProfile(exam_date_ms=exam_ms, target_score=score_spin.value())
+            speedrun_pb2.ExamProfile(
+                exam_date_ms=exam_ms, target_score=score_spin.value()
+            )
         )
         _refresh(mw, "Exam target saved.")
     except Exception as exc:

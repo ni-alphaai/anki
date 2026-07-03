@@ -58,7 +58,9 @@ def _load(name: str):
     from faster_whisper import WhisperModel  # type: ignore
 
     try:
-        return WhisperModel(name, device="cpu", compute_type="int8", local_files_only=True)
+        return WhisperModel(
+            name, device="cpu", compute_type="int8", local_files_only=True
+        )
     except Exception:
         return WhisperModel(name, device="cpu", compute_type="int8")
 
@@ -124,9 +126,9 @@ class LiveTranscriber:
     @staticmethod
     def available() -> bool:
         try:
+            import faster_whisper  # type: ignore  # noqa: F401
             import numpy  # type: ignore  # noqa: F401
             import sounddevice  # type: ignore  # noqa: F401
-            import faster_whisper  # type: ignore  # noqa: F401
 
             return True
         except Exception:

@@ -18,12 +18,24 @@ properties keyed on the ``night-mode`` class / ``data-bs-theme`` attribute.
 
 from __future__ import annotations
 
+import json
+import math
 from html import escape
 
-# --- design tokens ----------------------------------------------------------
+# --- design tokens (single source of truth) ---------------------------------
 
-# Apple "clinical daylight" tokens; dark values mirror Anki night mode. These
-# are the single source of truth for the Speedrun look.
+# ONE Python structure holds the whole Speedrun palette (light + dark), matching
+# ``speedrun_design_spec.md`` exactly. From it we emit (a) the web ``:root`` /
+# ``.night-mode`` CSS custom properties, (b) the Qt QSS palette used by the
+# dialogs + global chrome, and (c) the reviewer answer-button colours -- so there
+# is no longer any hand-copied second/third palette that can drift.
+#
+# Font + display stacks are shared by web (@font-face + var) and Qt.
+_FONT_STACK = (
+    '"Geist",-apple-system,"SF Pro Text","Inter",system-ui,"Segoe UI",Roboto,sans-serif'
+)
+_DISPLAY_STACK = '"Fraunces","Geist",Georgia,"Times New Roman",serif'
+
 # Bundled OFL fonts, served by Anki's media server from aqt/data/web/imgs/ at
 # /_anki/imgs/. Variable weight axes let one file cover the whole range. These
 # mirror the mobile identity: Geist (product sans) + Fraunces (display serif).
@@ -34,23 +46,90 @@ _FONTS = """
   font-display:swap; src:url("/_anki/imgs/speedrun-fraunces.ttf") format("truetype"); }
 """
 
+# token -> (light, dark). ``hairline_web`` keeps the spec's translucent dark
+# separator; ``hairline`` is the opaque value Qt needs (QSS ignores rgba borders
+# inconsistently). ``on_signal`` is dark ink for text/icons on amber/green fills
+# (white is used directly on blue/red).
+_LIGHT: dict[str, str] = {
+    "canvas": "#F2F3F5",
+    "surface": "#FFFFFF",
+    "elevated": "#FFFFFF",
+    "ink": "#16181D",
+    "secondary": "#6B7280",
+    "tertiary": "#A2A8B0",
+    "hairline_web": "#E7EAEE",
+    "hairline": "#E7EAEE",
+    "accent": "#2E7BF6",
+    "memory": "#2E7BF6",
+    "perf": "#22C55E",
+    "coverage": "#8A94A6",
+    "reasoning": "#7C5CFC",
+    "passage": "#0E9AA7",
+    "amber": "#E0900B",
+    "danger": "#EF4444",
+    "on_signal": "#16181D",
+    "field": "#FFFFFF",
+    "shadow_sm": "0 1px 2px rgba(0,0,0,.05)",
+    "shadow": "0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.06)",
+    "shadow_lg": "0 12px 32px rgba(0,0,0,.10)",
+}
+_DARK: dict[str, str] = {
+    "canvas": "#0C0D0F",
+    "surface": "#17181B",
+    "elevated": "#1E2024",
+    "ink": "#F2F3F5",
+    "secondary": "#9AA0A8",
+    "tertiary": "#6B7280",
+    "hairline_web": "rgba(255,255,255,.10)",
+    "hairline": "#2A2D33",
+    "accent": "#4B93FF",
+    "memory": "#4B93FF",
+    "perf": "#30D158",
+    "coverage": "#6B7280",
+    "reasoning": "#A78BFA",
+    "passage": "#2DD4BF",
+    "amber": "#FBBF24",
+    "danger": "#FF6B6B",
+    "on_signal": "#16181D",
+    "field": "#202226",
+    "shadow_sm": "0 1px 2px rgba(0,0,0,.3)",
+    "shadow": "0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.45)",
+    "shadow_lg": "0 14px 40px rgba(0,0,0,.5)",
+}
+
+# Unified radii (spec): card 20, control/input 12, primary CTA + chips pill.
+_RADII = {"card": "20px", "input": "12px", "pill": "999px"}
+
+
+def _css_vars(t: dict[str, str]) -> str:
+    """Render one mode's custom properties (web uses the translucent hairline)."""
+    return (
+        f"--sr-canvas:{t['canvas']}; --sr-surface:{t['surface']}; "
+        f"--sr-elevated:{t['elevated']}; --sr-ink:{t['ink']}; "
+        f"--sr-secondary:{t['secondary']}; --sr-tertiary:{t['tertiary']}; "
+        f"--sr-hairline:{t['hairline_web']}; --sr-accent:{t['accent']}; "
+        f"--sr-memory:{t['memory']}; --sr-perf:{t['perf']}; "
+        f"--sr-coverage:{t['coverage']}; --sr-reasoning:{t['reasoning']}; "
+        f"--sr-passage:{t['passage']}; --sr-amber:{t['amber']}; "
+        f"--sr-danger:{t['danger']}; --sr-on-signal:{t['on_signal']}; "
+        f"--sr-shadow-sm:{t['shadow_sm']}; --sr-shadow:{t['shadow']}; "
+        f"--sr-shadow-lg:{t['shadow_lg']}; "
+        f"--sr-radius:{_RADII['card']}; --sr-radius-input:{_RADII['input']}; "
+        f"--sr-radius-pill:{_RADII['pill']};"
+    )
+
+
 _TOKENS = (
     _FONTS
-    + """
-:root {
-  --sr-canvas:#F2F3F5; --sr-surface:#FFFFFF; --sr-ink:#16181D; --sr-secondary:#6B7280;
-  --sr-hairline:#E7EAEE; --sr-memory:#2E7BF6; --sr-perf:#22C55E; --sr-accent:#2E7BF6;
-  --sr-amber:#E0900B; --sr-radius:20px;
-  --sr-shadow:0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.06);
-  --sr-font:"Geist",-apple-system,"SF Pro Text","Inter",system-ui,"Segoe UI",Roboto,sans-serif;
-  --sr-display:"Fraunces","Geist",Georgia,"Times New Roman",serif;
-}
-.night-mode, [data-bs-theme="dark"] {
-  --sr-canvas:#0C0D0F; --sr-surface:#17181B; --sr-ink:#F2F3F5; --sr-secondary:#9AA0A8;
-  --sr-memory:#4B93FF; --sr-perf:#30D158; --sr-accent:#4B93FF; --sr-amber:#FBBF24;
-  --sr-hairline:rgba(255,255,255,.10);
-  --sr-shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.45);
-}
+    + f"""
+:root {{
+  {_css_vars(_LIGHT)}
+  --sr-font:{_FONT_STACK};
+  --sr-display:{_DISPLAY_STACK};
+}}
+.night-mode, [data-bs-theme="dark"] {{
+  {_css_vars(_DARK)}
+}}
 """
 )
 
@@ -62,42 +141,36 @@ _COMPONENTS = """
 .sr-panel * , .sr-banner * { box-sizing: border-box; }
 .sr-panel { max-width: 760px; margin: 22px auto; display: flex; flex-direction: column; gap: 14px; }
 
-.sr-card { background: var(--sr-surface); border: 1px solid var(--sr-hairline);
+.sr-card { background: var(--sr-elevated); border: 1px solid var(--sr-hairline);
   border-radius: var(--sr-radius); box-shadow: var(--sr-shadow); padding: 18px 20px; }
 .sr-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
   color: var(--sr-secondary); margin: 0 0 6px; }
 
-/* hero readiness */
-.sr-hero { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
-.sr-hero .sr-score { font-size: 52px; font-weight: 600; line-height: 1;
-  font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
-.sr-hero .sr-range { font-size: 15px; color: var(--sr-secondary); font-variant-numeric: tabular-nums; }
-.sr-hero .sr-scale { font-size: 12px; color: var(--sr-secondary); }
-.sr-updated { margin: 10px 0 0; font-size: 12px; color: var(--sr-secondary); }
-
-/* Fraunces display serif on the signature numbers (mirrors the phone) */
-.sr-hero .sr-score, .sr-hole .sr-num, .sr-banner .sr-lead {
-  font-family: var(--sr-display); font-weight: 600; }
-
-/* honest abstention */
-.sr-abstain .sr-score { font-size: 24px; font-weight: 600; color: var(--sr-amber); }
+/* honest abstention text */
 .sr-abstain p { margin: 8px 0 0; font-size: 13px; color: var(--sr-secondary); line-height: 1.5; }
 .sr-block { color: var(--sr-ink); font-weight: 600; }
 
-/* signature readiness ring (mirrors the phone) */
+/* Fraunces display serif on the signature numbers (mirrors the phone) */
+.sr-readout, .sr-banner .sr-lead { font-family: var(--sr-display); font-weight: 600; }
+
+/* signature readiness instrument: two distinct arcs (memory blue + performance
+   green), a thin outer coverage track, the low-high range as a band + marker,
+   and the composite score as a Fraunces readout in the elevated hole. */
 .sr-herocard { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
 .sr-herocard .sr-eyebrow { align-self: flex-start; }
-.sr-hero-ring { width: 158px; height: 158px; border-radius: 50%; margin: 8px 0 4px; flex: none;
-  background: conic-gradient(var(--sr-memory), var(--sr-perf) var(--frac, 0deg), var(--sr-hairline) 0);
-  display: grid; place-items: center; }
-.sr-hero-ring.sr-ring-empty { background: var(--sr-hairline); }
-.sr-hole { width: 126px; height: 126px; border-radius: 50%; background: var(--sr-surface);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.sr-hole .sr-num { font-size: 46px; font-weight: 600; line-height: 1; letter-spacing: -.02em;
+.sr-gauge { position: relative; width: 176px; height: 176px; margin: 6px 0 2px; flex: none; }
+.sr-gauge svg { width: 176px; height: 176px; display: block; }
+.sr-gauge-center { position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center; }
+.sr-readout { font-size: 40px; line-height: 44px; letter-spacing: -.01em;
   font-variant-numeric: tabular-nums; color: var(--sr-ink); }
-.sr-hole .sr-num.sr-muted { font-size: 34px; color: var(--sr-amber); }
-.sr-hole .sr-holelbl { font-size: 11px; color: var(--sr-secondary); margin-top: 5px;
-  text-transform: uppercase; letter-spacing: .06em; }
+.sr-readout.sr-muted { color: var(--sr-amber); }
+.sr-readout-lbl { font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--sr-secondary); margin-top: 2px; }
+.sr-gauge-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 4px; }
+.sr-gauge-legend span { display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
+  color: var(--sr-secondary); font-variant-numeric: tabular-nums; }
+.sr-gauge-legend i { width: 9px; height: 9px; border-radius: 2px; }
 .sr-herocard .sr-range { font-size: 14px; color: var(--sr-secondary); font-variant-numeric: tabular-nums; }
 .sr-herocard p { margin: 4px 0 0; font-size: 13px; color: var(--sr-secondary); line-height: 1.5; }
 
@@ -117,7 +190,7 @@ _COMPONENTS = """
 .sr-node span { font-size: 11px; color: var(--sr-secondary); }
 .sr-span { flex: 1; position: relative; height: 2px; background: var(--sr-hairline); }
 .sr-span em { position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
-  background: var(--sr-surface); padding: 0 8px; font-style: normal; font-size: 12px; font-weight: 600;
+  background: var(--sr-elevated); padding: 0 8px; font-style: normal; font-size: 12px; font-weight: 600;
   color: var(--sr-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* small stat grid: coverage ring, exam, calibration */
@@ -125,16 +198,16 @@ _COMPONENTS = """
 @media (max-width: 560px) { .sr-grid { grid-template-columns: 1fr; } }
 .sr-mini { display: flex; align-items: center; gap: 12px; }
 .sr-ring { width: 56px; height: 56px; border-radius: 50%; flex: none;
-  background: conic-gradient(var(--sr-accent) var(--sr-ringval, 0deg), var(--sr-hairline) 0);
+  background: conic-gradient(var(--sr-coverage) var(--sr-ringval, 0deg), var(--sr-hairline) 0);
   display: grid; place-items: center; }
-.sr-ring > span { width: 42px; height: 42px; border-radius: 50%; background: var(--sr-surface);
+.sr-ring > span { width: 42px; height: 42px; border-radius: 50%; background: var(--sr-elevated);
   display: grid; place-items: center; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .sr-mini .sr-k { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .sr-mini .sr-s { font-size: 12px; color: var(--sr-secondary); }
 
 /* next action — the single primary CTA of the panel, visually distinguished */
 .sr-next { display: flex; align-items: center; gap: 14px;
-  background: color-mix(in srgb, var(--sr-accent) 6%, var(--sr-surface));
+  background: color-mix(in srgb, var(--sr-accent) 6%, var(--sr-elevated));
   border: 1px solid color-mix(in srgb, var(--sr-accent) 24%, var(--sr-hairline));
   border-left: 3px solid var(--sr-accent); }
 .sr-next .sr-eyebrow { color: var(--sr-accent); }
@@ -145,15 +218,20 @@ _COMPONENTS = """
 .sr-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .sr-actions-spacer { flex: 1 1 auto; }
 .sr-btn { font: 500 13px var(--sr-font); color: var(--sr-ink); cursor: pointer;
-  background: var(--sr-surface); border: 1px solid var(--sr-hairline); border-radius: 980px;
-  padding: 7px 14px; transition: background .15s, border-color .15s; }
+  background: var(--sr-surface); border: 1px solid var(--sr-hairline); border-radius: var(--sr-radius-pill);
+  padding: 7px 14px; transition: background .15s, border-color .15s, transform .15s; }
 .sr-btn:hover { border-color: var(--sr-accent); }
+.sr-btn:active { transform: scale(.98); }
 .sr-btn.sr-icon { padding: 7px 11px; font-size: 15px; line-height: 1; color: var(--sr-secondary); }
 .sr-btn.sr-icon:hover { color: var(--sr-ink); }
-.sr-btn.sr-primary { background: var(--sr-ink); border-color: var(--sr-ink); color: var(--sr-surface); font-weight: 600; }
-.sr-btn.sr-primary:hover { opacity: .9; border-color: var(--sr-ink); }
+/* primary CTA: filled accent, white (onSignal) text, pill, md shadow */
+.sr-btn.sr-primary { background: var(--sr-accent); border-color: var(--sr-accent); color: #fff;
+  font-weight: 600; box-shadow: var(--sr-shadow); }
+.sr-btn.sr-primary:hover { background: color-mix(in srgb, #000 8%, var(--sr-accent));
+  border-color: color-mix(in srgb, #000 8%, var(--sr-accent)); }
+@media (prefers-reduced-motion: reduce) { .sr-btn { transition: none; } .sr-btn:active { transform: none; } }
 .sr-toggle { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--sr-secondary);
-  cursor: pointer; border: 1px solid var(--sr-hairline); border-radius: 980px; padding: 6px 12px; }
+  cursor: pointer; border: 1px solid var(--sr-hairline); border-radius: var(--sr-radius-pill); padding: 6px 12px; }
 .sr-toggle[data-on="1"] { color: var(--sr-ink); border-color: var(--sr-accent); }
 .sr-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--sr-hairline); }
 .sr-toggle[data-on="1"] .sr-dot { background: var(--sr-perf); }
@@ -161,7 +239,7 @@ _COMPONENTS = """
 /* dashboard header (toolbar window) */
 .sr-dash { margin-top: 28px; }
 .sr-dash-head { margin: 0 2px 4px; }
-.sr-dash-title { font-family: var(--sr-display); font-weight: 600; font-size: 34px;
+.sr-dash-title { font-family: var(--sr-display); font-weight: 600; font-size: 30px; line-height: 34px;
   letter-spacing: -.02em; margin: 0; color: var(--sr-ink); }
 .sr-dash-sub { margin: 4px 0 0; font-size: 14px; color: var(--sr-secondary); }
 
@@ -174,7 +252,7 @@ _COMPONENTS = """
 .sr-finished-sub { margin: 4px 0 14px; font-size: 14px; color: var(--sr-secondary); line-height: 1.5; max-width: 46ch; }
 
 /* deck-home banner */
-.sr-banner { max-width: 760px; margin: 18px auto; background: var(--sr-surface);
+.sr-banner { max-width: 760px; margin: 4px auto 18px; background: var(--sr-elevated);
   border: 1px solid var(--sr-hairline); border-radius: var(--sr-radius); box-shadow: var(--sr-shadow);
   padding: 14px 18px; display: flex; align-items: center; gap: 16px; }
 .sr-banner .sr-lead { font-size: 30px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1; }
@@ -182,135 +260,378 @@ _COMPONENTS = """
 .sr-banner .sr-meta { flex: 1; }
 .sr-banner .sr-meta b { font-size: 14px; } .sr-banner .sr-meta div { font-size: 12px; color: var(--sr-secondary); margin-top: 2px; }
 .sr-chip { font-size: 11px; color: var(--sr-secondary); border: 1px solid var(--sr-hairline);
-  border-radius: 980px; padding: 3px 9px; white-space: nowrap; }
+  border-radius: var(--sr-radius-pill); padding: 3px 9px; white-space: nowrap; }
 """
 
-# Moderate reskin of Anki's own chrome on the deck browser / overview. Kept to
-# safe properties (colour, font, radius, spacing) so it can't break layouts; the
-# reviewer card is deliberately never touched. Injected only when the opt-in
-# `speedrunModernUi` toggle is on.
+# Native-chrome reskin of Anki's own screens. Kept to safe properties (colour,
+# font, radius, spacing) so it can't break layouts; the reviewer *card* content
+# is never touched. Injected only when the opt-in `speedrunModernUi` toggle is on.
+# Tokens are provided once per page by ``page_style`` (embed pages) or bundled by
+# the standalone helpers below (toolbar / bottom bar / reviewer), so these bodies
+# never re-declare the token block.
 _RESKIN = """
 body { background: var(--sr-canvas) !important; color: var(--sr-ink);
   font-family: var(--sr-font); -webkit-font-smoothing: antialiased; }
 a { color: var(--sr-accent); }
-button, .btn { font-family: var(--sr-font) !important; border-radius: 10px !important; cursor: pointer; }
-table.deck td, tr.deck td { padding-top: 7px !important; padding-bottom: 7px !important; }
+button, .btn { font-family: var(--sr-font) !important;
+  border-radius: var(--sr-radius-input) !important; cursor: pointer; }
+/* deck list: calm rows on the canvas, hairline separators, subtle hover */
+table.deck { border-collapse: collapse; }
+table.deck td, tr.deck td { padding-top: 8px !important; padding-bottom: 8px !important;
+  border-bottom: 1px solid var(--sr-hairline) !important; }
+tr.deck:hover td { background: color-mix(in srgb, var(--sr-accent) 6%, transparent); }
+tr.deck td a.deck { color: var(--sr-ink); font-weight: 500; }
+/* the deck browser gear / collapse affordances read as tertiary until hover */
+tr.deck td img { opacity: .7; }
+tr.deck:hover td img { opacity: 1; }
+/* overview: the big primary study action reads as the accent CTA */
+button#study, .overview button {
+  font-family: var(--sr-font) !important; border-radius: var(--sr-radius-pill) !important; }
+button#study { background: var(--sr-accent) !important; color: #fff !important;
+  border: none !important; padding: 9px 22px !important; box-shadow: var(--sr-shadow-sm); }
 """
 
 _TOOLBAR_RESKIN = """
 #header, .toolbar { background: var(--sr-canvas) !important;
   border-bottom: 1px solid var(--sr-hairline) !important; }
-.hitem { font-family: var(--sr-font); }
+.hitem { font-family: var(--sr-font); color: var(--sr-secondary); }
+.hitem:hover { color: var(--sr-ink); }
 #speedrun { color: var(--sr-accent); font-weight: 600; }
 """
 
+# Reviewer bottom bar chrome (the answer-bar surface behind the buttons). Safe:
+# only the bar background/border + button typography; never the card webview.
+_BOTTOMBAR_RESKIN = """
+body { background: var(--sr-canvas) !important; font-family: var(--sr-font); }
+#outer, .stat { color: var(--sr-secondary); }
+button { font-family: var(--sr-font) !important; }
+"""
 
-def component_style() -> str:
-    """Tokens + component CSS, wrapped in a <style> tag (always safe to inject)."""
+# Reviewer *card* webview chrome. Deliberately minimal and NON-!important so any
+# note/template styling (.card, #qa, body backgrounds) always wins the cascade
+# (these rules come before the card's own <style>). No margins/reflow -> no
+# layout shift. This only calms the area *behind* the card.
+_REVIEWER_CHROME = """
+html { background: var(--sr-canvas); }
+"""
+
+# Overrides for Anki's Svelte/SvelteKit pages (congrats, graphs, deck options).
+# Injected via ``webview_did_inject_style_into_page`` (we cannot edit Svelte
+# source). The token block adapts to ``.night-mode`` automatically; these rules
+# only retint page-level surfaces, never functional widgets.
+_SVELTE_OVERRIDES = """
+body, .container, .page { font-family: var(--sr-font); }
+.night-mode body, body { background: var(--sr-canvas); }
+"""
+
+
+def _tokens_css() -> str:
+    """The @font-face + light/dark custom-property block (no <style> wrapper)."""
+    return f"{_TOKENS}\n:root {{ --sr-font:{_FONT_STACK}; --sr-display:{_DISPLAY_STACK}; }}"
+
+
+def page_style() -> str:
+    """Tokens + component CSS for a whole page, wrapped in one <style> tag.
+
+    Injected **once per page** (via ``webview_will_set_content`` head or a
+    ``stdHtml(head=...)`` call), so the token block is never duplicated by the
+    per-embed builders below and never collides with the reskin's own copy.
+    """
     return f"<style>{_TOKENS}{_COMPONENTS}</style>"
+
+
+# Backwards-compatible alias. Builders no longer embed this (the page injects it
+# once); kept so any external caller still resolves.
+def component_style() -> str:
+    """Deprecated alias of :func:`page_style` (kept for compatibility)."""
+    return page_style()
+
+
+def screen_reskin() -> str:
+    """Deck-browser / overview reskin body. Tokens are already on the page via
+    :func:`page_style`, so this carries no token block (avoids duplication)."""
+    return f"<style>{_RESKIN}</style>"
+
+
+def toolbar_reskin() -> str:
+    """Top-toolbar reskin (a standalone webview: bundles its own tokens)."""
+    return f"<style>{_tokens_css()}{_TOOLBAR_RESKIN}</style>"
+
+
+def bottombar_reskin() -> str:
+    """Reviewer bottom-bar chrome + answer buttons (standalone webview)."""
+    return f"<style>{_tokens_css()}{_BOTTOMBAR_RESKIN}{_ANSWER_BUTTONS}</style>"
+
+
+def reviewer_chrome_css() -> str:
+    """Minimal, non-destructive reviewer card-webview background (standalone)."""
+    return f"<style>{_tokens_css()}{_REVIEWER_CHROME}</style>"
+
+
+def svelte_page_css() -> str:
+    """Token + surface CSS text for injecting into a Svelte page's <style>."""
+    return f"{_tokens_css()}{_SVELTE_OVERRIDES}"
 
 
 # Color-coded, rounded answer buttons for the reviewer bottom bar. Targets the
 # native answer buttons by their data-ease attribute (chrome only, not the card),
-# with the interval time stacked beneath each label.
+# with the interval time stacked beneath each label. Rating colours come straight
+# from the tokens (again=danger, hard=amber, good=performance, easy=accent).
 _ANSWER_BUTTONS = """
 button[data-ease] {
   font-family: var(--sr-font) !important;
-  border-radius: 12px !important;
+  border-radius: var(--sr-radius-input) !important;
   border: 1px solid var(--sr-hairline) !important;
   background: var(--sr-surface) !important;
   color: var(--sr-ink) !important;
   padding: 8px 16px !important; margin: 0 4px !important; cursor: pointer;
-}
-button[data-ease]:hover { box-shadow: var(--sr-shadow); }
+  transition: box-shadow .15s, border-color .15s; }
+button[data-ease]:hover { box-shadow: var(--sr-shadow-sm); }
 button[data-ease] .nobold { display: block; margin-top: 2px; font-size: 11px;
   font-weight: 400; color: var(--sr-secondary); }
-button[data-ease="1"] { border-color: rgba(255,59,48,.55) !important; color: #FF3B30 !important; }
-button[data-ease="2"] { border-color: rgba(255,159,10,.55) !important; color: #FF9F0A !important; }
-button[data-ease="3"] { border-color: rgba(52,199,89,.55) !important; color: #34C759 !important; }
-button[data-ease="4"] { border-color: rgba(10,132,255,.55) !important; color: #0A84FF !important; }
-#ansbut { font-family: var(--sr-font) !important; border-radius: 12px !important;
+button[data-ease="1"] { border-color: color-mix(in srgb, var(--sr-danger) 55%, transparent) !important;
+  color: var(--sr-danger) !important; }
+button[data-ease="2"] { border-color: color-mix(in srgb, var(--sr-amber) 55%, transparent) !important;
+  color: var(--sr-amber) !important; }
+button[data-ease="3"] { border-color: color-mix(in srgb, var(--sr-perf) 55%, transparent) !important;
+  color: var(--sr-perf) !important; }
+button[data-ease="4"] { border-color: color-mix(in srgb, var(--sr-accent) 55%, transparent) !important;
+  color: var(--sr-accent) !important; }
+#ansbut { font-family: var(--sr-font) !important; border-radius: var(--sr-radius-input) !important;
   border: none !important; background: var(--sr-accent) !important; color: #fff !important;
   padding: 8px 22px !important; cursor: pointer; }
 """
 
 
 def reskin_style(kind: str) -> str:
-    """Opt-in native-screen reskin CSS for 'screen' or 'toolbar'."""
-    body = _TOOLBAR_RESKIN if kind == "toolbar" else _RESKIN
-    return f"<style>{_TOKENS}{body}</style>"
+    """Back-compat entry point: 'toolbar' -> toolbar reskin, else screen reskin
+    (with tokens, for callers that inject it standalone)."""
+    if kind == "toolbar":
+        return toolbar_reskin()
+    return f"<style>{_tokens_css()}{_RESKIN}</style>"
 
 
 def answer_buttons_css() -> str:
-    """Color-coded Apple-style answer buttons for the reviewer bottom bar."""
-    return f"<style>{_TOKENS}{_ANSWER_BUTTONS}</style>"
+    """Token-coloured answer buttons for the reviewer bottom bar (standalone)."""
+    return bottombar_reskin()
 
 
-# --- Qt dialog styling ------------------------------------------------------
-
-# Speedrun's Qt dialogs (self-explain, practice, exam target, library,
-# onboarding) are native QDialogs, so they can't use the webview CSS above.
-# ``dialog_qss`` renders the same token palette as a Qt style sheet so those
-# dialogs match the rest of the app instead of the default grey Qt chrome.
-# Colours mirror ``_TOKENS`` (light) and its ``.night-mode`` override (dark).
-_DIALOG_PALETTE = {
-    False: {
-        "canvas": "#F2F3F5", "surface": "#FFFFFF", "ink": "#16181D",
-        "secondary": "#6B7280", "hairline": "#E7EAEE", "accent": "#2E7BF6",
-        "field": "#FFFFFF",
-    },
-    True: {
-        "canvas": "#0C0D0F", "surface": "#17181B", "ink": "#F2F3F5",
-        "secondary": "#9AA0A8", "hairline": "#33363B", "accent": "#4B93FF",
-        "field": "#202226",
-    },
+# Per-failure-mode presentation for the in-reviewer diagnosis cue (spec:
+# "Diagnosis cue (kind-aware)"). token key + icon per mode; one presentation used
+# everywhere. Keyed by ``Diagnosis.kind`` (1 memory / 2 reasoning / 3 passage /
+# 4 test-taking). Colours resolve from the same palette (never rely on colour
+# alone -- each carries a distinct icon + label too).
+DIAGNOSIS_STYLE: dict[int, tuple[str, str]] = {
+    1: ("memory", "\U0001f9e0"),  # memory gap  -> memory blue, brain
+    2: ("reasoning", "\U0001f4a1"),  # reasoning   -> violet,      bulb
+    3: ("passage", "\U0001f4c4"),  # passage     -> teal,        doc
+    4: ("amber", "\u23f1\ufe0f"),  # test-taking -> warn amber,  timer
 }
 
-# Product sans, matching the mobile identity. Falls back to the system stack
-# when the bundled Geist face has not been registered with Qt.
-SR_QT_FONT = '"Geist", -apple-system, "SF Pro Text", "Segoe UI", Roboto, sans-serif'
-SR_QT_DISPLAY = '"Fraunces", "Geist", Georgia, serif'
+
+def diagnosis_cue_js(
+    *, kind_key: str, icon: str, title: str, action: str, night: bool
+) -> str:
+    """A self-contained JS IIFE that renders the themed, kind-aware post-miss cue
+    as a fixed toast in the reviewer webview.
+
+    Colours are baked in (light/dark resolved in Python) so the cue is correct
+    even when the reskin/tokens aren't present on the card page. It is a
+    ``position:fixed`` overlay -> it never shifts card layout, and it does not
+    auto-dismiss (removed on the next question or when dismissed), so it can be
+    read. Offers an inline "Practice this" action routed via pycmd.
+    """
+    p = _DARK if night else _LIGHT
+    accent = p[kind_key]
+    surface = p["elevated"]
+    tint = f"color-mix(in srgb, {accent} 16%, {surface})"
+    css = f"""
+#speedrun-diagnosis {{ position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);
+  z-index: 2147483646; display: flex; align-items: flex-start; gap: 12px;
+  max-width: 440px; width: calc(100% - 40px); box-sizing: border-box;
+  background: {surface}; color: {p["ink"]}; border: 1px solid {p["hairline"]};
+  border-left: 3px solid {accent}; border-radius: 16px; box-shadow: {p["shadow_lg"]};
+  padding: 14px 14px 14px 16px; text-align: left;
+  font-family: {_FONT_STACK}; -webkit-font-smoothing: antialiased;
+  animation: srDiagIn .18s ease both; }}
+#speedrun-diagnosis * {{ box-sizing: border-box; }}
+@keyframes srDiagIn {{ from {{ opacity: 0; transform: translate(-50%, 8px); }}
+  to {{ opacity: 1; transform: translate(-50%, 0); }} }}
+@media (prefers-reduced-motion: reduce) {{ #speedrun-diagnosis {{ animation: none; }} }}
+#speedrun-diagnosis .sr-diag-icon {{ flex: none; width: 34px; height: 34px; border-radius: 50%;
+  background: {tint}; color: {accent}; display: grid; place-items: center; font-size: 18px; }}
+#speedrun-diagnosis .sr-diag-body {{ flex: 1; min-width: 0; }}
+#speedrun-diagnosis .sr-diag-eyebrow {{ font-size: 11px; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; color: {accent}; }}
+#speedrun-diagnosis .sr-diag-title {{ font-size: 15px; font-weight: 600; margin-top: 2px; color: {p["ink"]}; }}
+#speedrun-diagnosis .sr-diag-action {{ font-size: 13px; color: {p["secondary"]}; margin-top: 3px; line-height: 1.45; }}
+#speedrun-diagnosis .sr-diag-actions {{ margin-top: 10px; }}
+#speedrun-diagnosis .sr-diag-btn {{ font: 600 12px {_FONT_STACK}; cursor: pointer; border: none;
+  background: {accent}; color: #fff; border-radius: 999px; padding: 6px 14px; }}
+#speedrun-diagnosis .sr-diag-btn:hover {{ opacity: .92; }}
+#speedrun-diagnosis .sr-diag-x {{ flex: none; background: transparent; border: none; cursor: pointer;
+  color: {p["secondary"]}; font-size: 20px; line-height: 1; padding: 0 2px; }}
+#speedrun-diagnosis .sr-diag-x:hover {{ color: {p["ink"]}; }}
+"""
+    action_html = (
+        f'<div class="sr-diag-action">{escape(action)}</div>' if action else ""
+    )
+    inner = (
+        f'<div class="sr-diag-icon">{icon}</div>'
+        '<div class="sr-diag-body">'
+        '<div class="sr-diag-eyebrow">Diagnosis</div>'
+        f'<div class="sr-diag-title">{escape(title)}</div>'
+        f"{action_html}"
+        '<div class="sr-diag-actions">'
+        '<button class="sr-diag-btn" data-sr-practice>Practice this</button>'
+        "</div></div>"
+        '<button class="sr-diag-x" data-sr-dismiss aria-label="Dismiss">&times;</button>'
+    )
+    return (
+        "(function(){"
+        "var sid='speedrun-diagnosis-style';"
+        "var st=document.getElementById(sid);"
+        "if(!st){st=document.createElement('style');st.id=sid;document.head.appendChild(st);}"
+        f"st.textContent={json.dumps(css)};"
+        "var old=document.getElementById('speedrun-diagnosis'); if(old){old.remove();}"
+        "var d=document.createElement('div'); d.id='speedrun-diagnosis';"
+        f"d.innerHTML={json.dumps(inner)};"
+        "document.body.appendChild(d);"
+        "var pb=d.querySelector('[data-sr-practice]');"
+        "if(pb){pb.addEventListener('click',function(){pycmd('speedrun:practice'); d.remove();});}"
+        "var cb=d.querySelector('[data-sr-dismiss]');"
+        "if(cb){cb.addEventListener('click',function(){d.remove();});}"
+        "})();"
+    )
+
+
+# JS to clear the diagnosis cue (used when the next question is shown).
+REMOVE_DIAGNOSIS_JS = (
+    "(function(){var el=document.getElementById('speedrun-diagnosis');"
+    "if(el){el.remove();}})();"
+)
+
+
+# --- Qt styling (dialogs + global chrome) -----------------------------------
+
+# Speedrun's Qt dialogs (self-explain, practice, exam target, library,
+# onboarding) are native QDialogs, and Anki's own chrome (menus, tables, inputs)
+# is Qt too. Both are styled from the *same* ``_LIGHT``/``_DARK`` palette above,
+# so there is no separate Qt colour list to keep in sync. The web dark hairline
+# is translucent; Qt uses the opaque ``hairline`` value (QSS ignores rgba borders
+# inconsistently).
+
+# Product sans/display, matching the web + mobile identity.
+SR_QT_FONT = _FONT_STACK
+SR_QT_DISPLAY = _DISPLAY_STACK
+
+
+def _qt(night: bool) -> dict[str, str]:
+    """The Qt-facing palette for the requested mode (opaque hairline)."""
+    return _DARK if night else _LIGHT
+
+
+def resolved(key: str, night: bool = False) -> str:
+    """A single token's hex value for the mode -- for callers that must bake a
+    colour into inline styles (e.g. the reviewer overlay buttons, which can't
+    rely on the --sr-* custom properties being present on the card page)."""
+    return (_DARK if night else _LIGHT).get(key, "#2E7BF6")
 
 
 def dialog_qss(night: bool = False) -> str:
     """Qt style sheet applying the Speedrun token palette to a QDialog tree.
 
     Property selectors let callers opt into roles: set ``srRole`` to
-    ``"display"``/``"eyebrow"``/``"muted"`` on a QLabel, or ``srPrimary`` to
-    ``"1"`` on a QPushButton, to get the accented treatments.
+    ``"display"``/``"title"``/``"eyebrow"``/``"muted"`` on a QLabel, ``srPrimary``
+    to ``"1"`` on a QPushButton, or ``srState`` to ``"correct"``/``"wrong"`` on a
+    QRadioButton, to get the token treatments. Radii follow the spec (card 20,
+    input 12, primary pill).
     """
-    p = _DIALOG_PALETTE[bool(night)]
+    p = _qt(bool(night))
     return f"""
-    QDialog {{ background: {p['canvas']}; }}
+    QDialog {{ background: {p["canvas"]}; }}
     QDialog, QLabel, QRadioButton, QCheckBox, QComboBox, QSpinBox, QDateEdit,
     QPlainTextEdit, QPushButton {{
-        color: {p['ink']}; font-family: {SR_QT_FONT}; font-size: 13px;
+        color: {p["ink"]}; font-family: {SR_QT_FONT}; font-size: 13px;
     }}
     QLabel[srRole="display"] {{ font-family: {SR_QT_DISPLAY}; font-size: 22px; font-weight: 600; }}
+    QLabel[srRole="readout"] {{ font-family: {SR_QT_DISPLAY}; font-size: 40px; font-weight: 600; }}
     QLabel[srRole="title"] {{ font-size: 16px; font-weight: 600; }}
-    QLabel[srRole="eyebrow"] {{ color: {p['secondary']}; font-size: 11px; font-weight: 600; }}
-    QLabel[srRole="muted"] {{ color: {p['secondary']}; }}
-    QRadioButton {{ padding: 7px 4px; }}
+    QLabel[srRole="eyebrow"] {{ color: {p["secondary"]}; font-size: 11px; font-weight: 600; }}
+    QLabel[srRole="muted"] {{ color: {p["secondary"]}; }}
+    QLabel[srRole="good"] {{ color: {p["perf"]}; font-weight: 600; }}
+    QLabel[srRole="bad"] {{ color: {p["danger"]}; font-weight: 600; }}
+    QLabel[srRole="warn"] {{ color: {p["amber"]}; font-weight: 600; }}
+    QLabel[srRole="chip"] {{ color: {p["secondary"]}; border: 1px solid {p["hairline"]};
+        border-radius: {_RADII["pill"]}; padding: 2px 10px; }}
+    QRadioButton {{ padding: 7px 6px; border-radius: {_RADII["input"]}; }}
+    QRadioButton[srState="correct"] {{ color: {p["perf"]}; font-weight: 600;
+        background: color-mix(in srgb, {p["perf"]} 12%, transparent); }}
+    QRadioButton[srState="wrong"] {{ color: {p["danger"]}; font-weight: 600;
+        background: color-mix(in srgb, {p["danger"]} 12%, transparent); }}
     QComboBox, QSpinBox, QDateEdit, QPlainTextEdit {{
-        background: {p['field']}; border: 1px solid {p['hairline']};
-        border-radius: 8px; padding: 6px 8px; selection-background-color: {p['accent']};
+        background: {p["field"]}; border: 1px solid {p["hairline"]};
+        border-radius: {_RADII["input"]}; padding: 6px 8px;
+        selection-background-color: {p["accent"]}; selection-color: #fff;
+    }}
+    QComboBox:focus, QSpinBox:focus, QDateEdit:focus, QPlainTextEdit:focus {{
+        border-color: {p["accent"]};
     }}
     QPushButton {{
-        background: {p['surface']}; border: 1px solid {p['hairline']};
-        border-radius: 10px; padding: 8px 16px;
+        background: {p["surface"]}; border: 1px solid {p["hairline"]};
+        border-radius: {_RADII["input"]}; padding: 8px 16px;
     }}
-    QPushButton:hover {{ border-color: {p['accent']}; }}
-    QPushButton:disabled {{ color: {p['secondary']}; }}
+    QPushButton:hover {{ border-color: {p["accent"]}; }}
+    QPushButton:disabled {{ color: {p["secondary"]}; }}
     QPushButton[srPrimary="1"] {{
-        background: {p['ink']}; color: {p['surface']}; border: none; font-weight: 600;
+        background: {p["accent"]}; color: #fff; border: none; font-weight: 600;
+        border-radius: {_RADII["pill"]}; padding: 9px 20px;
     }}
-    QPushButton[srPrimary="1"]:hover {{ background: {p['accent']}; }}
+    QPushButton[srPrimary="1"]:hover {{ background: color-mix(in srgb, #000 10%, {p["accent"]}); }}
+    QProgressBar {{ border: none; background: {p["hairline"]}; border-radius: 3px;
+        max-height: 4px; }}
+    QProgressBar::chunk {{ background: {p["accent"]}; border-radius: 3px; }}
     QFrame[srCard="1"] {{
-        background: {p['surface']}; border: 1px solid {p['hairline']}; border-radius: 14px;
+        background: {p["elevated"]}; border: 1px solid {p["hairline"]};
+        border-radius: {_RADII["card"]};
     }}
     QFrame[srRole="divider"] {{
-        background: {p['hairline']}; max-height: 1px; border: none;
+        background: {p["hairline"]}; max-height: 1px; border: none;
     }}
+    """
+
+
+def global_qss(night: bool = False) -> str:
+    """App-wide Qt chrome (menus, tooltips, tables, inputs) from the same tokens.
+
+    Appended to Anki's own stylesheet via ``style_did_init`` so the whole app,
+    not just Speedrun's dialogs, reads as one product. Kept surgical: only
+    surfaces the spec cares about, so it can't break Anki's functional widgets.
+    """
+    p = _qt(bool(night))
+    return f"""
+    QMenu {{ background: {p["surface"]}; color: {p["ink"]};
+        border: 1px solid {p["hairline"]}; border-radius: {_RADII["input"]}; padding: 4px; }}
+    QMenu::item {{ padding: 6px 22px; border-radius: 8px; }}
+    QMenu::item:selected {{ background: color-mix(in srgb, {p["accent"]} 16%, transparent);
+        color: {p["ink"]}; }}
+    QMenu::separator {{ height: 1px; background: {p["hairline"]}; margin: 4px 8px; }}
+    QMenuBar {{ background: {p["canvas"]}; color: {p["ink"]}; }}
+    QMenuBar::item:selected {{ background: color-mix(in srgb, {p["accent"]} 16%, transparent); }}
+    QToolTip {{ background: {p["surface"]}; color: {p["ink"]};
+        border: 1px solid {p["hairline"]}; padding: 4px 8px; }}
+    QHeaderView::section {{ background: {p["canvas"]}; color: {p["secondary"]};
+        border: none; border-bottom: 1px solid {p["hairline"]}; padding: 6px 8px; }}
+    QTableView {{ gridline-color: {p["hairline"]};
+        selection-background-color: color-mix(in srgb, {p["accent"]} 22%, transparent);
+        selection-color: {p["ink"]}; }}
+    QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QDateEdit, QDateTimeEdit,
+    QPlainTextEdit, QTextEdit {{
+        background: {p["field"]}; border: 1px solid {p["hairline"]};
+        border-radius: {_RADII["input"]}; padding: 5px 8px;
+        selection-background-color: {p["accent"]}; selection-color: #fff; }}
+    QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus,
+    QDateEdit:focus, QPlainTextEdit:focus, QTextEdit:focus {{ border-color: {p["accent"]}; }}
     """
 
 
@@ -322,9 +643,7 @@ def _pct(x: float) -> int:
 
 
 def _bar(frac: float, color: str) -> str:
-    return (
-        f'<div class="sr-bar"><i style="width:{_pct(frac)}%;background:{color}"></i></div>'
-    )
+    return f'<div class="sr-bar"><i style="width:{_pct(frac)}%;background:{color}"></i></div>'
 
 
 def _signal(name: str, frac: float, color: str, thin: bool) -> str:
@@ -354,34 +673,151 @@ def banner_html(data: dict) -> str:
         lead = f'<div class="sr-lead">{data["readiness"]}</div>'
         meta = (
             f'<div class="sr-meta"><b>Projected MCAT readiness</b>'
-            f'<div>Likely {data["low"]}&ndash;{data["high"]} &middot; '
-            f'memory {_pct(data["memory"])}% &middot; performance {_pct(data["performance"])}%</div></div>'
+            f"<div>Likely {data['low']}&ndash;{data['high']} &middot; "
+            f"memory {_pct(data['memory'])}% &middot; performance {_pct(data['performance'])}%</div></div>"
         )
     else:
         lead = '<div class="sr-lead sr-muted">No score yet</div>'
         meta = (
             f'<div class="sr-meta"><b>Readiness withheld &mdash; not enough evidence</b>'
-            f'<div>{escape(data.get("reason", ""))}</div></div>'
+            f"<div>{escape(data.get('reason', ''))}</div></div>"
         )
     cov = f'<span class="sr-chip">{_pct(data["coverage"])}% covered</span>'
-    return f'{component_style()}<div class="sr-banner">{lead}{meta}{cov}</div>'
+    return f'<div class="sr-banner">{lead}{meta}{cov}</div>'
 
 
-# --- panel (per-deck overview) ---------------------------------------------
+# --- signature readiness instrument (panel/dashboard/finished) --------------
+
+# Gauge geometry: concentric SVG rings on a 176x176 canvas. Each ring is a
+# stroked <circle> rotated so 0% starts at 12 o'clock. Two *distinct* arcs
+# (memory blue, performance green) -- never one blended gradient -- plus a thin
+# outer coverage track and a low-high range band with a composite marker.
+_GAUGE_C = 88  # centre
+_R_COVER, _SW_COVER = 80, 3  # thin outer coverage track
+_R_RANGE, _SW_RANGE = 68, 6  # readiness low-high band + marker
+_R_MEM, _SW_MEM = 54, 9  # memory arc
+_R_PERF, _SW_PERF = 40, 9  # performance arc
+
+
+def _ring_track(r: int, sw: int) -> str:
+    return (
+        f'<circle cx="{_GAUGE_C}" cy="{_GAUGE_C}" r="{r}" fill="none" '
+        f'stroke="var(--sr-hairline)" stroke-width="{sw}"/>'
+    )
+
+
+def _ring_arc(r: int, sw: int, color: str, frac: float) -> str:
+    """A rounded arc from 12 o'clock clockwise covering ``frac`` of the circle."""
+    circ = 2 * math.pi * r
+    length = max(0.0, min(1.0, frac)) * circ
+    return (
+        f'<circle cx="{_GAUGE_C}" cy="{_GAUGE_C}" r="{r}" fill="none" stroke="{color}" '
+        f'stroke-width="{sw}" stroke-linecap="round" '
+        f'stroke-dasharray="{length:.2f} {circ - length:.2f}" '
+        f'transform="rotate(-90 {_GAUGE_C} {_GAUGE_C})"/>'
+    )
+
+
+def _ring_segment(
+    r: int, sw: int, color: str, start: float, end: float, *, round_: bool = False
+) -> str:
+    """A segment from ``start`` to ``end`` (fractions), for the range band/marker."""
+    circ = 2 * math.pi * r
+    start = max(0.0, min(1.0, start))
+    end = max(0.0, min(1.0, end))
+    if end < start:
+        start, end = end, start
+    seg = (end - start) * circ
+    cap = ' stroke-linecap="round"' if round_ else ""
+    # dash pattern: [0, gap-before, visible-seg, rest] -> reliable segment start.
+    return (
+        f'<circle cx="{_GAUGE_C}" cy="{_GAUGE_C}" r="{r}" fill="none" stroke="{color}" '
+        f'stroke-width="{sw}"{cap} '
+        f'stroke-dasharray="0 {start * circ:.2f} {seg:.2f} {circ:.2f}" '
+        f'transform="rotate(-90 {_GAUGE_C} {_GAUGE_C})"/>'
+    )
+
+
+def _readiness_gauge(data: dict) -> str:
+    """The signature instrument. Sufficient -> live arcs + range band + readout;
+    otherwise a designed honest empty state (neutral tracks + amber em dash)."""
+    rings: list[str] = []
+    if data.get("sufficient"):
+
+        def _frac(score: float) -> float:
+            return max(0.0, min(1.0, (score - 472) / 56.0))
+
+        comp = _frac(data["readiness"])
+        low = _frac(data.get("low", data["readiness"]))
+        high = _frac(data.get("high", data["readiness"]))
+        rings.append(_ring_track(_R_COVER, _SW_COVER))
+        rings.append(
+            _ring_arc(_R_COVER, _SW_COVER, "var(--sr-coverage)", data["coverage"])
+        )
+        rings.append(_ring_track(_R_RANGE, _SW_RANGE))
+        # low-high band (translucent accent) + a solid composite marker tick.
+        rings.append(
+            _ring_segment(
+                _R_RANGE,
+                _SW_RANGE,
+                "color-mix(in srgb, var(--sr-accent) 28%, transparent)",
+                low,
+                high,
+            )
+        )
+        rings.append(
+            _ring_segment(
+                _R_RANGE, _SW_RANGE, "var(--sr-accent)", comp - 0.007, comp + 0.007
+            )
+        )
+        rings.append(_ring_track(_R_MEM, _SW_MEM))
+        rings.append(_ring_arc(_R_MEM, _SW_MEM, "var(--sr-memory)", data["memory"]))
+        rings.append(_ring_track(_R_PERF, _SW_PERF))
+        rings.append(
+            _ring_arc(_R_PERF, _SW_PERF, "var(--sr-perf)", data["performance"])
+        )
+        center = (
+            f'<span class="sr-readout">{data["readiness"]}</span>'
+            '<span class="sr-readout-lbl">projected</span>'
+        )
+    else:
+        # honest empty state: neutral tracks only, amber em dash in the hole.
+        for r, sw in (
+            (_R_COVER, _SW_COVER),
+            (_R_RANGE, _SW_RANGE),
+            (_R_MEM, _SW_MEM),
+            (_R_PERF, _SW_PERF),
+        ):
+            rings.append(_ring_track(r, sw))
+        center = (
+            '<span class="sr-readout sr-muted">&mdash;</span>'
+            '<span class="sr-readout-lbl">not enough evidence</span>'
+        )
+    svg = (
+        '<svg viewBox="0 0 176 176" role="img" aria-label="Readiness instrument">'
+        f"{''.join(rings)}</svg>"
+    )
+    return (
+        f'<div class="sr-gauge">{svg}<div class="sr-gauge-center">{center}</div></div>'
+    )
 
 
 def _hero(data: dict) -> str:
+    gauge = _readiness_gauge(data)
     if data.get("sufficient"):
-        frac = max(0.0, min(1.0, (data["readiness"] - 472) / 56.0))
-        deg = round(frac * 360)
+        legend = (
+            '<div class="sr-gauge-legend">'
+            f'<span><i style="background:var(--sr-memory)"></i>Memory {_pct(data["memory"])}%</span>'
+            f'<span><i style="background:var(--sr-perf)"></i>Performance {_pct(data["performance"])}%</span>'
+            f'<span><i style="background:var(--sr-coverage)"></i>Coverage {_pct(data["coverage"])}%</span>'
+            "</div>"
+        )
         return (
             '<div class="sr-card sr-herocard">'
             '<p class="sr-eyebrow">Readiness &middot; MCAT 472&ndash;528</p>'
-            f'<div class="sr-hero-ring" style="--frac:{deg}deg"><div class="sr-hole">'
-            f'<span class="sr-num">{data["readiness"]}</span>'
-            '<span class="sr-holelbl">projected</span></div></div>'
+            f"{gauge}{legend}"
             f'<p class="sr-range">Likely {data["low"]}&ndash;{data["high"]}</p>'
-            f'<p>Updated {escape(data.get("updated", "just now"))}.</p></div>'
+            f"<p>Updated {escape(data.get('updated', 'just now'))}.</p></div>"
         )
     block = data.get("blocking", "")
     block_line = (
@@ -392,19 +828,27 @@ def _hero(data: dict) -> str:
     return (
         '<div class="sr-card sr-herocard sr-abstain">'
         '<p class="sr-eyebrow">Readiness &middot; MCAT 472&ndash;528</p>'
-        '<div class="sr-hero-ring sr-ring-empty"><div class="sr-hole">'
-        '<span class="sr-num sr-muted">&mdash;</span>'
-        '<span class="sr-holelbl">no score yet</span></div></div>'
-        f'<p>{escape(data.get("reason", ""))}</p>{block_line}</div>'
+        f"{gauge}"
+        f"<p>{escape(data.get('reason', ''))}</p>{block_line}</div>"
     )
 
 
 def _signals(data: dict) -> str:
     return (
         '<div class="sr-signals">'
-        + _signal("Memory", data["memory"], "var(--sr-memory)", not data.get("memory_ok", True))
-        + _signal("Performance", data["performance"], "var(--sr-perf)", not data.get("perf_ok", True))
-        + _signal("Coverage", data["coverage"], "var(--sr-secondary)", False)
+        + _signal(
+            "Memory",
+            data["memory"],
+            "var(--sr-memory)",
+            not data.get("memory_ok", True),
+        )
+        + _signal(
+            "Performance",
+            data["performance"],
+            "var(--sr-perf)",
+            not data.get("perf_ok", True),
+        )
+        + _signal("Coverage", data["coverage"], "var(--sr-coverage)", False)
         + "</div>"
     )
 
@@ -421,12 +865,14 @@ def _mini_grid(data: dict) -> str:
     exam = data.get("exam")
     if exam and exam.get("has"):
         if exam.get("readiness_sufficient"):
-            status = "on track" if exam.get("on_track") else f'need +{exam.get("needed", 0)}'
+            status = (
+                "on track" if exam.get("on_track") else f"need +{exam.get('needed', 0)}"
+            )
         else:
             status = "gathering evidence"
         exam_html = (
             '<div class="sr-card sr-mini"><div><div class="sr-k">'
-            f'{exam.get("days_left", 0)}d</div>'
+            f"{exam.get('days_left', 0)}d</div>"
             f'<div class="sr-s">to exam &middot; {escape(exam.get("mode", ""))}</div>'
             f'<div class="sr-s">{escape(status)}</div></div></div>'
         )
@@ -440,7 +886,7 @@ def _mini_grid(data: dict) -> str:
     if cal and cal.get("sufficient"):
         cal_html = (
             '<div class="sr-card sr-mini"><div><div class="sr-k">'
-            f'{cal.get("brier", 0):.2f}</div>'
+            f"{cal.get('brier', 0):.2f}</div>"
             f'<div class="sr-s">Brier &middot; n={cal.get("n", 0)}</div></div></div>'
         )
     else:
@@ -479,29 +925,34 @@ def _actions(data: dict) -> str:
     na_cmd = (data.get("next_action") or {}).get("cmd")
     practice = ""
     if na_cmd != "speedrun:practice":
-        practice = "<button class=\"sr-btn\" onclick=\"pycmd('speedrun:practice')\">Practice questions</button>"
+        practice = '<button class="sr-btn" onclick="pycmd(\'speedrun:practice\')">Practice questions</button>'
     seed = ""
     if data.get("cov_total", 0) == 0:
-        seed = "<button class=\"sr-btn\" onclick=\"pycmd('speedrun:seed')\">Seed MCAT topics</button>"
-    exam_label = "Edit exam target" if (data.get("exam") or {}).get("has") else "Set exam target"
+        seed = '<button class="sr-btn" onclick="pycmd(\'speedrun:seed\')">Seed MCAT topics</button>'
+    exam_label = (
+        "Edit exam target" if (data.get("exam") or {}).get("has") else "Set exam target"
+    )
     return (
         '<div class="sr-actions">'
         f"{practice}"
-        "<button class=\"sr-btn\" onclick=\"pycmd('speedrun:library')\">Content library</button>"
+        '<button class="sr-btn" onclick="pycmd(\'speedrun:library\')">Content library</button>'
         f"{seed}"
-        f"<button class=\"sr-btn\" onclick=\"pycmd('speedrun:exam')\">{exam_label}</button>"
+        f'<button class="sr-btn" onclick="pycmd(\'speedrun:exam\')">{exam_label}</button>'
         '<span class="sr-actions-spacer"></span>'
-        "<button class=\"sr-btn sr-icon\" title=\"Refresh\" onclick=\"pycmd('speedrun:refresh')\">&#8635;</button>"
-        "<button class=\"sr-btn sr-icon\" title=\"Speedrun settings\" onclick=\"pycmd('speedrun:settings')\">&#9881;</button>"
+        '<button class="sr-btn sr-icon" title="Refresh" onclick="pycmd(\'speedrun:refresh\')">&#8635;</button>'
+        '<button class="sr-btn sr-icon" title="Speedrun settings" onclick="pycmd(\'speedrun:settings\')">&#9881;</button>'
         "</div>"
     )
 
 
-def panel_html(data: dict) -> str:
-    """Full Speedrun panel for the per-deck overview."""
+def _stack(data: dict, *, lead: str = "", panel_class: str = "sr-panel") -> str:
+    """The one shared readiness stack (hero instrument -> signals -> bridge ->
+    mini grid -> next action -> actions), so the panel, dashboard, and finished
+    screen can never drift. ``lead`` is optional content placed above the hero
+    (a dashboard header or a finished-deck congrats card)."""
     return (
-        component_style()
-        + '<div class="sr-panel">'
+        f'<div class="{panel_class}">'
+        + lead
         + _hero(data)
         + _signals(data)
         + _bridge(data["memory"], data["performance"], data.get("gap", 0.0))
@@ -512,31 +963,26 @@ def panel_html(data: dict) -> str:
     )
 
 
+def panel_html(data: dict) -> str:
+    """Full Speedrun panel for the per-deck overview. The token/component sheet
+    is injected once per page by ``page_style`` (not embedded here)."""
+    return _stack(data)
+
+
 def dashboard_html(data: dict) -> str:
-    """The standalone Speedrun dashboard (top-toolbar window). Same panel with
-    a title header so it reads as a first-class screen, not a deck embed."""
+    """The standalone Speedrun dashboard (top-toolbar window). Same stack with a
+    title header so it reads as a first-class screen, not a deck embed."""
     header = (
         '<div class="sr-dash-head">'
         '<h1 class="sr-dash-title">Speedrun</h1>'
         '<p class="sr-dash-sub">Memory, performance, and readiness \u2014 honest, '
         "always up to date.</p></div>"
     )
-    return (
-        component_style()
-        + '<div class="sr-panel sr-dash">'
-        + header
-        + _hero(data)
-        + _signals(data)
-        + _bridge(data["memory"], data["performance"], data.get("gap", 0.0))
-        + _mini_grid(data)
-        + _next_action(data)
-        + _actions(data)
-        + "</div>"
-    )
+    return _stack(data, lead=header, panel_class="sr-panel sr-dash")
 
 
 def finished_html(data: dict, deck_name: str) -> str:
-    """Themed finished-deck screen: a calm congrats note + the readiness panel +
+    """Themed finished-deck screen: a calm congrats note + the readiness stack +
     clear paths back, replacing Anki's default congrats page (which otherwise
     hides the panel and dead-ends the user)."""
     congrats = (
@@ -546,21 +992,10 @@ def finished_html(data: dict, deck_name: str) -> str:
         '<p class="sr-finished-sub">No more cards due right now. Here\u2019s where you '
         "stand \u2014 pick your next move below.</p>"
         '<div class="sr-actions" style="justify-content:center">'
-        "<button class=\"sr-btn sr-primary\" onclick=\"pycmd('speedrun:practice')\">Practice questions</button>"
-        "<button class=\"sr-btn\" onclick=\"pycmd('speedrun:dashboard')\">Open dashboard</button>"
-        "<button class=\"sr-btn\" onclick=\"pycmd('speedrun:decks')\">Back to decks</button>"
-        "<button class=\"sr-btn\" onclick=\"pycmd('speedrun:customstudy')\">Custom study</button>"
+        '<button class="sr-btn sr-primary" onclick="pycmd(\'speedrun:practice\')">Practice questions</button>'
+        '<button class="sr-btn" onclick="pycmd(\'speedrun:dashboard\')">Open dashboard</button>'
+        '<button class="sr-btn" onclick="pycmd(\'speedrun:decks\')">Back to decks</button>'
+        '<button class="sr-btn" onclick="pycmd(\'speedrun:customstudy\')">Custom study</button>'
         "</div></div>"
     )
-    return (
-        component_style()
-        + '<div class="sr-panel">'
-        + congrats
-        + _hero(data)
-        + _signals(data)
-        + _bridge(data["memory"], data["performance"], data.get("gap", 0.0))
-        + _mini_grid(data)
-        + _next_action(data)
-        + _actions(data)
-        + "</div>"
-    )
+    return _stack(data, lead=congrats)

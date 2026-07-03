@@ -46,6 +46,7 @@ def _run(payload: dict) -> dict | None:
             capture_output=True,
             cwd=str(_TOOLS),
             timeout=30,
+            check=False,
         )
         if proc.returncode != 0 or not proc.stdout.strip():
             return None
