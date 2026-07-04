@@ -52,15 +52,16 @@ class TestSidebar:
             "Decks",
             "Add",
             "Browse",
-            "Stats",
+            "Progress",
             "Practice",
             "Library",
             "Settings",
         ):
             assert f"<span>{label}</span>" in html
-        # brand wordmark + sync chip are present
+        # brand wordmark + compact footer utility (with the sync control) present
         assert "Speedrun" in html
-        assert "sr-sb-sync" in html
+        assert "sr-sb-utility" in html
+        assert "speedrun:nav:sync" in html
 
     def test_exactly_one_active_item(self) -> None:
         from aqt import speedrun_theme as theme

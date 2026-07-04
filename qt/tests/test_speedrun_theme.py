@@ -141,15 +141,15 @@ class TestPanelHtml:
 
 class TestResolved:
     def test_light_mode_tokens(self) -> None:
-        assert theme.resolved("accent", night=False) == "#C15F3C"
+        assert theme.resolved("accent", night=False) == "#CC785C"
         assert theme.resolved("memory", night=False) == "#2E7BF6"
 
     def test_dark_mode_tokens(self) -> None:
-        assert theme.resolved("accent", night=True) == "#6A9BCC"
+        assert theme.resolved("accent", night=True) == "#D98A6B"
 
     def test_unknown_key_falls_back(self) -> None:
         # unknown keys fall back to the mode's accent
-        assert theme.resolved("does-not-exist", night=False) == "#C15F3C"
+        assert theme.resolved("does-not-exist", night=False) == "#CC785C"
 
 
 class TestReadinessGauge:

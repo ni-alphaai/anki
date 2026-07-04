@@ -65,7 +65,7 @@ _LIGHT: dict[str, str] = {
     "tertiary": "#A6A299",
     "hairline_web": "#E8E6DC",
     "hairline": "#E8E6DC",
-    "accent": "#C15F3C",
+    "accent": "#CC785C",
     "memory": "#2E7BF6",
     "perf": "#22C55E",
     "coverage": "#8A94A6",
@@ -80,15 +80,15 @@ _LIGHT: dict[str, str] = {
     "shadow_lg": "0 12px 32px rgba(60,50,30,.12)",
 }
 _DARK: dict[str, str] = {
-    "canvas": "#141413",
-    "surface": "#1E1D1B",
+    "canvas": "#100F0D",
+    "surface": "#1C1B18",
     "elevated": "#232220",
     "ink": "#FAF9F5",
     "secondary": "#B0AEA5",
     "tertiary": "#7C7970",
     "hairline_web": "rgba(255,255,255,.09)",
-    "hairline": "#302F2C",
-    "accent": "#6A9BCC",
+    "hairline": "#33312D",
+    "accent": "#D98A6B",
     "memory": "#4B93FF",
     "perf": "#788C5D",
     "coverage": "#6B7280",
@@ -178,7 +178,7 @@ _COMPONENTS = """
   font-variant-numeric: tabular-nums; color: var(--sr-ink); }
 .sr-readout.sr-muted { color: var(--sr-amber); }
 .sr-gauge-empty { width: 26px; height: 4px; border-radius: 2px; background: var(--sr-tertiary); margin-bottom: 10px; }
-.sr-readout-lbl { font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+.sr-readout-lbl { font-size: 10px; letter-spacing: .05em; text-transform: uppercase;
   color: var(--sr-secondary); margin-top: 2px; }
 .sr-gauge-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 4px; }
 .sr-gauge-legend span { display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
@@ -769,10 +769,13 @@ def banner_html(data: dict) -> str:
 # (memory blue, performance green) -- never one blended gradient -- plus a thin
 # outer coverage track and a low-high range band with a composite marker.
 _GAUGE_C = 88  # centre
-_R_COVER, _SW_COVER = 80, 3  # thin outer coverage track
-_R_RANGE, _SW_RANGE = 68, 6  # readiness low-high band + marker
-_R_MEM, _SW_MEM = 54, 9  # memory arc
-_R_PERF, _SW_PERF = 40, 9  # performance arc
+# Rings pushed outward to use the full 176px canvas, so the center is a clear
+# ~44px-radius well: the score + "projected" label sit inside the innermost
+# (performance) arc instead of colliding with it.
+_R_COVER, _SW_COVER = 82, 3  # thin outer coverage track
+_R_RANGE, _SW_RANGE = 72, 6  # readiness low-high band + marker
+_R_MEM, _SW_MEM = 60, 9  # memory arc
+_R_PERF, _SW_PERF = 48, 9  # performance arc
 
 
 def _ring_track(r: int, sw: int) -> str:
@@ -851,6 +854,12 @@ def _readiness_gauge(data: dict) -> str:
         rings.append(_ring_track(_R_PERF, _SW_PERF))
         rings.append(
             _ring_arc(_R_PERF, _SW_PERF, "var(--sr-perf)", data["performance"])
+        )
+        # A clean readout well: a card-colored disc just inside the innermost arc
+        # so the score + label always rest on a clear surface (belt-and-suspenders
+        # against any collision with the performance ring).
+        rings.append(
+            f'<circle cx="{_GAUGE_C}" cy="{_GAUGE_C}" r="42" fill="var(--sr-elevated)"/>'
         )
         center = (
             f'<span class="sr-readout">{data["readiness"]}</span>'
@@ -1620,12 +1629,13 @@ _SIDEBAR_CSS = """
    re-adds only the fill/shape it wants. */
 button { -webkit-appearance:none !important; appearance:none !important; margin:0;
   border:none; background:transparent; box-shadow:none; outline:none; font:inherit; }
-html,body { height:100%; margin:0; background:var(--sr-surface); }
+html,body { height:100%; margin:0; background:var(--sr-canvas); }
 .sr-sb { display:flex; flex-direction:column; height:100%; padding:14px 10px;
   font-family:var(--sr-font); border-right:1px solid var(--sr-hairline); }
 .sr-sb-brand { display:flex; align-items:center; gap:9px; padding:8px 12px 18px; }
-.sr-sb-logo { width:22px; height:22px; border-radius:7px; flex:none;
-  background:linear-gradient(135deg,var(--sr-accent),var(--sr-reasoning)); }
+.sr-sb-logo { width:24px; height:24px; flex:none; color:var(--sr-accent);
+  display:flex; align-items:center; justify-content:center; }
+.sr-sb-logo svg { width:24px; height:24px; }
 .sr-sb-word { font-family:var(--sr-display); font-size:19px; font-weight:600;
   color:var(--sr-ink); letter-spacing:-.01em; }
 .sr-sb-nav { display:flex; flex-direction:column; gap:1px; }
@@ -1642,67 +1652,107 @@ html,body { height:100%; margin:0; background:var(--sr-surface); }
   color:var(--sr-tertiary); padding:16px 12px 5px; }
 .sr-sb-div { height:1px; background:var(--sr-hairline); margin:10px 12px; opacity:.7; }
 .sr-sb-spacer { flex:1; min-height:12px; }
-.sr-sb-chips { display:flex; flex-direction:column; gap:7px; }
-.sr-sb-theme { display:flex; background:color-mix(in srgb, var(--sr-ink) 5%, transparent);
-  border-radius:9px; padding:2px; gap:2px; }
-.sr-sb-seg { flex:1; border:none; background:none; cursor:pointer; font:600 11px var(--sr-font);
-  color:var(--sr-secondary); padding:6px 0; border-radius:7px; transition:background .12s, color .12s; }
-.sr-sb-seg:hover { color:var(--sr-ink); }
-.sr-sb-seg.active { background:var(--sr-elevated); color:var(--sr-accent);
-  box-shadow:0 1px 2px rgba(0,0,0,.06); }
-.sr-sb-sync { display:flex; align-items:center; gap:10px; width:100%; text-align:left;
-  border:none; background:color-mix(in srgb, var(--sr-ink) 5%, transparent); color:var(--sr-ink);
-  border-radius:10px; padding:10px 12px; cursor:pointer; font-family:var(--sr-font);
-  transition:background .12s; }
-.sr-sb-sync:hover { background:color-mix(in srgb, var(--sr-ink) 8%, transparent); }
-.sr-sb-sync-dot { flex:none; width:8px; height:8px; border-radius:50%; background:var(--sr-tertiary); }
-.sr-sb-sync.ok .sr-sb-sync-dot { background:var(--sr-perf); }
-.sr-sb-sync.syncing .sr-sb-sync-dot { background:var(--sr-amber);
-  animation:sr-sb-pulse 1s ease-in-out infinite; }
-.sr-sb-sync.error .sr-sb-sync-dot { background:var(--sr-danger); }
+/* Compact footer utility rail: AI coach, appearance, and sync fold from three
+   bulky stacked cards into one slim row of icon buttons. Status reads as a small
+   dot on the icon; the full label + detail live in the button's tooltip. */
+.sr-sb-utility { display:flex; justify-content:center; gap:6px; padding:9px 6px 2px;
+  border-top:1px solid var(--sr-hairline); margin-top:6px; }
+.sr-sb-ubtn { position:relative; width:48px; height:36px; display:flex; align-items:center;
+  justify-content:center; border:none; background:transparent; color:var(--sr-secondary);
+  border-radius:9px; cursor:pointer; transition:background .12s, color .12s; }
+.sr-sb-ubtn:hover { background:color-mix(in srgb, var(--sr-ink) 6%, transparent); color:var(--sr-ink); }
+.sr-sb-ubtn:disabled { opacity:.38; cursor:default; }
+.sr-sb-ubtn svg { width:19px; height:19px; }
+.sr-sb-ubtn.on { color:var(--sr-accent); }
+.sr-sb-ubtn-dot { position:absolute; top:6px; right:10px; width:7px; height:7px; border-radius:50%;
+  background:var(--sr-tertiary); box-shadow:0 0 0 2px var(--sr-canvas); }
+.sr-sb-ubtn-dot.ok { background:var(--sr-perf); }
+.sr-sb-ubtn-dot.syncing { background:var(--sr-amber); animation:sr-sb-pulse 1s ease-in-out infinite; }
+.sr-sb-ubtn-dot.error { background:var(--sr-danger); }
 @keyframes sr-sb-pulse { 0%,100%{opacity:1;} 50%{opacity:.35;} }
-.sr-sb-sync-txt { display:flex; flex-direction:column; min-width:0; line-height:1.25; }
-.sr-sb-sync-label { font-size:13.5px; font-weight:600; color:var(--sr-ink);
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.sr-sb-sync-detail { font-size:11.5px; color:var(--sr-secondary);
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 """
 
 
-def _ai_chip(ai: dict) -> str:
-    """A prominent AI-coach on/off switch in the rail: shows On/Off and toggles,
-    or reads 'unavailable' when the AI venv isn't installed. Keeps AI honestly
-    optional and one click from anywhere - the app scores fully with it off."""
+# Footer utility icons (18-19px, inherit currentColor). Sparkle = AI, sun/moon/
+# half-disc = appearance, circular arrows = sync.
+_IC_AI = (
+    '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'
+    '<path d="M12 2l1.7 6.3L20 10l-6.3 1.7L12 18l-1.7-6.3L4 10l6.3-1.7z"/></svg>'
+)
+_IC_SYNC = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" '
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+    '<path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-8.5-6"/>'
+    '<path d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 8.5 6"/>'
+    '<path d="M21 3v4h-4"/><path d="M3 21v-4h4"/></svg>'
+)
+_IC_THEME = {
+    "light": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" '
+        'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        '<circle cx="12" cy="12" r="4"/>'
+        '<path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2'
+        'M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>'
+    ),
+    "dark": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" '
+        'stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M20 14.5A7.5 7.5 0 0 1 9.5 4 6.5 6.5 0 1 0 20 14.5z"/></svg>'
+    ),
+    "system": (
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" '
+        'aria-hidden="true"><circle cx="12" cy="12" r="8.2"/>'
+        '<path d="M12 3.8a8.2 8.2 0 0 1 0 16.4z" fill="currentColor" stroke="none"/></svg>'
+    ),
+}
+
+
+def _ai_button(ai: dict) -> str:
+    """AI-coach toggle as a compact footer icon (sparkle). Accent + green dot when
+    on, muted when off, disabled when the AI venv isn't installed. AI stays
+    honestly optional - the app scores fully with it off."""
     if not ai.get("available"):
         return (
-            '<div class="sr-sb-sync idle" style="opacity:.55">'
-            '<span class="sr-sb-sync-dot"></span>'
-            '<span class="sr-sb-sync-txt">'
-            '<span class="sr-sb-sync-label">AI coach</span>'
-            '<span class="sr-sb-sync-detail">unavailable</span></span></div>'
+            '<button class="sr-sb-ubtn" disabled title="AI coach - unavailable">'
+            f"{_IC_AI}</button>"
         )
     enabled = bool(ai.get("enabled"))
-    # "ok" gives the green dot (there is no ".ready" dot rule); idle stays gray.
-    state = "ok" if enabled else "idle"
-    detail = "On" if enabled else "Off"
+    on = " on" if enabled else ""
+    dot = '<span class="sr-sb-ubtn-dot ok"></span>' if enabled else ""
+    title = f"AI coach - {'On' if enabled else 'Off'} (click to toggle)"
     return (
-        f'<button class="sr-sb-sync {state}" onclick="pycmd(\'speedrun:ai:toggle\')">'
-        '<span class="sr-sb-sync-dot"></span>'
-        '<span class="sr-sb-sync-txt">'
-        '<span class="sr-sb-sync-label">AI coach</span>'
-        f'<span class="sr-sb-sync-detail">{detail}</span></span></button>'
+        f'<button class="sr-sb-ubtn{on}" title="{escape(title)}" '
+        "onclick=\"pycmd('speedrun:ai:toggle')\">"
+        f"{_IC_AI}{dot}</button>"
     )
 
 
-def _theme_toggle(mode: str) -> str:
-    """A compact System/Light/Dark segmented control for the rail."""
-    opts = (("system", "Auto"), ("light", "Light"), ("dark", "Dark"))
-    segs = "".join(
-        f'<button class="sr-sb-seg{" active" if key == mode else ""}" '
-        f"onclick=\"pycmd('speedrun:theme:{key}')\">{lbl}</button>"
-        for key, lbl in opts
+def _theme_button(mode: str) -> str:
+    """Appearance as a single icon that shows the current mode and cycles
+    System -> Light -> Dark on click (folds the old 3-wide segmented control)."""
+    nxt = {"system": "light", "light": "dark", "dark": "system"}.get(mode, "light")
+    label = {"system": "Auto", "light": "Light", "dark": "Dark"}.get(mode, "Auto")
+    icon = _IC_THEME.get(mode, _IC_THEME["system"])
+    title = f"Appearance - {label} (click to change)"
+    return (
+        f'<button class="sr-sb-ubtn" title="{escape(title)}" '
+        f"onclick=\"pycmd('speedrun:theme:{nxt}')\">{icon}</button>"
     )
-    return f'<div class="sr-sb-theme" role="group" aria-label="Appearance">{segs}</div>'
+
+
+def _sync_button(sync: dict) -> str:
+    """Phone-sync as a compact footer icon with a status dot; the label + detail
+    (e.g. the LAN address) live in the tooltip instead of a bulky stacked chip."""
+    state = escape(str(sync.get("state") or "idle"))
+    label = str(sync.get("label") or "Sync with phone")
+    detail = str(sync.get("detail") or "")
+    dot_cls = state if state in ("ok", "syncing", "error") else ""
+    title = f"{label} - {detail}" if detail else label
+    return (
+        f'<button class="sr-sb-ubtn" title="{escape(title)}" '
+        "onclick=\"pycmd('speedrun:nav:sync')\">"
+        f'{_IC_SYNC}<span class="sr-sb-ubtn-dot {dot_cls}"></span></button>'
+    )
 
 
 def sidebar_html(
@@ -1711,10 +1761,11 @@ def sidebar_html(
     ai: dict | None = None,
     theme_mode: str = "system",
 ) -> str:
-    """The persistent left-rail app shell: brand, primary navigation, a prominent
-    AI-coach switch, an appearance (System/Light/Dark) toggle, and a live sync
-    status chip. Rendered into its own webview so it survives every Anki state
-    change (unlike content painted into the main webview)."""
+    """The persistent left-rail app shell: brand, primary navigation, and a
+    compact footer utility row (AI-coach toggle, appearance cycle, and sync
+    status) rendered as icon buttons. Rendered into its own webview so it
+    survives every Anki state change (unlike content painted into the main
+    webview)."""
     sync = sync or {}
     # Small uppercase section headers give the rail structure (one per nav group,
     # empty = no header). Falls back to a hairline divider between unlabeled groups.
@@ -1733,29 +1784,28 @@ def sidebar_html(
             for key, item_label, icon in group
         )
     items = "".join(parts)
-    state = escape(str(sync.get("state") or "idle"))
-    label = escape(str(sync.get("label") or "Sync with phone"))
-    detail = escape(str(sync.get("detail") or ""))
-    detail_html = f'<span class="sr-sb-sync-detail">{detail}</span>' if detail else ""
-    chip = (
-        f'<div class="sr-sb-sync {state}" role="button" tabindex="0" '
-        "onclick=\"pycmd('speedrun:nav:sync')\">"
-        '<span class="sr-sb-sync-dot"></span>'
-        f'<span class="sr-sb-sync-txt"><span class="sr-sb-sync-label">{label}</span>'
-        f"{detail_html}</span></div>"
-    )
     brand = (
-        '<div class="sr-sb-brand"><span class="sr-sb-logo"></span>'
+        '<div class="sr-sb-brand"><span class="sr-sb-logo">'
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2.6" stroke-linecap="round" aria-hidden="true">'
+        '<line x1="12" y1="3.5" x2="12" y2="20.5"/>'
+        '<line x1="4.2" y1="7.75" x2="19.8" y2="16.25"/>'
+        '<line x1="4.2" y1="16.25" x2="19.8" y2="7.75"/></svg></span>'
         '<span class="sr-sb-word">Speedrun</span></div>'
     )
-    ai_chip = _ai_chip(ai) if ai is not None else ""
-    theme_toggle = _theme_toggle(theme_mode)
+    ai_btn = _ai_button(ai) if ai is not None else ""
+    theme_btn = _theme_button(theme_mode)
+    sync_btn = _sync_button(sync)
+    utility = (
+        '<div class="sr-sb-utility" role="group" aria-label="Quick settings">'
+        f"{ai_btn}{theme_btn}{sync_btn}</div>"
+    )
     return (
         f"<style>{_SIDEBAR_CSS}</style>"
         f'<div class="sr-sb">{brand}'
         f'<nav class="sr-sb-nav">{items}</nav>'
         f'<div class="sr-sb-spacer"></div>'
-        f'<div class="sr-sb-chips">{ai_chip}{theme_toggle}{chip}</div></div>'
+        f"{utility}</div>"
     )
 
 

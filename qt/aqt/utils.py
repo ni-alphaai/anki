@@ -35,14 +35,12 @@ from aqt.qt import (
     QAction,
     QApplication,
     QCheckBox,
-    QColor,
     QComboBox,
     QDesktopServices,
     QDialog,
     QDialogButtonBox,
     QEvent,
     QFileDialog,
-    QFrame,
     QHeaderView,
     QIcon,
     QLabel,
@@ -55,7 +53,6 @@ from aqt.qt import (
     QNativeGestureEvent,
     QOffscreenSurface,
     QOpenGLContext,
-    QPalette,
     QPixmap,
     QPlainTextEdit,
     QPoint,
@@ -1081,14 +1078,15 @@ def tooltip(
 </table>""",
         aw,
     )
-    lab.setFrameStyle(QFrame.Shape.Panel)
-    lab.setLineWidth(2)
-    lab.setWindowFlags(Qt.WindowType.ToolTip)
-    if not theme_manager.night_mode:
-        p = QPalette()
-        p.setColor(QPalette.ColorRole.Window, QColor("#feffc4"))
-        p.setColor(QPalette.ColorRole.WindowText, QColor("#000000"))
-        lab.setPalette(p)
+    lab.setWindowFlags(Qt.WindowType.ToolTip | Qt.WindowType.FramelessWindowHint)
+    # A calm, rounded toast (replaces the legacy yellow panel + hard border) that
+    # reads on any background in both light and dark mode.
+    lab.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+    lab.setStyleSheet(
+        "QLabel{background:#232220;color:#FAF9F5;"
+        "border:1px solid rgba(255,255,255,0.10);border-radius:12px;padding:4px;"
+        "font-size:13px;}"
+    )
     lab.move(aw.mapToGlobal(QPoint(0 + x_offset, aw.height() - y_offset)))
     lab.show()
     _tooltipTimer = aqt.mw.progress.timer(
