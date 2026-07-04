@@ -33,6 +33,7 @@ use crate::notetype::all_stock_notetypes;
 use crate::prelude::*;
 use crate::revlog::RevlogEntry;
 use crate::search::SortMode;
+use crate::services::SpeedrunService;
 use crate::storage::SrAttempt;
 use crate::sync::collection::graves::ApplyGravesRequest;
 use crate::sync::collection::meta::MetaRequest;
@@ -431,6 +432,65 @@ async fn sr_attempt_edit_conflict_is_last_writer_wins() -> Result<()> {
         // col1's edit (first to sync) is the winner on both sides
         assert_eq!(a1[0].diagnosis_kind, 1);
         assert_eq!(a1, a2);
+        Ok(())
+    })
+    .await
+}
+
+#[tokio::test]
+async fn sr_question_items_sync_via_config_roundtrip() -> Result<()> {
+    with_active_server(|client| async move {
+        let ctx = SyncTestContext::new(client);
+        upload_download(&ctx).await?;
+
+        {
+            let mut col1 = ctx.col1();
+            let _ = col1.add_question_item(anki_proto::speedrun::QuestionItem {
+                id: 0,
+                card_id: 0,
+                topic: "biology".to_string(),
+                provenance: 1,
+                payload: "{\"stem\":\"synced question\"}".to_string(),
+            })?;
+            col1.storage.set_modified_time(TimestampMillis::now())?;
+            ctx.normal_sync(&mut col1).await;
+        }
+        {
+            let mut col2 = ctx.col2();
+            ctx.normal_sync(&mut col2).await;
+        }
+
+        let summary = ctx.col2().get_practice_bank_summary()?;
+        assert_eq!(summary.total, 1);
+        assert_eq!(summary.topics[0].topic, "biology");
+        Ok(())
+    })
+    .await
+}
+
+#[tokio::test]
+async fn sr_exam_profile_syncs_via_config_roundtrip() -> Result<()> {
+    with_active_server(|client| async move {
+        let ctx = SyncTestContext::new(client);
+        upload_download(&ctx).await?;
+
+        {
+            let mut col1 = ctx.col1();
+            let _ = col1.set_exam_profile(anki_proto::speedrun::ExamProfile {
+                exam_date_ms: 1_800_000_000_000,
+                target_score: 515,
+            })?;
+            col1.storage.set_modified_time(TimestampMillis::now())?;
+            ctx.normal_sync(&mut col1).await;
+        }
+        {
+            let mut col2 = ctx.col2();
+            ctx.normal_sync(&mut col2).await;
+        }
+
+        let profile = ctx.col2().get_exam_profile()?;
+        assert_eq!(profile.exam_date_ms, 1_800_000_000_000);
+        assert_eq!(profile.target_score, 515);
         Ok(())
     })
     .await

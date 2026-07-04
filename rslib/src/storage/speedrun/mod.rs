@@ -44,7 +44,7 @@ pub struct SrAttempt {
 /// A held-out exam-style question that paraphrases a source card's concept.
 /// These are never added to the Anki collection as cards, so answering them
 /// does not leak into the source card's SRS scheduling (paraphrase test).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SrQuestionItem {
     /// 0 => assign a new id on insert.
     pub id: i64,
@@ -69,7 +69,7 @@ fn row_to_sr_question_item(row: &Row) -> Result<SrQuestionItem> {
 
 /// Exam profile: the exam date and target score driving exam-anchored
 /// scheduling.
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 pub struct SrProfile {
     pub exam_date_ms: Option<i64>,
     /// Target MCAT score (472..=528); 0 = unset.
@@ -419,6 +419,34 @@ impl SqliteStorage {
                 ])?;
         }
         Ok(self.db.last_insert_rowid())
+    }
+
+    pub(crate) fn add_or_update_sr_question_item(&self, item: &SrQuestionItem) -> Result<i64> {
+        if item.id == 0 {
+            return self.add_sr_question_item(item);
+        }
+        self.db
+            .prepare_cached(
+                "insert or replace into sr_question_items (id, cid, topic, provenance, payload) \
+                 values (?, ?, ?, ?, ?)",
+            )?
+            .execute(params![
+                item.id,
+                item.cid,
+                item.topic,
+                item.provenance,
+                item.payload
+            ])?;
+        Ok(item.id)
+    }
+
+    pub(crate) fn get_all_sr_question_items(&self) -> Result<Vec<SrQuestionItem>> {
+        self.db
+            .prepare_cached(
+                "select id, cid, topic, provenance, payload from sr_question_items order by id",
+            )?
+            .query_and_then([], row_to_sr_question_item)?
+            .collect()
     }
 
     pub(crate) fn get_sr_question_items_for_card(

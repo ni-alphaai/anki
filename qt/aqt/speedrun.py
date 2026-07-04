@@ -1611,25 +1611,34 @@ def _show_sync_pair(
     # On the first pairing, seed the server with this device's collection so the
     # phone receives current data the moment it scans.
     if started and not srsync.is_paired(mw.col):
-        _sync_to_local(mw)
+        _sync_to_local(
+            mw,
+            on_done=lambda: _show_sync_pair(
+                mw, start=False, status_msg="Ready to scan. Server seeded."
+            ),
+            land_home=False,
+        )
 
 
-def _after_local_sync(mw: aqt.AnkiQt, on_done: object = None) -> None:
+def _after_local_sync(
+    mw: aqt.AnkiQt, on_done: object = None, *, land_home: bool = True
+) -> None:
     """Refresh the UI after a sync so phone reviews show up on the desktop."""
     from aqt.qt import QTimer
 
-    def land_on_home() -> None:
+    def finish_refresh() -> None:
         try:
             if mw.col is not None:
                 mw.col._load_scheduler()
                 library.refresh_readiness_after_sync(mw.col)
         except Exception:
             pass
-        try:
-            _show_workspace(mw, "dashboard")
-            mw.toolbar.redraw()
-        except Exception:
-            pass
+        if land_home:
+            try:
+                _show_workspace(mw, "dashboard")
+                mw.toolbar.redraw()
+            except Exception:
+                pass
         _render_sidebar(mw)
         if callable(on_done):
             on_done()
@@ -1637,10 +1646,10 @@ def _after_local_sync(mw: aqt.AnkiQt, on_done: object = None) -> None:
     try:
         mw.reset()
     except Exception:
-        land_on_home()
+        finish_refresh()
         return
     # Reset paints the native deck list first; replace it on the next tick.
-    QTimer.singleShot(0, land_on_home)
+    QTimer.singleShot(0, finish_refresh)
 
 
 def _valid_sync_url(url: str | None) -> bool:
@@ -1839,7 +1848,9 @@ def _local_full_upload(
     )
 
 
-def _run_local_sync(mw: aqt.AnkiQt, on_done: object = None) -> None:
+def _run_local_sync(
+    mw: aqt.AnkiQt, on_done: object = None, *, land_home: bool = True
+) -> None:
     """Sync the collection with the embedded local server.
 
     Incremental merges run inside ``sync_collection`` and finish as NO_CHANGES.
@@ -1858,11 +1869,11 @@ def _run_local_sync(mw: aqt.AnkiQt, on_done: object = None) -> None:
         return
     auth = _local_sync_auth(mw, url)
     if auth is None:
-        _sync_to_local(mw, on_done)
+        _sync_to_local(mw, on_done, land_home=land_home)
         return
 
     def done() -> None:
-        _after_local_sync(mw, on_done)
+        _after_local_sync(mw, on_done, land_home=land_home)
 
     def on_future_done(fut: Any) -> None:
         try:
@@ -1913,7 +1924,7 @@ def _sync_directional_local(mw: aqt.AnkiQt, *, upload: bool, on_done=None) -> No
         return
     auth = _local_sync_auth(mw, url)
     if auth is None:
-        _sync_to_local(
+        _login_to_local(
             mw,
             on_done=lambda: _sync_directional_local(mw, upload=upload, on_done=on_done),
         )
@@ -1985,9 +1996,8 @@ def _clear_for_sync_test(mw: aqt.AnkiQt) -> None:
     library.clear_study_data_for_sync_test(mw, on_done=on_done)
 
 
-def _sync_to_local(mw: aqt.AnkiQt, on_done=None) -> None:
-    """Start the local server, sign Anki's own sync in against it, and sync. This
-    is the shared path for the toolbar Sync button, the chip, and auto-sync."""
+def _login_to_local(mw: aqt.AnkiQt, on_done=None) -> None:
+    """Sign the profile into the embedded server without running a sync."""
     if mw.col is None:
         return
     url = _pin_local_sync_url(mw)
@@ -2014,10 +2024,19 @@ def _sync_to_local(mw: aqt.AnkiQt, on_done=None) -> None:
         except Exception:
             pass
         srsync.mark_paired(mw.col)
-        # Auto-resolving sync (on_done fires after it completes).
-        _run_local_sync(mw, on_done)
+        if callable(on_done):
+            on_done()
 
     mw.taskman.with_progress(do_login, after_login, parent=mw)
+
+
+def _sync_to_local(mw: aqt.AnkiQt, on_done=None, *, land_home: bool = True) -> None:
+    """Start the local server, sign Anki's own sync in against it, and sync. This
+    is the shared path for the toolbar Sync button, the chip, and auto-sync."""
+    def after_login() -> None:
+        _run_local_sync(mw, on_done, land_home=land_home)
+
+    _login_to_local(mw, after_login)
 
 
 def _sync_now_from_screen(mw: aqt.AnkiQt) -> None:

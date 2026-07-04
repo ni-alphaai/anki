@@ -291,6 +291,7 @@ def start_server(mw: aqt.AnkiQt) -> bool:
         loop.exec()
     tooltip("Sync server did not become ready in time.")
     if _health_ok(port):
+        _advertise_mdns(lan_ip(), port)
         setup_usb_tunnel(port)
         return True
     return False

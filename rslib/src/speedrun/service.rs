@@ -29,6 +29,10 @@ use crate::storage::SrQuestionItem;
 use crate::storage::SrReadiness;
 use crate::storage::SrTopicMapEntry;
 
+const CFG_TOPIC_MAP: &str = "speedrunTopicMap";
+const CFG_QUESTION_ITEMS: &str = "speedrunQuestionItems";
+const CFG_EXAM_PROFILE: &str = "speedrunExamProfile";
+
 impl crate::services::SpeedrunService for Collection {
     fn classify_attempt(
         &mut self,
@@ -143,6 +147,7 @@ impl crate::services::SpeedrunService for Collection {
         &mut self,
         input: anki_proto::speedrun::QuestionItem,
     ) -> error::Result<anki_proto::speedrun::QuestionItemId> {
+        self.apply_question_items_from_config()?;
         let item = SrQuestionItem {
             id: input.id,
             cid: (input.card_id != 0).then_some(input.card_id),
@@ -151,6 +156,7 @@ impl crate::services::SpeedrunService for Collection {
             payload: input.payload,
         };
         let id = self.storage.add_sr_question_item(&item)?;
+        self.persist_question_items_config()?;
         Ok(anki_proto::speedrun::QuestionItemId { id })
     }
 
@@ -158,6 +164,7 @@ impl crate::services::SpeedrunService for Collection {
         &mut self,
         input: anki_proto::speedrun::GetQuestionItemsForCardRequest,
     ) -> error::Result<anki_proto::speedrun::QuestionItems> {
+        self.apply_question_items_from_config()?;
         let items = self
             .storage
             .get_sr_question_items_for_card(CardId(input.card_id))?;
@@ -167,6 +174,7 @@ impl crate::services::SpeedrunService for Collection {
     }
 
     fn get_performance_report(&mut self) -> error::Result<anki_proto::speedrun::PerformanceReport> {
+        self.apply_question_items_from_config()?;
         let rows: Vec<PerfCardRow> = self
             .storage
             .sr_performance_rows()?
@@ -322,14 +330,17 @@ impl crate::services::SpeedrunService for Collection {
             target_score: input.target_score,
         };
         self.storage.set_sr_profile(&profile)?;
+        self.persist_exam_profile_config(&profile)?;
         Ok(to_proto_profile(&self.storage.get_sr_profile()?))
     }
 
     fn get_exam_profile(&mut self) -> error::Result<anki_proto::speedrun::ExamProfile> {
+        self.apply_exam_profile_from_config()?;
         Ok(to_proto_profile(&self.storage.get_sr_profile()?))
     }
 
     fn get_exam_plan(&mut self) -> error::Result<anki_proto::speedrun::ExamPlan> {
+        self.apply_exam_profile_from_config()?;
         let profile = self.storage.get_sr_profile()?;
         let readiness = self.readiness_report()?;
         let has_profile = profile.target_score > 0 || profile.exam_date_ms.is_some();
@@ -366,6 +377,7 @@ impl crate::services::SpeedrunService for Collection {
         &mut self,
         input: anki_proto::speedrun::GetRoutedPracticeRequest,
     ) -> error::Result<anki_proto::speedrun::QuestionItems> {
+        self.apply_question_items_from_config()?;
         let items = self.storage.get_sr_question_items_for_topic(&input.topic)?;
         Ok(anki_proto::speedrun::QuestionItems {
             items: items.into_iter().map(to_proto_question_item).collect(),
@@ -376,6 +388,7 @@ impl crate::services::SpeedrunService for Collection {
         &mut self,
         input: anki_proto::speedrun::GetPracticeQuestionsRequest,
     ) -> error::Result<anki_proto::speedrun::QuestionItems> {
+        self.apply_question_items_from_config()?;
         let limit = if input.limit == 0 { 20 } else { input.limit };
         let topic = (!input.topic.is_empty()).then_some(input.topic.as_str());
         let items = self.storage.list_sr_question_items(limit, topic)?;
@@ -387,6 +400,7 @@ impl crate::services::SpeedrunService for Collection {
     fn get_practice_bank_summary(
         &mut self,
     ) -> error::Result<anki_proto::speedrun::PracticeBankSummary> {
+        self.apply_question_items_from_config()?;
         let rows = self.storage.sr_question_item_counts_by_topic()?;
         let total = rows.iter().map(|(_, count)| count).sum();
         let topics = rows
@@ -400,6 +414,7 @@ impl crate::services::SpeedrunService for Collection {
         &mut self,
         input: anki_proto::speedrun::SessionReasoningRoundRequest,
     ) -> error::Result<anki_proto::speedrun::QuestionItems> {
+        self.apply_question_items_from_config()?;
         use std::collections::HashSet;
 
         use crate::speedrun::reasoning_round::deck_name_to_topic;
@@ -467,6 +482,7 @@ impl crate::services::SpeedrunService for Collection {
         &mut self,
         input: anki_proto::speedrun::GetDueReasoningRequest,
     ) -> error::Result<anki_proto::speedrun::QuestionItems> {
+        self.apply_question_items_from_config()?;
         let limit = if input.limit == 0 {
             crate::speedrun::reasoning_round::DEFAULT_ROUND_SIZE
         } else {
@@ -623,6 +639,7 @@ impl crate::services::SpeedrunService for Collection {
     }
 
     fn get_leakage_report(&mut self) -> error::Result<anki_proto::speedrun::LeakageReport> {
+        self.apply_question_items_from_config()?;
         let rows = self.storage.sr_question_items_with_note_text()?;
         let total_items = rows.len() as u32;
         let mut flagged_item_ids = Vec::new();
@@ -805,7 +822,44 @@ impl Collection {
     /// (``sr_topic_map`` itself has no USN and is not chunk-synced).
     fn persist_topic_map_config(&mut self, entries: &[SrTopicMapEntry]) -> error::Result<()> {
         let vec = entries.to_vec();
-        self.set_config("speedrunTopicMap", &vec)?;
+        self.set_config(CFG_TOPIC_MAP, &vec)?;
+        Ok(())
+    }
+
+    /// Persist held-out questions in collection config so practice banks survive
+    /// incremental sync (``sr_question_items`` itself has no USN and is not
+    /// chunk-synced). Semantics: the whole set is written under one key, and
+    /// ``apply_question_items_from_config`` reinserts by id, so this is an
+    /// append/update-only merge (config keys are last-writer-wins by mtime).
+    /// ``add_question_item`` applies the synced set *before* inserting, so a
+    /// device never clobbers questions another device already uploaded. Items
+    /// are never deleted at runtime, so no tombstones are needed.
+    fn persist_question_items_config(&mut self) -> error::Result<()> {
+        let items = self.storage.get_all_sr_question_items()?;
+        self.set_config(CFG_QUESTION_ITEMS, &items)?;
+        Ok(())
+    }
+
+    fn apply_question_items_from_config(&mut self) -> error::Result<()> {
+        let Some(items) = self.get_config_optional::<Vec<SrQuestionItem>, _>(CFG_QUESTION_ITEMS)
+        else {
+            return Ok(());
+        };
+        for item in items {
+            self.storage.add_or_update_sr_question_item(&item)?;
+        }
+        Ok(())
+    }
+
+    fn persist_exam_profile_config(&mut self, profile: &SrProfile) -> error::Result<()> {
+        self.set_config(CFG_EXAM_PROFILE, profile)?;
+        Ok(())
+    }
+
+    fn apply_exam_profile_from_config(&mut self) -> error::Result<()> {
+        if let Some(profile) = self.get_config_optional::<SrProfile, _>(CFG_EXAM_PROFILE) {
+            self.storage.set_sr_profile(&profile)?;
+        }
         Ok(())
     }
 
