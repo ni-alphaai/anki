@@ -15,13 +15,13 @@ The wrapper uses the built pylib bridge (`out/pyenv` + `out/pylib`) so the engin
 
 ## Verdict: CLEAN
 
-Scanned the 3 existing packs (**2263 stems total**): `speedrun_question_pack.json`, `speedrun_mmlu_pack.json`, `speedrun_gold_set.json`.
+Scanned the 3 existing packs (**2219 stems total**): `speedrun_question_pack.json`, `speedrun_mmlu_pack.json`, `speedrun_gold_set.json`.
 
 | Pack       | Role                            | Total items | Verbatim-flagged | Near-dup-flagged |  Verdict  |
 | ---------- | ------------------------------- | ----------: | ---------------: | ---------------: | :-------: |
 | `question` | held-out, linked to study cards |           8 |                0 |                0 | **CLEAN** |
-| `mmlu`     | held-out, global (unlinked)     |        2231 |                0 |                0 | **CLEAN** |
-| `gold_set` | diagnosis gold                  |          24 |                0 |                0 | **CLEAN** |
+| `mmlu`     | held-out, global (unlinked)     |        2179 |                0 |                0 | **CLEAN** |
+| `gold_set` | diagnosis gold                  |          32 |                0 |                0 | **CLEAN** |
 
 - **Verbatim-flagged** is from the real engine RPC: for each question item, is its normalized stem a substring of its linked source card's note text? (`question` linked **3** study cards - one per `card_tag` `fc1`/`fc4`/`fc5`; `mmlu`/`gold_set` have no `card_tag`, so their items are unlinked and there is no study card to leak _from_.)
 - **Near-dup-flagged** is the s7e near-duplicate count: held-out stem vs its study-card stand-in (`question`), and gold-vs-gold (`gold_set`).
@@ -68,11 +68,11 @@ The near-dup layer compares every stem against every other stem in the corpus. B
 
 | Comparison                                   | Pairs >= threshold | Notes                                                           |
 | -------------------------------------------- | -----------------: | --------------------------------------------------------------- |
-| intra-`mmlu` redundancy                      |                103 | 83 near-exact (char >= 0.90), 20 structural twins (char < 0.90) |
+| intra-`mmlu` redundancy                      |                 50 | 30 near-exact (char >= 0.90), 20 structural twins (char < 0.90) |
 | cross-pack reuse (`question` <-> `gold_set`) |                  2 | 1 exact, 1 reworded                                             |
 | all other intra/cross-pack                   |                  0 | -                                                               |
 
-- **intra-`mmlu` (103 pairs).** `mmlu` items are _all_ held-out performance items with no `card_tag` - none is a study card - so these are held-out<->held-out redundancy, not held-out<->study leakage. The open MMLU pool has **66 distinct stems repeated across 136 items** (64 appear twice, plus the generic templates `"which of the following statements is correct"` x5 and `"...is false"` x3). The generic templates are _distinct_ questions that share boilerplate stems and differ only in their options; the twice-seen specific stems (e.g. `"Codons are composed of"`, `"Fatty acids are transported into the mitochondria bound to"`) are largely genuine duplicate items. This scan keys on **stems** (per the s7e spec), so it cannot split template-collisions from true dupes on its own. _Recommendation: de-duplicate `mmlu` on (stem + options) before it seeds the global performance signal, to avoid over-weighting a repeated item._
+- **intra-`mmlu` (50 pairs).** `mmlu` items are _all_ held-out performance items with no `card_tag` - none is a study card - so these are held-out<->held-out redundancy, not held-out<->study leakage. The 50 flagged pairs break down as **30 near-exact** (char Jaccard >= 0.90) and **20 structural twins** (char < 0.90). They come from repeated generic template stems - e.g. `"which of the following statements is correct"`, which recurs across items such as `mmlu#156`/`#1094`/`#1143`/`#1169` - and from genuine duplicate specific stems. The generic templates are _distinct_ questions that share boilerplate stems and differ only in their options; this scan keys on **stems** (per the s7e spec), so it cannot split template-collisions from true dupes on its own. _Recommendation: de-duplicate `mmlu` on (stem + options) before it seeds the global performance signal, to avoid over-weighting a repeated item._
 - **cross-pack (2 pairs).** The performance pack and the diagnosis gold set intentionally reuse the same two MCAT scenarios: `"If an object's speed doubles, its kinetic energy changes by a factor of:"` (`question#7` == `g09`, identical) and the ball-at-apex item (`question#6` ~ `g19`, "straight up" vs "straight upward"). These feed **different** models (`question` -> performance; `gold_set` -> diagnosis agreement), so an item shared between them is _not_ train/test leakage for either model. Flagged here only so the reuse is on the record.
 
 ## Method
@@ -83,7 +83,7 @@ The near-dup layer compares every stem against every other stem in the corpus. B
 
 ## Deviations / notes
 
-- **Engine ran here.** With `out/pyenv` + `out/pylib` present, the wrapper's primary path executed the real `get_leakage_report()` RPC (question 8 / mmlu 2231 / gold 24 items, all 0 flagged). If the bridge is absent the wrapper prints a notice and runs the Python layer only (the verbatim check is then covered by the Python substring mirror of `is_leaked`).
+- **Engine ran here.** With `out/pyenv` + `out/pylib` present, the wrapper's primary path executed the real `get_leakage_report()` RPC (question 8 / mmlu 2179 / gold 32 items, all 0 flagged). If the bridge is absent the wrapper prints a notice and runs the Python layer only (the verbatim check is then covered by the Python substring mirror of `is_leaked`).
 - **Study-card stand-in.** The packs reference study cards only by `card_tag`, not by text, so the engine layer represents each tag's studied material by that tag's answer explanations. This keeps the verbatim check non-trivial: a copy-pasted stem would still be caught, while a genuine (interrogative) stem is not a substring of its (declarative) explanation.
 - **Wrapper.** Mirrors `tools/speedrun_benchmark.sh` but, unlike it, falls back to a system Python when the bridge is missing (the near-dup layer + self-test are designed to run without the engine). Override the fallback interpreter with `SPEEDRUN_PY=/path/to/python`.
 - **Self-test on every run.** The spec asks for a no-arg self-test; this scanner runs it on _every_ invocation so a CLEAN verdict is always backed by a just-fired detector.

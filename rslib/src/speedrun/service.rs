@@ -205,6 +205,7 @@ impl crate::services::SpeedrunService for Collection {
             })
             .collect();
         let topics = self.storage.replace_sr_topic_map(&entries)?;
+        self.persist_topic_map_config(&entries)?;
         Ok(anki_proto::speedrun::SetTopicMapResponse { topics })
     }
 
@@ -234,6 +235,7 @@ impl crate::services::SpeedrunService for Collection {
             })
             .collect();
         let topics = self.storage.replace_sr_topic_map(&entries)?;
+        self.persist_topic_map_config(&entries)?;
         Ok(anki_proto::speedrun::SetTopicMapResponse { topics })
     }
 
@@ -266,6 +268,39 @@ impl crate::services::SpeedrunService for Collection {
             weighted_coverage: summary.weighted_coverage,
             topics,
         })
+    }
+
+    fn get_topic_signals(
+        &mut self,
+    ) -> error::Result<anki_proto::speedrun::TopicSignalsReport> {
+        let topics = self
+            .storage
+            .sr_topic_signals()?
+            .into_iter()
+            .map(
+                |(
+                    topic,
+                    label,
+                    weight,
+                    cards,
+                    review_cards,
+                    mature_cards,
+                    exam_attempts,
+                    exam_correct,
+                )| anki_proto::speedrun::TopicSignal {
+                    topic,
+                    label,
+                    weight,
+                    cards,
+                    covered: cards > 0,
+                    review_cards,
+                    mature_cards,
+                    exam_attempts,
+                    exam_correct,
+                },
+            )
+            .collect();
+        Ok(anki_proto::speedrun::TopicSignalsReport { topics })
     }
 
     fn get_review_order(
@@ -347,6 +382,18 @@ impl crate::services::SpeedrunService for Collection {
         Ok(anki_proto::speedrun::QuestionItems {
             items: items.into_iter().map(to_proto_question_item).collect(),
         })
+    }
+
+    fn get_practice_bank_summary(
+        &mut self,
+    ) -> error::Result<anki_proto::speedrun::PracticeBankSummary> {
+        let rows = self.storage.sr_question_item_counts_by_topic()?;
+        let total = rows.iter().map(|(_, count)| count).sum();
+        let topics = rows
+            .into_iter()
+            .map(|(topic, count)| anki_proto::speedrun::PracticeBankTopicCount { topic, count })
+            .collect();
+        Ok(anki_proto::speedrun::PracticeBankSummary { total, topics })
     }
 
     fn get_session_reasoning_round(
@@ -624,6 +671,102 @@ impl crate::services::SpeedrunService for Collection {
                 .collect(),
         })
     }
+
+    fn seed_sample_history(
+        &mut self,
+        input: anki_proto::speedrun::SeedSampleHistoryRequest,
+    ) -> error::Result<anki_proto::speedrun::SeedSampleHistoryResponse> {
+        use crate::card::CardQueue;
+        use crate::card::CardType;
+        use crate::search::SortMode;
+
+        let mature_n = if input.mature_cards == 0 {
+            30
+        } else {
+            input.mature_cards
+        } as usize;
+        let exam_n = if input.exam_attempts == 0 {
+            24
+        } else {
+            input.exam_attempts
+        } as usize;
+        let srs_n = if input.srs_attempts == 0 {
+            12
+        } else {
+            input.srs_attempts
+        } as usize;
+
+        // Mark up to mature_n existing cards as mature review cards (interval >=
+        // 21 days) so the memory signal (mature/review) becomes meaningful
+        // without waiting real calendar time. The undoable update path sets
+        // mtime/usn so the change syncs to the phone. The readiness score is
+        // still COMPUTED from this seeded state, never hand-set.
+        let cids = self.search_cards("", SortMode::NoOrder)?;
+        let mut updated = Vec::new();
+        for cid in cids.iter().take(mature_n) {
+            if let Some(mut card) = self.storage.get_card(*cid)? {
+                card.ctype = CardType::Review;
+                card.queue = CardQueue::Review;
+                card.interval = 30;
+                card.due = 0;
+                updated.push(card);
+            }
+        }
+        let targets: Vec<(i64, i64)> = updated.iter().map(|c| (c.id.0, c.note_id.0)).collect();
+        let cards_matured = updated.len() as u32;
+        if !updated.is_empty() {
+            self.update_cards_maybe_undoable(updated, false)?;
+        }
+
+        // Record exam-style + SRS attempts (with predictions) on the matured
+        // cards, mirroring the e2e proof harness, so performance, the recall->
+        // performance gap and calibration all populate.
+        let mut recorded = 0u32;
+        if !targets.is_empty() {
+            let base_ms = TimestampMillis::now().0;
+            for i in 0..exam_n {
+                let (cid, nid) = targets[i % targets.len()];
+                let correct = i % 3 != 0; // ~2/3 correct, a repeatable weakness pattern
+                let _ = self.record_attempt(anki_proto::speedrun::RecordAttemptRequest {
+                    card_id: cid,
+                    note_id: nid,
+                    session_id: "sample-history".to_string(),
+                    answered_at_ms: base_ms + i as i64,
+                    took_ms: 7000,
+                    question_type: 1,
+                    correct,
+                    predicted: Some(if correct { 0.75 } else { 0.45 }),
+                    data: "{}".to_string(),
+                    ..Default::default()
+                })?;
+                recorded += 1;
+            }
+            for i in 0..srs_n {
+                let (cid, nid) = targets[i % targets.len()];
+                let _ = self.record_attempt(anki_proto::speedrun::RecordAttemptRequest {
+                    card_id: cid,
+                    note_id: nid,
+                    session_id: "sample-history".to_string(),
+                    answered_at_ms: base_ms + (exam_n + i) as i64,
+                    took_ms: 6000,
+                    question_type: 0,
+                    correct: true,
+                    predicted: Some(0.8),
+                    data: "{}".to_string(),
+                    ..Default::default()
+                })?;
+                recorded += 1;
+            }
+        }
+
+        // Refresh the cached readiness snapshot so the UI reflects the seed.
+        let _ = self.compute_readiness()?;
+
+        Ok(anki_proto::speedrun::SeedSampleHistoryResponse {
+            cards_matured,
+            attempts_recorded: recorded,
+        })
+    }
 }
 
 impl Collection {
@@ -656,6 +799,14 @@ impl Collection {
             .into_iter()
             .map(|e| e.topic)
             .collect())
+    }
+
+    /// Persist the topic map in collection config so it rides normal Anki config sync
+    /// (``sr_topic_map`` itself has no USN and is not chunk-synced).
+    fn persist_topic_map_config(&mut self, entries: &[SrTopicMapEntry]) -> error::Result<()> {
+        let vec = entries.to_vec();
+        self.set_config("speedrunTopicMap", &vec)?;
+        Ok(())
     }
 
     /// The topics a card belongs to, via the deck-name heuristic plus note tags
@@ -1195,6 +1346,138 @@ mod test {
         assert_eq!(due.items.len(), 2);
         assert!(due.items.iter().all(|q| q.topic == "biology"));
 
+        Ok(())
+    }
+
+    #[test]
+    fn seed_sample_history_populates_three_scores() -> Result<()> {
+        use crate::prelude::DeckId;
+
+        let tempfile = new_tempfile()?;
+        let mut col = CollectionBuilder::default()
+            .set_collection_path(tempfile.path())
+            .build()?;
+
+        // 10-FC outline + 30 cards spread across topics so coverage clears 50%.
+        let _ = col.seed_mcat_topic_outline()?;
+        let nt = col.get_notetype_by_name("Basic")?.unwrap();
+        for i in 0..30 {
+            let mut note = nt.new_note();
+            note.set_field(0, &format!("fact {i}"))?;
+            note.tags = vec![format!("fc{}", i % 10 + 1)];
+            col.add_note(&mut note, DeckId(1))?;
+        }
+
+        // Before seeding: all new cards -> readiness abstains honestly.
+        assert!(!col.compute_readiness()?.sufficient);
+
+        let resp = col.seed_sample_history(
+            anki_proto::speedrun::SeedSampleHistoryRequest::default(),
+        )?;
+        assert_eq!(resp.cards_matured, 30);
+        assert_eq!(resp.attempts_recorded, 36);
+
+        // After seeding: an in-range, sufficient score with all three signals,
+        // COMPUTED from the seeded mature cards + attempts (never hand-set).
+        let snap = col.compute_readiness()?;
+        assert!(snap.sufficient, "reason: {}", snap.reason);
+        assert!(snap.memory > 0.0 && snap.performance > 0.0 && snap.coverage > 0.0);
+        assert!(snap.readiness_scaled >= 472 && snap.readiness_scaled <= 528);
+        assert!(snap.low_scaled <= snap.readiness_scaled);
+        assert!(snap.high_scaled >= snap.readiness_scaled);
+        // Predictions were recorded, so calibration has data.
+        assert_eq!(col.get_calibration_report()?.n, 36);
+        Ok(())
+    }
+
+    #[test]
+    fn topic_signals_attribute_by_topic() -> Result<()> {
+        use crate::card::CardQueue;
+        use crate::card::CardType;
+        use crate::prelude::DeckId;
+        use crate::search::SortMode;
+
+        let tempfile = new_tempfile()?;
+        let mut col = CollectionBuilder::default()
+            .set_collection_path(tempfile.path())
+            .build()?;
+
+        let _ = col.seed_mcat_topic_outline()?;
+        let nt = col.get_notetype_by_name("Basic")?.unwrap();
+        // three notes tagged fc1, two tagged fc2
+        for (field, tag) in [
+            ("a", "fc1"),
+            ("b", "fc1"),
+            ("c", "fc1"),
+            ("d", "fc2"),
+            ("e", "fc2"),
+        ] {
+            let mut note = nt.new_note();
+            note.set_field(0, field)?;
+            note.tags = vec![tag.to_string()];
+            col.add_note(&mut note, DeckId(1))?;
+        }
+
+        // Mature two of the fc1 cards (review queue, interval >= 21).
+        let fc1_cards = col.search_cards("tag:fc1", SortMode::NoOrder)?;
+        assert_eq!(fc1_cards.len(), 3);
+        let mut updated = Vec::new();
+        for cid in fc1_cards.iter().take(2) {
+            let mut card = col.storage.get_card(*cid)?.unwrap();
+            card.ctype = CardType::Review;
+            card.queue = CardQueue::Review;
+            card.interval = 30;
+            updated.push(card);
+        }
+        col.update_cards_maybe_undoable(updated, false)?;
+
+        // Exam-style attempts: 3 on an fc1 card (2 correct), 1 on an fc2 card (0).
+        let fc2_cards = col.search_cards("tag:fc2", SortMode::NoOrder)?;
+        for correct in [true, true, false] {
+            let _ = col.record_attempt(anki_proto::speedrun::RecordAttemptRequest {
+                card_id: fc1_cards[0].0,
+                question_type: 2,
+                correct,
+                ..Default::default()
+            })?;
+        }
+        let _ = col.record_attempt(anki_proto::speedrun::RecordAttemptRequest {
+            card_id: fc2_cards[0].0,
+            question_type: 2,
+            correct: false,
+            ..Default::default()
+        })?;
+
+        let report = col.get_topic_signals()?;
+        let sig = |t: &str| {
+            report
+                .topics
+                .iter()
+                .find(|s| s.topic == t)
+                .unwrap_or_else(|| panic!("missing topic {t}"))
+        };
+
+        let fc1 = sig("fc1");
+        assert_eq!(fc1.cards, 3);
+        assert!(fc1.covered);
+        assert_eq!(fc1.review_cards, 2);
+        assert_eq!(fc1.mature_cards, 2);
+        assert_eq!(fc1.exam_attempts, 3);
+        assert_eq!(fc1.exam_correct, 2);
+
+        let fc2 = sig("fc2");
+        assert_eq!(fc2.cards, 2);
+        assert!(fc2.covered);
+        assert_eq!(fc2.review_cards, 0);
+        assert_eq!(fc2.mature_cards, 0);
+        assert_eq!(fc2.exam_attempts, 1);
+        assert_eq!(fc2.exam_correct, 0);
+
+        // An untouched topic reports zeros and is not covered.
+        let fc3 = sig("fc3");
+        assert_eq!(fc3.cards, 0);
+        assert!(!fc3.covered);
+        assert_eq!(fc3.exam_attempts, 0);
         Ok(())
     }
 

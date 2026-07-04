@@ -70,6 +70,22 @@ service SpeedrunService {
   // End-of-session / periodic feedback report (Design 2 / D2): counts by
   // diagnosis kind + weakest topics over exam-style attempts.
   rpc GetFeedbackReport(generic.Empty) returns (FeedbackReport);
+  // Per-topic counts of held-out questions in the bank, for the Practice
+  // landing (MCAT section / subject cards). Appended last for index stability.
+  rpc GetPracticeBankSummary(generic.Empty) returns (PracticeBankSummary);
+  // Demo/sample seeding: mark existing cards as mature review cards and record a
+  // batch of exam-style + SRS attempts (with predictions), so the three scores
+  // and calibration populate immediately for a demo without waiting weeks for
+  // real intervals to mature. The score is still COMPUTED from this seeded
+  // history, never hand-set. Appended last for index stability.
+  rpc SeedSampleHistory(SeedSampleHistoryRequest) returns (SeedSampleHistoryResponse);
+  // Per-topic signal breakdown for the topic-centric dashboard: coverage plus
+  // the raw counts behind the memory signal (mature/review cards tagged to the
+  // topic) and the performance signal (exam-style attempts whose card is tagged
+  // to the topic). Fractions + per-topic sufficiency are derived in the
+  // presentation layer from these counts, mirroring the global signals.
+  // Appended last to keep existing method indices stable.
+  rpc GetTopicSignals(generic.Empty) returns (TopicSignalsReport);
 }
 
 // Backend counterpart. The methods above are implemented on Collection and are
@@ -144,6 +160,20 @@ message QuestionItem {
 
 message QuestionItems {
   repeated QuestionItem items = 1;
+}
+
+// One row of the practice bank summary: how many held-out questions carry a
+// given subject topic tag.
+message PracticeBankTopicCount {
+  string topic = 1;
+  uint32 count = 2;
+}
+
+// Per-topic counts of the whole question bank, so the Practice landing can show
+// real question counts per MCAT section / subject without loading every row.
+message PracticeBankSummary {
+  uint32 total = 1;
+  repeated PracticeBankTopicCount topics = 2;
 }
 
 message QuestionItemId {
@@ -323,4 +353,40 @@ message ReadinessSnapshot {
 
 message SrAttempts {
   repeated SrAttempt attempts = 1;
+}
+
+// Counts for the demo/sample-history seeder (0 = use the engine defaults).
+message SeedSampleHistoryRequest {
+  uint32 mature_cards = 1;
+  uint32 exam_attempts = 2;
+  uint32 srs_attempts = 3;
+}
+
+message SeedSampleHistoryResponse {
+  uint32 cards_matured = 1;
+  uint32 attempts_recorded = 2;
+}
+
+// One topic's raw signal counts. memory = mature_cards/review_cards and
+// performance = exam_correct/exam_attempts are derived by the caller (with a
+// per-topic evidence gate), matching how the global signals are computed.
+message TopicSignal {
+  string topic = 1;
+  string label = 2;
+  float weight = 3;
+  // Notes tagged with this topic (the coverage basis).
+  uint32 cards = 4;
+  bool covered = 5;
+  // Review-queue cards (type=2) whose note is tagged with this topic, and the
+  // mature (ivl>=21) subset -- the memory signal's numerator/denominator.
+  uint32 review_cards = 6;
+  uint32 mature_cards = 7;
+  // Exam-style attempts (question_type!=0) whose card is tagged with this
+  // topic, and the correct subset -- the performance signal.
+  uint32 exam_attempts = 8;
+  uint32 exam_correct = 9;
+}
+
+message TopicSignalsReport {
+  repeated TopicSignal topics = 1;
 }

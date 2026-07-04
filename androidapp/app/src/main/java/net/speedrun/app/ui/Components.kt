@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -27,6 +29,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Lightbulb
@@ -46,7 +49,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -91,18 +93,12 @@ fun SpeedrunCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            // A soft, diffuse lift + a warm hairline edge so cards read as gently
-            // raised paper rather than stark white blocks with a sharp outline.
-            .shadow(
-                elevation = 7.dp,
-                shape = RoundedCornerShape(Radius.card),
-                clip = false,
-                ambientColor = Color.Black.copy(alpha = 0.04f),
-                spotColor = Color.Black.copy(alpha = 0.06f),
-            )
+            // iOS grouped-cell look: a flat filled cell (no shadow) whose edge
+            // reads from the fill contrast against the grouped background, with a
+            // hairline separator for crisp definition.
             .clip(RoundedCornerShape(Radius.card))
             .background(Speedrun.colors.surfaceElevated)
-            .border(1.dp, Speedrun.colors.separator, RoundedCornerShape(Radius.card))
+            .border(0.5.dp, Speedrun.colors.separator, RoundedCornerShape(Radius.card))
             .padding(Space.l),
         content = content,
     )
@@ -318,7 +314,12 @@ fun RingGauge(
                 )
             }
         }
-        content()
+        // The gauge is open at the bottom, so its geometric centre sits high in
+        // the arc band. Bias the readout down into that open space so the top
+        // label never crosses the inner arcs (or the range pointer).
+        Box(Modifier.offset(y = diameter * 0.07f), contentAlignment = Alignment.Center) {
+            content()
+        }
     }
 }
 
@@ -597,15 +598,7 @@ fun PrimaryButton(
         modifier
             .fillMaxWidth()
             .graphicsLayer { scaleX = scale; scaleY = scale }
-            // A soft, accent-tinted lift so the one primary action reads as a
-            // raised, confident button rather than a flat block.
-            .shadow(
-                elevation = if (enabled) 8.dp else 0.dp,
-                shape = RoundedCornerShape(Radius.pill),
-                clip = false,
-                ambientColor = Color.Black.copy(alpha = 0.06f),
-                spotColor = c.accent.copy(alpha = 0.30f),
-            )
+            // iOS filled button: flat accent fill (no shadow), capsule shape.
             .clip(RoundedCornerShape(Radius.pill))
             .background(if (enabled) c.primary else c.separator)
             .clickable(interactionSource = interaction, indication = null, enabled = enabled) {
@@ -648,15 +641,9 @@ fun SecondaryButton(
         modifier
             .fillMaxWidth()
             .graphicsLayer { scaleX = scale; scaleY = scale }
-            .shadow(
-                elevation = if (enabled) 2.dp else 0.dp,
-                shape = RoundedCornerShape(Radius.pill),
-                clip = false,
-                spotColor = Color.Black.copy(alpha = 0.08f),
-            )
+            // iOS tinted secondary: a soft accent-tinted fill, flat (no shadow).
             .clip(RoundedCornerShape(Radius.pill))
-            .background(if (enabled) c.surface else c.background)
-            .border(1.dp, c.border, RoundedCornerShape(Radius.pill))
+            .background(if (enabled) c.accent.copy(alpha = 0.12f) else c.background)
             .clickable(interactionSource = interaction, indication = null, enabled = enabled) {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 onClick()
@@ -666,7 +653,7 @@ fun SecondaryButton(
     ) {
         Text(
             text,
-            color = if (enabled) c.textPrimary else c.textTertiary,
+            color = if (enabled) c.accent else c.textTertiary,
             style = MaterialTheme.typography.labelLarge,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -935,6 +922,121 @@ fun AppTextField(
             unfocusedPlaceholderColor = c.textTertiary,
         ),
     )
+}
+
+/**
+ * An iOS inset-grouped list container: a flat rounded card whose rows sit flush
+ * (each row owns its own padding) and are separated by hairlines. Pairs with
+ * [SettingsRow] / [RowDivider] and an optional [GroupFootnote] beneath.
+ */
+@Composable
+fun SettingsGroup(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(Radius.card))
+            .background(Speedrun.colors.surfaceElevated)
+            .border(0.5.dp, Speedrun.colors.separator, RoundedCornerShape(Radius.card)),
+        content = content,
+    )
+}
+
+/**
+ * One row of an inset-grouped list (>= 52dp): a title with an optional subtitle,
+ * an optional right-aligned [value], an optional [trailing] control (a toggle),
+ * and an optional disclosure chevron. Tapping runs [onClick] when set.
+ */
+@Composable
+fun SettingsRow(
+    title: String,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    value: String? = null,
+    showChevron: Boolean = false,
+    titleColor: Color = Speedrun.colors.textPrimary,
+    trailing: (@Composable () -> Unit)? = null,
+    onClick: (() -> Unit)? = null,
+) {
+    val c = Speedrun.colors
+    val row = modifier.fillMaxWidth().heightIn(min = 52.dp)
+    Row(
+        (if (onClick != null) row.clickable { onClick() } else row)
+            .padding(horizontal = Space.l, vertical = Space.m),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, color = titleColor, style = MaterialTheme.typography.body)
+            if (subtitle != null) {
+                Text(
+                    subtitle,
+                    color = c.textSecondary,
+                    style = MaterialTheme.typography.caption,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+        }
+        if (value != null) {
+            // Short values hug the right edge (no weight). Long secondary text
+            // belongs in `subtitle` (stacked under the title) so it never starves
+            // the title into a character-wrap.
+            Text(
+                value,
+                color = c.textSecondary,
+                style = MaterialTheme.typography.body,
+                textAlign = TextAlign.End,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = Space.m),
+            )
+        }
+        trailing?.let { Spacer(Modifier.width(Space.s)); it() }
+        if (showChevron) {
+            Spacer(Modifier.width(Space.xs))
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = c.textTertiary,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
+/** A hairline row separator, inset from the leading edge like iOS grouped lists. */
+@Composable
+fun RowDivider(inset: Dp = Space.l) {
+    Box(
+        Modifier.fillMaxWidth().padding(start = inset).height(0.5.dp)
+            .background(Speedrun.colors.separator),
+    )
+}
+
+/** A small gray footnote beneath an inset group (iOS explanatory caption). */
+@Composable
+fun GroupFootnote(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text,
+        color = Speedrun.colors.textTertiary,
+        style = MaterialTheme.typography.caption,
+        modifier = modifier.fillMaxWidth().padding(start = Space.l, end = Space.l, top = Space.s),
+    )
+}
+
+/** A rounded, tinted square holding a symbol - leading accessory for rows/heroes. */
+@Composable
+fun IconTile(
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    tint: Color = Speedrun.colors.accent,
+    size: Dp = 40.dp,
+) {
+    Box(
+        modifier.size(size)
+            .clip(RoundedCornerShape(Radius.control))
+            .background(tint.copy(alpha = 0.14f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(size * 0.52f))
+    }
 }
 
 /** A token-styled Switch (accent track when on) so toggles match the language. */

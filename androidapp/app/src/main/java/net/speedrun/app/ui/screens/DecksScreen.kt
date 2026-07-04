@@ -21,6 +21,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Style
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,21 +46,26 @@ import kotlinx.coroutines.launch
 import net.speedrun.app.DeckNode
 import net.speedrun.app.EngineRepository
 import net.speedrun.app.ui.DueCounts
+import net.speedrun.app.ui.GroupFootnote
+import net.speedrun.app.ui.IconTile
 import net.speedrun.app.ui.PrimaryButton
+import net.speedrun.app.ui.RowDivider
 import net.speedrun.app.ui.ScreenHeader
 import net.speedrun.app.ui.SecondaryButton
 import net.speedrun.app.ui.SectionLabel
+import net.speedrun.app.ui.SettingsGroup
 import net.speedrun.app.ui.SpeedrunCard
 import net.speedrun.app.ui.theme.Space
 import net.speedrun.app.ui.theme.Speedrun
 import net.speedrun.app.ui.theme.body
 import net.speedrun.app.ui.theme.caption
+import net.speedrun.app.ui.theme.readout
 import net.speedrun.app.ui.theme.subhead
 
 /**
- * The home / default destination: the day's study actions (review the most-due
- * deck, or practice) above the deck tree. The readiness verdict lives on its own
- * [DashboardScreen] now, so the deck list is reachable without scrolling past it.
+ * The home / default destination: a "today" hero summarizing what's due with the
+ * primary study action, then the deck list as an inset-grouped list. The
+ * readiness verdict lives on its own [DashboardScreen].
  */
 @Composable
 fun DecksScreen(
@@ -65,24 +73,26 @@ fun DecksScreen(
     onReview: (Long, String) -> Unit,
     onPractice: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenSection: (String) -> Unit,
 ) {
     val c = Speedrun.colors
     val scope = rememberCoroutineScope()
     var tree by remember { mutableStateOf<List<DeckNode>?>(null) }
+    var dash by remember { mutableStateOf<net.speedrun.app.TopicDashboardUi?>(null) }
     val expanded = remember { mutableStateMapOf<Long, Boolean>() }
 
-    // Reload on resume so due counts reflect reviews done elsewhere.
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         scope.launch {
             tree = runCatching { EngineRepository.deckTree() }.getOrElse { emptyList() }
+            dash = runCatching { EngineRepository.topicDashboard() }.getOrNull()
         }
     }
 
     val topDecks = tree ?: emptyList()
     val bestDeck = topDecks.maxByOrNull { it.dueTotal }
     val totalDue = topDecks.sumOf { it.dueTotal }
+    val deckCount = topDecks.size
 
-    // Flatten the tree to the currently visible rows (respecting expand state).
     val visible = ArrayList<Pair<DeckNode, Int>>()
     fun collect(nodes: List<DeckNode>, depth: Int) {
         nodes.forEach { node ->
@@ -107,31 +117,39 @@ fun DecksScreen(
         )
         Spacer(Modifier.height(Space.m))
 
-        PrimaryButton(
-            text = if (totalDue > 0) "Review $totalDue due" else "Review",
-            enabled = bestDeck != null,
-        ) {
-            bestDeck?.let { onReview(it.id, it.name) }
+        TodayHero(
+            totalDue = totalDue,
+            deckCount = deckCount,
+            onReview = { bestDeck?.let { onReview(it.id, it.name) } },
+            onPractice = onPractice,
+        )
+        if (totalDue > 0) {
+            Spacer(Modifier.height(Space.s))
+            SecondaryButton("Practice questions", onClick = onPractice)
         }
-        Spacer(Modifier.height(Space.s))
-        SecondaryButton("Practice questions", onClick = onPractice)
+
+        dash?.takeIf { it.hasTopics }?.let { d ->
+            Spacer(Modifier.height(Space.xxl))
+            SectionLabel("By MCAT topic")
+            TopicSections(d, onOpenSection)
+        }
 
         Spacer(Modifier.height(Space.xxl))
         SectionLabel("Your decks")
         when (val t = tree) {
-            null -> SpeedrunCard { Text("Loading decks\u2026", color = c.textSecondary, style = MaterialTheme.typography.body) }
+            null -> SpeedrunCard { Text("Loading decks…", color = c.textSecondary, style = MaterialTheme.typography.body) }
             else -> if (t.isEmpty()) {
                 SpeedrunCard {
                     Text("No decks yet", color = c.textPrimary, style = MaterialTheme.typography.subhead)
                     Text(
-                        "Add the MileDown deck from the Library tab to start reviewing.",
+                        "Add a deck or the MCAT content library from the Library tab to start reviewing.",
                         color = c.textSecondary,
                         style = MaterialTheme.typography.body,
                         modifier = Modifier.padding(top = Space.xs),
                     )
                 }
             } else {
-                SpeedrunCard(Modifier.animateContentSize()) {
+                SettingsGroup(Modifier.animateContentSize()) {
                     visible.forEachIndexed { i, (node, depth) ->
                         DeckTreeRow(
                             node = node,
@@ -140,18 +158,61 @@ fun DecksScreen(
                             onToggle = { expanded[node.id] = !(expanded[node.id] ?: false) },
                             onOpen = { onOpenDeck(node.id, node.name) },
                         )
-                        if (i < visible.lastIndex) {
-                            Box(
-                                Modifier.fillMaxWidth().height(0.6.dp)
-                                    .padding(start = Space.xs)
-                                    .background(c.separator),
-                            )
-                        }
+                        if (i < visible.lastIndex) RowDivider(inset = Space.l)
                     }
                 }
+                GroupFootnote("Add more decks from the Library tab.")
             }
         }
         Spacer(Modifier.height(Space.xxl))
+    }
+}
+
+/**
+ * The day's study state: the due count (or an "all caught up" state) with a
+ * leading glyph and the primary action, so the top of the tab reads at a glance.
+ */
+@Composable
+private fun TodayHero(
+    totalDue: Int,
+    deckCount: Int,
+    onReview: () -> Unit,
+    onPractice: () -> Unit,
+) {
+    val c = Speedrun.colors
+    SpeedrunCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (totalDue > 0) {
+                IconTile(Icons.Filled.Bolt, tint = c.accent, size = 48.dp)
+                Spacer(Modifier.width(Space.m))
+                Column(Modifier.weight(1f)) {
+                    Text(totalDue.toString(), color = c.textPrimary, style = MaterialTheme.typography.readout)
+                    Text(
+                        "cards due today" + if (deckCount > 1) " · $deckCount decks" else "",
+                        color = c.textSecondary,
+                        style = MaterialTheme.typography.body,
+                    )
+                }
+            } else {
+                IconTile(Icons.Filled.CheckCircle, tint = c.readinessGood, size = 48.dp)
+                Spacer(Modifier.width(Space.m))
+                Column(Modifier.weight(1f)) {
+                    Text("All caught up", color = c.textPrimary, style = MaterialTheme.typography.subhead)
+                    Text(
+                        "Nothing due right now — keep momentum with a practice set.",
+                        color = c.textSecondary,
+                        style = MaterialTheme.typography.body,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(Space.l))
+        if (totalDue > 0) {
+            PrimaryButton("Review $totalDue due", onClick = onReview)
+        } else {
+            PrimaryButton("Practice questions", onClick = onPractice)
+        }
     }
 }
 
@@ -166,16 +227,22 @@ private fun DeckTreeRow(
     val c = Speedrun.colors
     val rotation by animateFloatAsState(if (expanded) 90f else 0f, label = "chevron")
     Row(
-        Modifier.fillMaxWidth().clickable { onOpen() }.padding(vertical = Space.m),
+        Modifier.fillMaxWidth().clickable { onOpen() }
+            .padding(horizontal = Space.l, vertical = Space.m),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Spacer(Modifier.width((depth * 14).dp))
+        if (depth == 0) {
+            IconTile(Icons.Filled.Style, tint = c.accent, size = 40.dp)
+            Spacer(Modifier.width(Space.m))
+        } else {
+            Spacer(Modifier.width((depth * 16).dp))
+        }
         // Disclosure control (only for decks with subtopics); rotates when open.
-        Box(
-            Modifier.size(28.dp).clickable(enabled = node.hasChildren) { onToggle() },
-            contentAlignment = Alignment.Center,
-        ) {
-            if (node.hasChildren) {
+        if (node.hasChildren) {
+            Box(
+                Modifier.size(28.dp).clickable { onToggle() },
+                contentAlignment = Alignment.Center,
+            ) {
                 Icon(
                     Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = if (expanded) "Collapse" else "Expand",
@@ -183,8 +250,9 @@ private fun DeckTreeRow(
                     modifier = Modifier.graphicsLayer { rotationZ = rotation },
                 )
             }
+            Spacer(Modifier.width(Space.xs))
         }
-        Column(Modifier.weight(1f).padding(start = Space.xs)) {
+        Column(Modifier.weight(1f)) {
             Text(node.name, color = c.textPrimary, style = MaterialTheme.typography.subhead)
             Spacer(Modifier.height(Space.xs))
             if (node.dueTotal == 0) {

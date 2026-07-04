@@ -20,9 +20,11 @@ from __future__ import annotations
 import atexit
 import os
 import secrets
+import signal
 import socket
 import subprocess
 import sys
+import time
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -42,6 +44,7 @@ _DEFAULT_USER = "speedrun"
 _proc: Any = None
 _port: int | None = None
 _log_file: Any = None
+_base: str | None = None
 
 
 # --- credentials ------------------------------------------------------------
@@ -122,9 +125,111 @@ def is_running() -> bool:
     return _proc is not None and _proc.poll() is None and _port is not None
 
 
+# --- stale-server reaping ---------------------------------------------------
+#
+# ``stop_server`` only reaps the child within this live process (via atexit).
+# If Anki crashes or is force-quit, the child sync-server is reparented to init
+# and keeps the server-side collection's media db locked. The next
+# ``start_server`` then spawns a fresh server against the same base, which fails
+# to open the locked db ("Sync server exited on startup ... Locked"). We record
+# the child's pid in a pidfile and, before spawning, reap any orphan it names.
+
+
+def _pidfile_path(base: str) -> str:
+    return os.path.join(base, "server.pid")
+
+
+def _write_pidfile(base: str, pid: int) -> None:
+    try:
+        with open(_pidfile_path(base), "w") as fh:
+            fh.write(str(pid))
+    except Exception:
+        pass
+
+
+def _read_pidfile(base: str) -> int | None:
+    try:
+        with open(_pidfile_path(base)) as fh:
+            return int(fh.read().strip())
+    except Exception:
+        return None
+
+
+def _remove_pidfile(base: str) -> None:
+    try:
+        os.remove(_pidfile_path(base))
+    except FileNotFoundError:
+        pass
+    except Exception:
+        pass
+
+
+def _process_is_sync_server(pid: int) -> bool:
+    """True only if ``pid`` is a live process whose command is our sync server.
+
+    The command check guards against a recycled pid belonging to something else,
+    so reaping never signals an unrelated process.
+    """
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)  # existence probe; does not actually signal
+    except (ProcessLookupError, PermissionError):
+        return False
+    except Exception:
+        return False
+    try:
+        out = subprocess.run(  # noqa: S603
+            ["ps", "-p", str(pid), "-o", "command="],
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=False,
+        )
+    except Exception:
+        return False
+    return "anki-sync-server" in out.stdout
+
+
+def _reap_stale_server(base: str) -> None:
+    """Terminate an orphaned sync server (from a crashed run) holding ``base``'s
+    lock, so a fresh server can start. No-op when there is nothing to reap."""
+    pid = _read_pidfile(base)
+    if pid is None:
+        return
+    if not _process_is_sync_server(pid):
+        _remove_pidfile(base)
+        return
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except Exception:
+        _remove_pidfile(base)
+        return
+    for _ in range(50):  # wait up to ~5s for it to release the lock
+        if not _process_is_sync_server(pid):
+            break
+        time.sleep(0.1)
+    else:
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except Exception:
+            pass
+    _remove_pidfile(base)
+
+
+def _server_log_tail(base: str) -> str:
+    """The last non-empty line of the server log, for an actionable message."""
+    try:
+        with open(os.path.join(base, "server.log")) as fh:
+            lines = [ln.strip() for ln in fh if ln.strip()]
+        return lines[-1] if lines else ""
+    except Exception:
+        return ""
+
+
 def start_server(mw: aqt.AnkiQt) -> bool:
     """Start the embedded sync server (idempotent). Returns True if it is up."""
-    global _proc, _port, _log_file
+    global _proc, _port, _log_file, _base
     if is_running() and _port is not None and _health_ok(_port):
         return True
     if mw.col is None:
@@ -138,6 +243,10 @@ def start_server(mw: aqt.AnkiQt) -> bool:
 
     user, token = creds(mw.col)
     base = _server_base(mw)
+    _base = base
+    # Clear any server orphaned by a previous run that still holds the lock;
+    # otherwise the fresh server below dies on startup with "Locked".
+    _reap_stale_server(base)
     port = _free_port()
     env = dict(os.environ)
     env.update(
@@ -157,30 +266,38 @@ def start_server(mw: aqt.AnkiQt) -> bool:
         tooltip(f"Could not start sync server: {exc}")
         return False
     _port = port
+    _write_pidfile(base, _proc.pid)
 
     # Wait briefly for the listener to accept connections.
     from aqt.qt import QEventLoop, QTimer
 
     for _ in range(40):  # up to ~8s
         if _proc.poll() is not None:  # died on startup
+            detail = _server_log_tail(base)
             tooltip(
                 "Sync server exited on startup; see speedrun_syncserver/server.log."
+                + (f"\n{detail}" if detail else "")
             )
             _proc = None
             _port = None
+            _remove_pidfile(base)
             return False
         if _health_ok(port):
             _advertise_mdns(lan_ip(), port)
+            setup_usb_tunnel(port)
             return True
         loop = QEventLoop()
         QTimer.singleShot(200, loop.quit)
         loop.exec()
     tooltip("Sync server did not become ready in time.")
-    return _health_ok(port)
+    if _health_ok(port):
+        setup_usb_tunnel(port)
+        return True
+    return False
 
 
 def stop_server() -> None:
-    global _proc, _port, _log_file
+    global _proc, _port, _log_file, _base
     _withdraw_mdns()
     proc, _proc, _port = _proc, None, None
     if proc is not None and proc.poll() is None:
@@ -198,6 +315,9 @@ def stop_server() -> None:
         except Exception:
             pass
         _log_file = None
+    if _base is not None:
+        _remove_pidfile(_base)
+        _base = None
 
 
 atexit.register(stop_server)
@@ -268,14 +388,105 @@ def phone_url() -> str:
 
 
 def local_url() -> str:
-    return f"http://127.0.0.1:{_port}" if _port else ""
+    return f"http://127.0.0.1:{_port}/" if _port else ""
+
+
+def _adb_path() -> str | None:
+    """Locate the adb binary (dev default: Android SDK platform-tools)."""
+    candidates: list[Path | str] = []
+    if override := os.environ.get("SPEEDRUN_ADB_BIN"):
+        candidates.append(override)
+    android_home = os.environ.get("ANDROID_HOME") or os.environ.get("ANDROID_SDK_ROOT")
+    if android_home:
+        candidates.append(Path(android_home) / "platform-tools" / "adb")
+    candidates.append(Path.home() / "Library/Android/sdk/platform-tools/adb")
+    for cand in candidates:
+        path = Path(cand)
+        if path.is_file() and os.access(path, os.X_OK):
+            return str(path)
+    return None
+
+
+def adb_device_connected() -> bool:
+    """True when ``adb devices`` reports at least one authorized device."""
+    adb = _adb_path()
+    if adb is None:
+        return False
+    try:
+        out = subprocess.run(  # noqa: S603
+            [adb, "devices"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except Exception:
+        return False
+    for line in out.stdout.splitlines()[1:]:
+        if line.strip().endswith("\tdevice"):
+            return True
+    return False
+
+
+def usb_tunnel_active(port: int | None = None) -> bool:
+    """True when adb reverse forwards the sync port to the desktop."""
+    port = port if port is not None else _port
+    if port is None:
+        return False
+    adb = _adb_path()
+    if adb is None:
+        return False
+    try:
+        out = subprocess.run(  # noqa: S603
+            [adb, "reverse", "--list"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except Exception:
+        return False
+    needle = f"tcp:{port}"
+    return any(needle in line for line in out.stdout.splitlines())
+
+
+def setup_usb_tunnel(port: int | None = None) -> tuple[bool, str]:
+    """Forward ``tcp:<port>`` on a USB-connected phone to this desktop.
+
+    Returns ``(ok, human-readable status)``. Best-effort: LAN sync still works
+    when no device is plugged in."""
+    port = port if port is not None else _port
+    if port is None:
+        return False, "Sync server is not running."
+    adb = _adb_path()
+    if adb is None:
+        return False, "adb not found (install Android platform-tools)."
+    if not adb_device_connected():
+        return False, "Plug in your phone and allow USB debugging."
+    try:
+        subprocess.run(  # noqa: S603
+            [adb, "reverse", f"tcp:{port}", f"tcp:{port}"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=True,
+        )
+    except Exception as exc:
+        return False, f"USB tunnel failed: {exc}"
+    return True, f"USB ready at {local_url()}"
 
 
 def pairing_payload(mw: aqt.AnkiQt) -> dict:
     """The data the phone needs to pair, encoded into the QR (and shown as text
-    for manual fallback)."""
+    for manual fallback). Includes ``usb_url`` for adb-reverse sync."""
     user, token = creds(mw.col)
-    return {"v": 1, "url": phone_url(), "user": user, "token": token}
+    return {
+        "v": 1,
+        "url": phone_url(),
+        "usb_url": local_url(),
+        "user": user,
+        "token": token,
+    }
 
 
 # The client-sync orchestration (login to the local server, run the native
@@ -286,6 +497,12 @@ def pairing_payload(mw: aqt.AnkiQt) -> dict:
 def status(mw: aqt.AnkiQt) -> dict:
     """State for the sidebar sync chip."""
     if is_running():
+        if usb_tunnel_active():
+            return {
+                "state": "ok",
+                "label": "USB sync ready",
+                "detail": local_url(),
+            }
         return {"state": "ok", "label": "Sharing on LAN", "detail": phone_url()}
     if mw.col is not None and is_paired(mw.col):
         return {"state": "idle", "label": "Sync with phone", "detail": "Tap to start"}

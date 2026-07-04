@@ -11,8 +11,8 @@ desktop app and the phone do:
 
   * an empty collection abstains honestly ("not enough evidence"),
   * the real 31-category AAMC content outline is loaded via SetTopicMap and a
-    realistic deck (~20 topics, ~3 cards each) crosses the 50% coverage line on
-    BOTH the raw and the weighted metric,
+    realistic deck (all 31 topics, ~4 real cards each from the open-licensed
+    content library) reaches full coverage on BOTH the raw and weighted metric,
   * at least 20 cards are matured through the REAL v3 scheduler with the
     collection clock advanced deterministically (no waiting real days),
   * at least 30 graded and at least 20 exam-style attempts are recorded, with
@@ -69,9 +69,33 @@ _OUTLINE_PATH = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "speedrun_mcat_outline.json"
 )
 
-# How many outline topics to build a deck for, and cards per topic.
-_TOPICS_TO_COVER = 20
-_CARDS_PER_TOPIC = 3
+# The open-licensed content library (real per-topic cards + questions), so the
+# e2e deck is realistic MCAT content across every category rather than
+# placeholder strings. Built by tools/build_content_library.py.
+_CONTENT_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "qt",
+    "aqt",
+    "data",
+    "web",
+    "imgs",
+    "speedrun_content_library.json",
+)
+
+# Cover ALL 31 content categories with several real cards each, so coverage is
+# full and every concept is exercised (up from a 20-topic placeholder deck).
+_TOPICS_TO_COVER = 31
+_CARDS_PER_TOPIC = 4
+
+
+def _load_content() -> dict:
+    """The per-topic content library keyed by content-category id (1A..10A), or
+    {} if it isn't built yet (the harness then falls back to placeholder text)."""
+    try:
+        with open(_CONTENT_PATH, encoding="utf-8") as f:
+            return json.load(f).get("topics", {})
+    except OSError:
+        return {}
 
 
 class Checker:
@@ -148,14 +172,20 @@ def _load_outline(col: Collection) -> tuple[list[dict], dict[str, str], int]:
 
 
 def _build_deck(
-    col: Collection, topics: list[dict], key_by_id: dict[str, str], did: int
+    col: Collection,
+    topics: list[dict],
+    key_by_id: dict[str, str],
+    did: int,
+    content: dict,
 ) -> dict[str, list[tuple[int, int]]]:
     """Create a realistic deck: `_CARDS_PER_TOPIC` cards for each of the
-    `_TOPICS_TO_COVER` highest-weight outline topics (ties broken by id). Picking
-    the heaviest topics guarantees both raw and weighted coverage clear the 50%
-    line, and covering several sibling topics per concept gives the interleave
-    feature confusable groups to reorder. Each note is tagged with its
-    hierarchical topic key so coverage and topic-grouping both see it."""
+    `_TOPICS_TO_COVER` highest-weight outline topics (ties broken by id). With
+    all 31 covered, raw and weighted coverage both reach 100%, and covering
+    several sibling topics per concept gives the interleave feature confusable
+    groups to reorder. Card text is pulled from the open-licensed content library
+    when available (real MCAT content per category), falling back to placeholder
+    text otherwise. Each note is tagged with its hierarchical topic key so
+    coverage and topic-grouping both see it."""
     chosen = sorted(topics, key=lambda t: (-float(t["weight"]), t["id"]))[
         :_TOPICS_TO_COVER
     ]
@@ -164,10 +194,15 @@ def _build_deck(
     for t in chosen:
         key = key_by_id[t["id"]]
         by_topic[key] = []
+        cards = content.get(t["id"], {}).get("cards", [])
         for i in range(_CARDS_PER_TOPIC):
             note = col.new_note(model)
-            note["Front"] = f"{t['id']} fact {i}"
-            note["Back"] = "the answer"
+            if i < len(cards):
+                note["Front"] = cards[i].get("front", f"{t['id']} fact {i}")
+                note["Back"] = cards[i].get("back", "the answer")
+            else:
+                note["Front"] = f"{t['id']} fact {i}"
+                note["Back"] = "the answer"
             note.tags = [key]
             col.add_note(note, did)  # type: ignore[arg-type]
             card = note.cards()[0]
@@ -268,16 +303,17 @@ def main() -> int:
             loaded == 31,
             f"{loaded} topics",
         )
-        by_topic = _build_deck(col, topics, key_by_id, did)
+        content = _load_content()
+        by_topic = _build_deck(col, topics, key_by_id, did, content)
         cov = col._backend.get_coverage_report()
         check.ok(
-            "raw coverage crosses the 50% line",
-            cov.coverage >= 0.5,
+            "every content category is covered",
+            cov.coverage >= 0.99,
             f"{cov.topics_covered}/{cov.topics_total} = {cov.coverage:.0%}",
         )
         check.ok(
-            "weighted coverage crosses the 50% line too",
-            cov.weighted_coverage >= 0.5,
+            "weighted coverage is full too",
+            cov.weighted_coverage >= 0.99,
             f"{cov.weighted_coverage:.0%}",
         )
 
@@ -302,14 +338,24 @@ def main() -> int:
             "\n[4] Record >= 30 graded and >= 20 exam-style attempts (with predictions)"
         )
         pairs = [(cid, nid) for cards in by_topic.values() for (cid, nid) in cards]
-        # Held-out questions for a dozen source cards (MIN_EVAL_CARDS needed for the gap).
-        for cid, _nid in pairs[:12]:
+        # Held-out questions for a dozen source cards (MIN_EVAL_CARDS needed for the
+        # gap), drawn from the real content library when available.
+        held_qs = [q for t in content.values() for q in t.get("questions", [])]
+        fallback = {"stem": "q", "options": ["a", "b", "c", "d"], "correct_index": 0}
+        for i, (cid, _nid) in enumerate(pairs[:12]):
+            q = held_qs[i] if i < len(held_qs) else fallback
             col._backend.add_question_item(
                 speedrun_pb2.QuestionItem(
                     card_id=cid,
                     topic="held-out",
-                    provenance=0,
-                    payload='{"stem":"q","options":["a","b","c","d"],"correct_index":0}',
+                    provenance=1,
+                    payload=json.dumps(
+                        {
+                            "stem": q.get("stem", "q"),
+                            "options": q.get("options", ["a", "b", "c", "d"]),
+                            "correct_index": q.get("correct_index", 0),
+                        }
+                    ),
                 )
             )
         exam = 0

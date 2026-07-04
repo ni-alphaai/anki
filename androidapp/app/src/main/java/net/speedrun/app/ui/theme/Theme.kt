@@ -27,10 +27,10 @@ object Space {
     val xxxl = 32.dp
 }
 
-/** Radii from the shared spec: card 20 - control/input 12 - CTA/chips pill (999). */
+/** iOS radii: grouped cards/sections ~12 - controls/inputs 10 - capsule CTAs/chips (999). */
 object Radius {
-    val card = 20.dp
-    val control = 12.dp
+    val card = 12.dp
+    val control = 10.dp
     val pill = 999.dp
 }
 

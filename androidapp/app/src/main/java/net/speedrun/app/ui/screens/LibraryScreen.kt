@@ -77,7 +77,7 @@ import java.util.Locale
  * plus a status card that makes a media-less collection obvious.
  */
 @Composable
-fun LibraryScreen() {
+fun LibraryScreen(onOpenDashboard: () -> Unit = {}) {
     val c = Speedrun.colors
     val scope = rememberCoroutineScope()
     var decks by remember { mutableStateOf<Int?>(null) }
@@ -121,7 +121,10 @@ fun LibraryScreen() {
         }
         Spacer(Modifier.height(Space.xxl))
 
-        ImportPanel(onImported = { scope.launch { refresh() } })
+        ImportPanel(
+            onImported = { scope.launch { refresh() } },
+            onSampleLoaded = onOpenDashboard,
+        )
         Spacer(Modifier.height(Space.xxl))
     }
 }
@@ -132,7 +135,10 @@ fun LibraryScreen() {
  * bundled MMLU pack, with a busy/progress card for large downloads.
  */
 @Composable
-fun ImportPanel(onImported: () -> Unit) {
+fun ImportPanel(
+    onImported: () -> Unit,
+    onSampleLoaded: (() -> Unit)? = null,
+) {
     val c = Speedrun.colors
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -208,6 +214,44 @@ fun ImportPanel(onImported: () -> Unit) {
             Spacer(Modifier.height(Space.l))
         }
 
+        SectionLabel("MCAT content library")
+        SpeedrunCard {
+            Text("Open-licensed MCAT library", color = c.textPrimary, style = MaterialTheme.typography.subhead)
+            Text(
+                "186 source-cited flashcards + 124 practice questions across all 31 AAMC content categories (OpenStax, CC BY). Loads the coverage map.",
+                color = c.textSecondary, style = MaterialTheme.typography.body, modifier = Modifier.padding(top = Space.xs),
+            )
+            Spacer(Modifier.height(Space.m))
+            PrimaryButton("Add library", enabled = !busy) {
+                runImport("Adding MCAT content library…") {
+                    EngineRepository.importContentLibrary(context)
+                }
+            }
+        }
+        Spacer(Modifier.height(Space.xxl))
+
+        SectionLabel("Demo")
+        SpeedrunCard {
+            Text("Load sample study history", color = c.textPrimary, style = MaterialTheme.typography.subhead)
+            Text(
+                "Seeds mature review cards + practice attempts so your three scores (memory, performance, readiness) show with ranges right away. Clearly sample data - the score is still computed, not made up.",
+                color = c.textSecondary, style = MaterialTheme.typography.body, modifier = Modifier.padding(top = Space.xs),
+            )
+            Spacer(Modifier.height(Space.m))
+            PrimaryButton("Load sample", enabled = !busy) {
+                runImport("Loading sample study history…") {
+                    val (matured, attempts) = EngineRepository.seedSampleHistory(context)
+                    if (matured == 0) {
+                        "Could not seed sample history — try Add library, then Load sample again"
+                    } else {
+                        onSampleLoaded?.invoke()
+                        "Loaded $matured mature cards + $attempts attempts (sample data). Opening Dashboard…"
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(Space.xxl))
+
         SectionLabel("Guided end-to-end test")
         SpeedrunCard {
             Text("Biology e2e test", color = c.textPrimary, style = MaterialTheme.typography.subhead)
@@ -252,7 +296,7 @@ fun ImportPanel(onImported: () -> Unit) {
         SectionLabel("Import your own")
         SpeedrunCard {
             Text(
-                "Paste a direct link to any Anki deck (.apkg / .colpkg) or question pack (.json). Google Drive share links work.",
+                "Paste a direct link to any Anki deck (.apkg / .colpkg) or question pack (.json / .csv). Google Drive share links work.",
                 color = c.textSecondary, style = MaterialTheme.typography.body,
             )
             Spacer(Modifier.height(Space.m))

@@ -7,8 +7,8 @@ These assert design guarantees of the desktop reskin without a live GUI:
 
 1. The deck-browser home carries **no** injected readiness banner (its white
    block clashed with the deck list, so the banner was removed).
-2. The app-shell sidebar renders all primary destinations (Home / Study /
-   Practice / Library / Settings) and marks exactly one active.
+2. The app-shell sidebar renders all destinations (Home / Decks / Add / Browse /
+   Stats / Practice / Library / Settings) and marks exactly one active.
 
 They import ``aqt.speedrun`` / ``aqt.speedrun_theme`` (which pull in Qt) but
 never construct a QApplication, so they run headlessly like ``test_mediasrv.py``.
@@ -47,7 +47,16 @@ class TestSidebar:
         from aqt import speedrun_theme as theme
 
         html = theme.sidebar_html("home")
-        for label in ("Home", "Study", "Practice", "Library", "Settings"):
+        for label in (
+            "Home",
+            "Decks",
+            "Add",
+            "Browse",
+            "Stats",
+            "Practice",
+            "Library",
+            "Settings",
+        ):
             assert f"<span>{label}</span>" in html
         # brand wordmark + sync chip are present
         assert "Speedrun" in html
@@ -66,12 +75,24 @@ class TestSidebar:
         assert speedrun._shell_active_section() == "home"
         monkeypatch.setattr(speedrun, "_ws_active", "settings")
         assert speedrun._shell_active_section() == "settings"
-        # no Speedrun screen showing -> a native Anki state is active = Study
+        # no Speedrun screen showing -> a native Anki deck/review state = Decks
         monkeypatch.setattr(speedrun, "_ws_active", None)
-        assert speedrun._shell_active_section() == "study"
+        assert speedrun._shell_active_section() == "decks"
 
     def test_install_app_shell_is_exposed(self) -> None:
         assert callable(speedrun.install_app_shell)
+
+
+# --- sync URL validation (guards ``error sending request for url ()``) --------
+
+
+class TestValidSyncUrl:
+    def test_rejects_missing_port(self) -> None:
+        assert speedrun._valid_sync_url("http://127.0.0.1:") is False
+        assert speedrun._valid_sync_url("http://127.0.0.1:/") is False
+
+    def test_accepts_local_server_url(self) -> None:
+        assert speedrun._valid_sync_url("http://127.0.0.1:55413/") is True
 
 
 # --- next-action routing (pure dict-in/dict-out) ----------------------------

@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,8 +27,12 @@ import kotlinx.coroutines.launch
 import net.speedrun.app.ExamPlanUi
 import net.speedrun.app.EngineRepository
 import net.speedrun.app.FeedbackReportUi
+import net.speedrun.app.NextActionKind
+import net.speedrun.app.NextActionUi
 import net.speedrun.app.Readiness
+import net.speedrun.app.nextAction
 import net.speedrun.app.ui.ExamPlanCard
+import net.speedrun.app.ui.PrimaryButton
 import net.speedrun.app.ui.ReadinessVerdict
 import net.speedrun.app.ui.ScreenHeader
 import net.speedrun.app.ui.SectionLabel
@@ -35,6 +40,8 @@ import net.speedrun.app.ui.SpeedrunCard
 import net.speedrun.app.ui.theme.Space
 import net.speedrun.app.ui.theme.Speedrun
 import net.speedrun.app.ui.theme.body
+import net.speedrun.app.ui.theme.label
+import net.speedrun.app.ui.theme.subhead
 
 /**
  * The readiness dashboard: the honest verdict instrument plus the exam plan.
@@ -42,20 +49,33 @@ import net.speedrun.app.ui.theme.body
  * stand" is one glanceable screen rather than something buried below the decks.
  */
 @Composable
-fun DashboardScreen() {
+fun DashboardScreen(
+    onPractice: () -> Unit = {},
+    onEditExam: () -> Unit = {},
+    onOpenSection: (String) -> Unit = {},
+) {
     val c = Speedrun.colors
     val scope = rememberCoroutineScope()
     var readiness by remember { mutableStateOf<Readiness?>(null) }
     var plan by remember { mutableStateOf<ExamPlanUi?>(null) }
     var feedback by remember { mutableStateOf<FeedbackReportUi?>(null) }
+    var dash by remember { mutableStateOf<net.speedrun.app.TopicDashboardUi?>(null) }
 
-    // Reload on resume so the verdict reflects reviews done on other screens.
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+    fun reload() {
         scope.launch {
             readiness = runCatching { EngineRepository.readiness() }.getOrNull()
             plan = runCatching { EngineRepository.examPlan() }.getOrNull()
             feedback = runCatching { EngineRepository.feedbackReport() }.getOrNull()
+            dash = runCatching { EngineRepository.topicDashboard() }.getOrNull()
         }
+    }
+
+    // Reload on resume so the verdict reflects reviews done on other screens.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { reload() }
+
+    // Reload immediately after Library imports or sample seeding (desktop _refresh).
+    LaunchedEffect(Unit) {
+        EngineRepository.readinessRefresh.collect { reload() }
     }
 
     Column(
@@ -70,7 +90,11 @@ fun DashboardScreen() {
             null -> SpeedrunCard {
                 Text("Reading your signals\u2026", color = c.textSecondary, style = MaterialTheme.typography.body)
             }
-            else -> ReadinessVerdict(r)
+            else -> {
+                ReadinessVerdict(r)
+                Spacer(Modifier.height(Space.xl))
+                NextActionCard(nextAction(r, plan), onPractice = onPractice, onEditExam = onEditExam)
+            }
         }
 
         plan?.takeIf { it.hasProfile }?.let {
@@ -84,7 +108,47 @@ fun DashboardScreen() {
             FeedbackCard(it)
         }
 
+        dash?.takeIf { it.hasTopics }?.let { d ->
+            Spacer(Modifier.height(Space.xl))
+            SectionLabel("MCAT topics")
+            TopicSections(d, onOpenSection)
+        }
+
         Spacer(Modifier.height(Space.xxl))
+    }
+}
+
+/**
+ * The single recommended next step, with an actionable CTA. Mirrors the desktop
+ * "Next best action" card so both apps point the student at the same move.
+ */
+@Composable
+private fun NextActionCard(na: NextActionUi, onPractice: () -> Unit, onEditExam: () -> Unit) {
+    val c = Speedrun.colors
+    SpeedrunCard {
+        Text("NEXT BEST ACTION", color = c.accent, style = MaterialTheme.typography.label)
+        Text(
+            na.title,
+            color = c.textPrimary,
+            style = MaterialTheme.typography.subhead,
+            modifier = Modifier.padding(top = Space.xs),
+        )
+        Text(
+            na.detail,
+            color = c.textSecondary,
+            style = MaterialTheme.typography.body,
+            modifier = Modifier.padding(top = Space.xs),
+        )
+        if (na.ctaLabel != null && na.kind != NextActionKind.NONE) {
+            Spacer(Modifier.height(Space.m))
+            PrimaryButton(na.ctaLabel) {
+                when (na.kind) {
+                    NextActionKind.PRACTICE -> onPractice()
+                    NextActionKind.EDIT_EXAM -> onEditExam()
+                    NextActionKind.NONE -> {}
+                }
+            }
+        }
     }
 }
 

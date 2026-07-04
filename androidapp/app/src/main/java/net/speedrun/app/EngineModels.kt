@@ -102,6 +102,86 @@ data class CoverageUi(
     val topics: List<TopicCoverageUi>,
 )
 
+/** A short status + colour kind for one topic on the dashboard. */
+enum class TopicStatus(val label: String) {
+    NOT_IN_DECKS("Not in your decks"),
+    NOT_STARTED("Not started"),
+    NEEDS_WORK("Needs work"),
+    STRONG("Strong"),
+    BUILDING("Building"),
+}
+
+/** One content category's derived signals, for the topic dashboard + drill-in. */
+data class TopicUi(
+    val id: String,
+    val name: String,
+    val sectionKey: String,
+    val weight: Float,
+    val cards: Int,
+    val covered: Boolean,
+    val review: Int,
+    val mature: Int,
+    val attempts: Int,
+    val correct: Int,
+) {
+    val memory: Float? get() = if (review > 0) mature.toFloat() / review else null
+    val performance: Float? get() = if (attempts > 0) correct.toFloat() / attempts else null
+    val status: TopicStatus get() = topicStatus(this)
+}
+
+private const val TOPIC_MIN_ATTEMPTS = 3
+
+fun topicStatus(t: TopicUi): TopicStatus = when {
+    t.cards == 0 -> TopicStatus.NOT_IN_DECKS
+    t.review == 0 && t.attempts == 0 -> TopicStatus.NOT_STARTED
+    t.attempts >= TOPIC_MIN_ATTEMPTS && (t.performance ?: 1f) < 0.55f -> TopicStatus.NEEDS_WORK
+    (t.memory ?: 0f) >= 0.7f && (t.performance ?: 1f) >= 0.65f -> TopicStatus.STRONG
+    else -> TopicStatus.BUILDING
+}
+
+/** A section (Bio/Biochem, Chem/Phys, Psych/Soc, CARS) + its topics and aggregate signals. */
+data class TopicSectionUi(
+    val key: String,
+    val short: String,
+    val full: String,
+    val disabled: Boolean,
+    val total: Int,
+    val covered: Int,
+    val coverage: Float,
+    val memory: Float?,
+    val performance: Float?,
+    val topics: List<TopicUi>,
+)
+
+data class TopicDashboardUi(val sections: List<TopicSectionUi>, val hasTopics: Boolean)
+
+/** Group per-topic signals under the four MCAT sections (mirrors desktop). */
+fun buildTopicDashboard(topics: List<TopicUi>): TopicDashboardUi {
+    val sections = Mcat.SECTIONS.map { sec ->
+        val rows = topics.asSequence()
+            .filter { it.sectionKey == sec.key }
+            .sortedWith(compareByDescending<TopicUi> { it.weight }.thenBy { it.name })
+            .toList()
+        TopicSectionUi(
+            key = sec.key,
+            short = sec.short,
+            full = sec.full,
+            disabled = sec.subjects.isEmpty(),
+            total = rows.size,
+            covered = rows.count { it.covered },
+            coverage = if (rows.isNotEmpty()) rows.count { it.covered }.toFloat() / rows.size else 0f,
+            memory = rows.sumOf { it.review }.let { r ->
+                if (r > 0) rows.sumOf { it.mature }.toFloat() / r else null
+            },
+            performance = rows.sumOf { it.attempts }.let { a ->
+                if (a > 0) rows.sumOf { it.correct }.toFloat() / a else null
+            },
+            topics = rows,
+        )
+    }
+    return TopicDashboardUi(sections, sections.any { it.topics.isNotEmpty() })
+}
+
 data class CalibrationBinUi(
     val lo: Float,
     val hi: Float,
@@ -129,6 +209,75 @@ data class QuestionItemUi(
     val correctIndex: Int,
     val explanation: String,
 )
+
+/** Per-subject question counts of the whole held-out bank (for the Practice landing). */
+data class PracticeBankSummaryUi(val total: Int, val byTopic: Map<String, Int>) {
+    /** Total questions across a section's subject tags. */
+    fun sectionCount(section: Mcat.Section): Int =
+        section.subjects.sumOf { byTopic[it] ?: 0 }
+}
+
+/** What the CTA on the next-best-action card should do. */
+enum class NextActionKind { NONE, PRACTICE, EDIT_EXAM }
+
+/** The single recommended step shown on the dashboard (mirrors desktop `_next_action`). */
+data class NextActionUi(
+    val title: String,
+    val detail: String,
+    val ctaLabel: String?,
+    val kind: NextActionKind,
+)
+
+/**
+ * The single recommended next step from the readiness snapshot + exam plan.
+ * Mirrors the desktop `_next_action` routing so both apps advise the same thing.
+ */
+fun nextAction(r: Readiness, plan: ExamPlanUi?): NextActionUi {
+    if (!r.sufficient) {
+        return when (r.blockingDimension.lowercase()) {
+            "memory" -> NextActionUi(
+                "Study more cards",
+                "Readiness needs more graded reviews before it can estimate your memory signal.",
+                null, NextActionKind.NONE,
+            )
+            "performance" -> NextActionUi(
+                "Answer held-out questions",
+                "Register and answer exam-style questions so performance is measured separately from recall.",
+                "Practice now", NextActionKind.PRACTICE,
+            )
+            "coverage" -> NextActionUi(
+                "Cover more of the outline",
+                "Tag cards by MCAT topic; readiness abstains below 50% coverage.",
+                null, NextActionKind.NONE,
+            )
+            else -> NextActionUi(
+                "Build more evidence",
+                r.reason,
+                null, NextActionKind.NONE,
+            )
+        }
+    }
+    if (r.recallPerfGap >= 0.15f) {
+        return NextActionUi(
+            "Bridge recall to application",
+            "Your recall outruns your exam-style performance. Practice concept-linked questions to close the gap.",
+            "Practice now", NextActionKind.PRACTICE,
+        )
+    }
+    if (plan != null && plan.hasProfile && plan.readinessSufficient && !plan.onTrack) {
+        return NextActionUi(
+            "Pick up the pace",
+            "You need about +${plan.neededPoints} points (~${"%.1f".format(plan.pointsPerWeek)}/week) " +
+                "to reach your target by exam day.",
+            "Adjust plan", NextActionKind.EDIT_EXAM,
+        )
+    }
+    return NextActionUi(
+        "On track — keep going",
+        "Memory, performance, and coverage all look healthy. Keep your spaced reviews steady.",
+        "Practice", NextActionKind.PRACTICE,
+    )
+}
 
 /** End-of-session feedback report (Design 2 / D2): miss counts by cause + weak topics. */
 data class FeedbackReportUi(

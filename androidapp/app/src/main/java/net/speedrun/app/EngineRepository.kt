@@ -4,14 +4,19 @@
 package net.speedrun.app
 
 import android.content.Context
+import anki.decks.Deck
 import anki.decks.DeckTreeNode
 import anki.import_export.ImportAnkiPackageOptions
 import anki.scheduler.CardAnswer
 import anki.speedrun.ClassifyAttemptRequest
 import anki.speedrun.QuestionItem
 import anki.speedrun.RecordAttemptRequest
+import anki.speedrun.TopicMapEntry
+import anki.sync.SyncAuth
 import anki.sync.SyncCollectionResponse
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -54,6 +59,14 @@ object EngineRepository {
     /** Stable id for this study session (groups recorded attempts). */
     private val sessionId: String = UUID.randomUUID().toString()
 
+    /** Bumped after imports or sample seeding so the Dashboard can reload readiness. */
+    private val _readinessRefresh = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val readinessRefresh: SharedFlow<Unit> = _readinessRefresh
+
+    private fun bumpReadinessRefresh() {
+        _readinessRefresh.tryEmit(Unit)
+    }
+
     /**
      * Open the collection, creating a fresh empty one if none exists yet
      * (idempotent). A brand-new phone - or one whose app data was wiped - lands
@@ -62,6 +75,7 @@ object EngineRepository {
      * when empty.
      */
     suspend fun open(context: Context): OpenState = withContext(dispatcher) {
+        attachContext(context)
         backend?.let { return@withContext OpenState.Ready }
         val dir = context.getExternalFilesDir(null) ?: context.filesDir
         val col = File(dir, "collection.anki2")
@@ -124,6 +138,42 @@ object EngineRepository {
     )
 
     suspend fun setCurrentDeck(deckId: Long) = engine { it.setCurrentDeck(deckId) }
+
+    /**
+     * Build (or reuse) a single "Speedrun review" filtered deck holding a topic's
+     * cards, make it current, and return its id so the caller can open review.
+     * Returns null if the topic has no cards / anything fails.
+     */
+    suspend fun reviewTopic(topicId: String): Long? = engine { b ->
+        runCatching {
+            val name = "Speedrun review"
+            val existingId = findDeckIdByName(b.deckTree(), name)
+            val current = b.getOrCreateFilteredDeck(existingId)
+            val term = Deck.Filtered.SearchTerm.newBuilder()
+                .setSearch("tag:$topicId")
+                .setLimit(200)
+                .setOrder(Deck.Filtered.SearchTerm.Order.OLDEST_REVIEWED_FIRST)
+                .build()
+            val config = current.config.toBuilder()
+                .setReschedule(true)
+                .clearSearchTerms()
+                .addSearchTerms(term)
+                .build()
+            val deck = current.toBuilder().setName(name).setConfig(config).build()
+            val id = b.addOrUpdateFilteredDeck(deck)
+            b.setCurrentDeck(id)
+            id
+        }.getOrNull()
+    }
+
+    private fun findDeckIdByName(root: DeckTreeNode, name: String): Long {
+        fun walk(node: DeckTreeNode): Long? {
+            if (node.name == name) return node.deckId
+            for (child in node.childrenList) walk(child)?.let { return it }
+            return null
+        }
+        return walk(root) ?: 0L
+    }
 
     suspend fun readiness(): Readiness = engine { b ->
         val s = b.computeReadiness()
@@ -192,6 +242,24 @@ object EngineRepository {
             weightedCoverage = r.weightedCoverage,
             topics = r.topicsList.map { TopicCoverageUi(it.label.ifBlank { it.topic }, it.weight, it.cards, it.covered) },
         )
+    }
+
+    suspend fun topicDashboard(): TopicDashboardUi = engine { b ->
+        val topics = b.getTopicSignals().map { s ->
+            TopicUi(
+                id = s.topic,
+                name = s.label.ifBlank { s.topic },
+                sectionKey = Mcat.sectionForTopic(s.topic)?.key ?: "",
+                weight = s.weight,
+                cards = s.cards,
+                covered = s.covered,
+                review = s.reviewCards,
+                mature = s.matureCards,
+                attempts = s.examAttempts,
+                correct = s.examCorrect,
+            )
+        }
+        buildTopicDashboard(topics)
     }
 
     suspend fun calibration(): CalibrationUi = engine { b ->
@@ -294,6 +362,34 @@ object EngineRepository {
     /** Number of held-out question items currently in the bank. */
     suspend fun questionCount(): Int = engine { it.getPerformanceReport().questionItems }
 
+    /**
+     * Seed a labeled sample study history (mature review cards + exam/SRS attempts
+     * with predictions) so the three scores show with ranges for a demo. Returns
+     * (cards matured, attempts recorded). The score stays computed, not hand-set.
+     *
+     * If the collection has no cards yet, imports the bundled MCAT content library
+     * first (cards need topic tags that match the coverage map).
+     */
+    suspend fun seedSampleHistory(context: Context): Pair<Int, Int> {
+        val result = engine { b ->
+            var r = b.seedSampleHistory()
+            if (r.cardsMatured == 0) {
+                importContentLibraryLocked(b, context)
+                r = b.seedSampleHistory()
+            } else {
+                val covered = runCatching { b.getCoverageReport().topicsCovered }.getOrDefault(0)
+                if (covered == 0) {
+                    // Deck cards lack topic tags that match the coverage map (e.g. MileDown).
+                    importContentLibraryLocked(b, context)
+                    r = b.seedSampleHistory()
+                }
+            }
+            r.cardsMatured to r.attemptsRecorded
+        }
+        bumpReadinessRefresh()
+        return result
+    }
+
     /** Import the bundled MMLU pack from app assets; returns questions added. */
     suspend fun importMmluAsset(context: Context): Int = engine { b ->
         val text = context.assets.open("speedrun_mmlu_pack.json")
@@ -323,20 +419,97 @@ object EngineRepository {
     }
 
     /**
+     * Import the open-licensed MCAT content library: the bundled multi-topic
+     * deck (.apkg, cards tagged by content-category id + subject), its matched
+     * practice questions, and the 31-category coverage map. Mirrors the desktop
+     * first-run import so both platforms ship the same content.
+     */
+    suspend fun importContentLibrary(context: Context): String {
+        val (notes, added) = engine { b -> importContentLibraryLocked(b, context) }
+        bumpReadinessRefresh()
+        return "Imported $notes cards + $added questions across 31 MCAT categories"
+    }
+
+    /** Shared import path for first-run, Library, and sample seeding. */
+    private fun importContentLibraryLocked(b: AnkiBackend, context: Context): Pair<Int, Int> {
+        val tmp = File(context.cacheDir, "speedrun_content_library.apkg")
+        context.assets.open("speedrun_content_library.apkg").use { input ->
+            tmp.outputStream().use { input.copyTo(it) }
+        }
+        val options = runCatching { b.getImportAnkiPackagePresets() }
+            .getOrDefault(ImportAnkiPackageOptions.getDefaultInstance())
+        val notes = runCatching { b.importAnkiPackage(tmp.absolutePath, options).log.foundNotes }
+            .getOrDefault(0)
+        runCatching { tmp.delete() }
+        val qtext = context.assets.open("speedrun_content_questions.json")
+            .bufferedReader().use { it.readText() }
+        val added = importPackText(b, qtext)
+        runCatching {
+            val ttext = context.assets.open("speedrun_content_topics.json")
+                .bufferedReader().use { it.readText() }
+            val arr = JSONObject(ttext).optJSONArray("topics") ?: JSONArray()
+            val entries = (0 until arr.length()).map {
+                val t = arr.getJSONObject(it)
+                TopicMapEntry.newBuilder()
+                    .setTopic(t.optString("topic"))
+                    .setLabel(t.optString("label"))
+                    .setWeight(t.optDouble("weight", 1.0).toFloat())
+                    .build()
+            }
+            if (entries.isNotEmpty()) b.setTopicMap(entries)
+        }
+        return notes to added
+    }
+
+    /**
+     * A balanced placement set for the onboarding diagnostic: up to [perSection]
+     * exam-style questions from each scored section that has a bank (CARS has
+     * none), de-duped. Mirrors the desktop `_diagnostic_questions`.
+     */
+    suspend fun diagnosticQuestions(perSection: Int = 5): List<QuestionItemUi> = engine { b ->
+        val out = mutableListOf<QuestionItemUi>()
+        val seen = mutableSetOf<Long>()
+        for (sec in Mcat.SECTIONS) {
+            if (sec.subjects.isEmpty()) continue
+            var taken = 0
+            for (subject in sec.subjects) {
+                if (taken >= perSection) break
+                for (q in b.getPracticeQuestions(perSection, subject).mapNotNull { it.toUi() }
+                    .filter { it.options.size >= 2 }) {
+                    if (taken >= perSection) break
+                    if (seen.add(q.id)) {
+                        out.add(q)
+                        taken++
+                    }
+                }
+            }
+        }
+        out
+    }
+
+    /**
      * Import a local file the user picked or downloaded: a `.json` question pack
      * (added to the bank) or a `.apkg`/`.colpkg` deck (imported via the engine).
      * Returns a short human summary.
      */
     suspend fun importLocalFile(path: String, name: String): String = engine { b ->
-        if (name.lowercase().endsWith(".json")) {
-            val n = importPackText(b, File(path).readText())
-            "Added $n practice questions"
-        } else {
-            val options = runCatching { b.getImportAnkiPackagePresets() }
-                .getOrDefault(ImportAnkiPackageOptions.getDefaultInstance())
-            val resp = b.importAnkiPackage(path, options)
-            val found = resp.log.foundNotes
-            if (found > 0) "Imported deck ($found notes)" else "Deck imported"
+        val lower = name.lowercase()
+        when {
+            lower.endsWith(".json") -> {
+                val n = importPackText(b, File(path).readText())
+                "Added $n practice questions"
+            }
+            lower.endsWith(".csv") -> {
+                val n = importCsvText(b, File(path).readText())
+                "Added $n practice questions from CSV"
+            }
+            else -> {
+                val options = runCatching { b.getImportAnkiPackagePresets() }
+                    .getOrDefault(ImportAnkiPackageOptions.getDefaultInstance())
+                val resp = b.importAnkiPackage(path, options)
+                val found = resp.log.foundNotes
+                if (found > 0) "Imported deck ($found notes)" else "Deck imported"
+            }
         }
     }
 
@@ -363,10 +536,67 @@ object EngineRepository {
         return added
     }
 
+    /**
+     * Import a CSV question bank (UWorld/AAMC-style export): parse rows into the
+     * same payload shape as the JSON packs, then register each. Parsing is pure
+     * (see [CsvQuestions]); this only maps to the engine.
+     */
+    private fun importCsvText(b: AnkiBackend, text: String): Int {
+        val parsed = CsvQuestions.parse(text)
+        for (q in parsed) {
+            val payload = JSONObject()
+                .put("stem", q.stem)
+                .put("options", JSONArray(q.options))
+                .put("correct_index", q.correctIndex)
+                .put("explanation", q.explanation)
+                .toString()
+            b.addQuestionItem(
+                QuestionItem.newBuilder()
+                    .setCardId(0L)
+                    .setTopic(q.topic)
+                    .setProvenance(0)
+                    .setPayload(payload)
+                    .build(),
+            )
+        }
+        return parsed.size
+    }
+
     /** Fetch a batch of held-out practice questions, parsed from their payloads. */
     suspend fun practiceQuestions(limit: Int, topic: String = ""): List<QuestionItemUi> = engine { b ->
         b.getPracticeQuestions(limit, topic).mapNotNull { it.toUi() }.filter { it.options.size >= 2 }
     }
+
+    /** Per-subject counts of the whole bank, for the MCAT-section Practice landing. */
+    suspend fun practiceBankSummary(): PracticeBankSummaryUi = engine { b ->
+        val s = b.getPracticeBankSummary()
+        PracticeBankSummaryUi(total = s.total, byTopic = s.topicsList.associate { it.topic to it.count })
+    }
+
+    /**
+     * A topic-filtered practice set (empty [topics] = a mixed diagnostic across
+     * the whole bank). With topics, pulls an even split from each subject and
+     * merges de-duped, so practicing a whole section draws from all its subjects.
+     * Mirrors the desktop `_fetch_practice_questions`.
+     */
+    suspend fun practiceQuestionsForTopics(topics: List<String>, limit: Int = 20): List<QuestionItemUi> =
+        engine { b ->
+            if (topics.isEmpty()) {
+                return@engine b.getPracticeQuestions(limit, "")
+                    .mapNotNull { it.toUi() }.filter { it.options.size >= 2 }
+            }
+            val per = maxOf(limit / topics.size, 4)
+            val seen = mutableSetOf<Long>()
+            val merged = mutableListOf<QuestionItemUi>()
+            for (topic in topics) {
+                for (q in b.getPracticeQuestions(per, topic).mapNotNull { it.toUi() }
+                    .filter { it.options.size >= 2 }) {
+                    if (merged.size >= limit) break
+                    if (seen.add(q.id)) merged.add(q)
+                }
+            }
+            merged.take(limit)
+        }
 
     /**
      * The end-of-session reasoning round: held-out questions for the concepts
@@ -436,6 +666,7 @@ object EngineRepository {
         tookMs: Long,
         confidence: Float?,
         selfExplanation: String,
+        session: String? = null,
     ): Diagnosis? = engine { b ->
         val correct = selectedIndex == item.correctIndex
         val ms = tookMs.coerceIn(1, 600_000).toInt()
@@ -451,7 +682,7 @@ object EngineRepository {
             val builder = RecordAttemptRequest.newBuilder()
                 .setCardId(item.cardId)
                 .setNoteId(0)
-                .setSessionId(sessionId)
+                .setSessionId(session ?: sessionId)
                 .setAnsweredAtMs(System.currentTimeMillis())
                 .setTookMs(ms)
                 .setQuestionType(QUESTION_TYPE_DISCRETE)
@@ -477,28 +708,39 @@ object EngineRepository {
         withContext(dispatcher) {
             val b = backend ?: return@withContext SyncResult.Error("Collection is not open")
             try {
-                val endpoint = normalizeEndpoint(url)
-                val auth = b.syncLogin(username, password, endpoint)
-                when (b.syncCollection(auth).required) {
+                var session = beginSync(b, url, username, password)
+                val resp = b.syncCollection(session.auth)
+                session = applyNewEndpoint(session, resp)
+                when (resp.required) {
                     SyncCollectionResponse.ChangesRequired.NO_CHANGES,
-                    SyncCollectionResponse.ChangesRequired.NORMAL_SYNC ->
+                    SyncCollectionResponse.ChangesRequired.NORMAL_SYNC -> {
+                        afterSyncRefresh()
                         SyncResult.Ok("In sync")
+                    }
                     SyncCollectionResponse.ChangesRequired.FULL_UPLOAD -> {
-                        b.fullUploadOrDownload(auth, upload = true)
+                        b.fullUploadOrDownload(session.auth, upload = true)
+                        afterSyncRefresh()
                         SyncResult.Ok("Uploaded this device's collection to the server")
                     }
                     SyncCollectionResponse.ChangesRequired.FULL_DOWNLOAD -> {
-                        b.fullUploadOrDownload(auth, upload = false)
+                        b.fullUploadOrDownload(session.auth, upload = false)
                         reopenCollection(b)
+                        afterSyncRefresh()
                         SyncResult.Ok("Mirrored the server's collection to this device")
                     }
-                    else ->
-                        SyncResult.Conflict(
-                            "Both sides changed since the last sync - choose upload or download to resolve.",
-                        )
+                    else -> {
+                        // Both sides diverged (typically first pairing, since each
+                        // device seeds its own content library). The desktop is the
+                        // source of truth that seeds the server, so the phone mirrors
+                        // it instead of prompting -- pairing "just works".
+                        b.fullUploadOrDownload(session.auth, upload = false)
+                        reopenCollection(b)
+                        afterSyncRefresh()
+                        SyncResult.Ok("Mirrored the server's collection to this device")
+                    }
                 }
             } catch (e: Exception) {
-                SyncResult.Error(e.message ?: e.toString())
+                SyncResult.Error(syncErrorMessage(e))
             }
         }
 
@@ -515,10 +757,10 @@ object EngineRepository {
     ): SyncResult = withContext(dispatcher) {
         val b = backend ?: return@withContext SyncResult.Error("Collection is not open")
         try {
-            val endpoint = normalizeEndpoint(url)
-            val auth = b.syncLogin(username, password, endpoint)
-            b.fullUploadOrDownload(auth, upload = upload)
+            val session = beginSync(b, url, username, password)
+            b.fullUploadOrDownload(session.auth, upload = upload)
             if (!upload) reopenCollection(b)
+            afterSyncRefresh()
             SyncResult.Ok(
                 if (upload) {
                     "Uploaded this device's collection to the server"
@@ -527,7 +769,7 @@ object EngineRepository {
                 },
             )
         } catch (e: Exception) {
-            SyncResult.Error(e.message ?: e.toString())
+            SyncResult.Error(syncErrorMessage(e))
         }
     }
 
@@ -538,11 +780,81 @@ object EngineRepository {
         b.openCollection(col, mediaPath ?: "", mediaDbPath ?: "")
     }
 
-    private fun normalizeEndpoint(url: String): String {
-        var u = url.trim()
-        if (!u.startsWith("http://") && !u.startsWith("https://")) u = "http://$u"
-        if (!u.endsWith("/")) u += "/"
-        return u
+    /**
+     * After sync, reconcile the topic map (not chunk-synced) and recompute
+     * readiness so the Dashboard reflects cards and attempts from the other device.
+     */
+    private suspend fun afterSyncRefresh() {
+        val b = backend ?: return
+        ensureTopicMapFromAssets(b, appContext ?: return)
+        runCatching { b.computeReadiness() }
+        bumpReadinessRefresh()
+    }
+
+    private var appContext: Context? = null
+
+    /** Remember app context for post-sync refresh (set when the engine opens). */
+    fun attachContext(context: Context) {
+        appContext = context.applicationContext
+    }
+
+    private data class SyncSession(val endpoint: String, val auth: SyncAuth)
+
+    private fun beginSync(
+        b: AnkiBackend,
+        url: String,
+        username: String,
+        password: String,
+    ): SyncSession {
+        val endpoint = SyncUrl.normalize(url)
+        require(SyncUrl.isValid(endpoint)) {
+            "Invalid sync server URL. On desktop open Sync, tap Start & show code, " +
+                "then re-scan the QR (USB debugging + cable for guest Wi-Fi)."
+        }
+        val auth = pinAuth(b.syncLogin(username, password, endpoint), endpoint)
+        return SyncSession(endpoint, auth)
+    }
+
+    private fun applyNewEndpoint(
+        session: SyncSession,
+        resp: SyncCollectionResponse,
+    ): SyncSession {
+        val neu = resp.newEndpoint?.trim().orEmpty()
+        if (neu.isBlank()) return session
+        val endpoint = SyncUrl.normalize(neu)
+        if (!SyncUrl.isValid(endpoint)) return session
+        return session.copy(endpoint = endpoint, auth = pinAuth(session.auth, endpoint))
+    }
+
+    private fun pinAuth(auth: SyncAuth, endpoint: String): SyncAuth =
+        auth.toBuilder().setEndpoint(endpoint).build()
+
+    private fun syncErrorMessage(e: Exception): String {
+        val raw = e.message ?: e.toString()
+        return if (raw.contains("url ()") || raw.contains("Invalid sync server")) {
+            "Invalid sync server URL. Re-scan the desktop QR with Sync via USB on " +
+                "(plug in USB, enable USB debugging, tap Refresh USB tunnel on desktop)."
+        } else {
+            raw
+        }
+    }
+
+    private fun ensureTopicMapFromAssets(b: AnkiBackend, context: Context) {
+        runCatching {
+            if (b.getCoverageReport().topicsCovered > 0) return
+            val ttext = context.assets.open("speedrun_content_topics.json")
+                .bufferedReader().use { it.readText() }
+            val arr = JSONObject(ttext).optJSONArray("topics") ?: JSONArray()
+            val entries = (0 until arr.length()).map {
+                val t = arr.getJSONObject(it)
+                TopicMapEntry.newBuilder()
+                    .setTopic(t.optString("topic"))
+                    .setLabel(t.optString("label"))
+                    .setWeight(t.optDouble("weight", 1.0).toFloat())
+                    .build()
+            }
+            if (entries.isNotEmpty()) b.setTopicMap(entries)
+        }
     }
 
     fun shutdown() {

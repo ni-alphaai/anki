@@ -65,28 +65,28 @@ fun SpeedrunColors.onColor(fill: Color): Color =
         Color(0xFFFFFFFF)
     }
 
-// Calm "warm instrument" system: a soft warm-neutral canvas (not a clinical cool
-// gray), white cards lifted by gentle shadow, and a warm near-black "ink" for
-// text only - the harsh black is retired from fills. The confident blue accent is
-// the one interactive throughline (primary CTA, links, active nav). Blue (memory)
-// and green (performance) are the data accents; the readiness ring pairs them as
-// two arcs - the memory-to-performance bridge.
+// "Paper & print" palette on an iOS-HIG structure (grouped canvas + cells,
+// three-tier text ramp, hairline separators). Light = Pampas cream paper with
+// the signature Crail peach accent; Dark = charcoal paper with an accent blue.
+// The data-signal palette stays distinct functional hues (memory blue,
+// performance green, coverage gray, reasoning violet, passage teal) so a chart
+// color never doubles as the brand. Rating buttons keep semantic feedback colors.
 val LightSpeedrunColors = SpeedrunColors(
-    background = Color(0xFFF0EFEB),
-    surface = Color(0xFFFFFFFF),
+    background = Color(0xFFFAF9F5), // Pampas cream paper (grouped canvas)
+    surface = Color(0xFFFFFFFF), // grouped cells
     surfaceElevated = Color(0xFFFFFFFF),
-    separator = Color(0xFFE6E4DD),
-    border = Color(0xFFDBD9D1),
-    textPrimary = Color(0xFF1C1B19),
-    textSecondary = Color(0xFF6E6C68),
-    textTertiary = Color(0xFFA6A49E),
-    accent = Color(0xFF2E7BF6),
-    primary = Color(0xFF2E7BF6),
+    separator = Color(0xFFE8E6DC), // light-gray hairline
+    border = Color(0xFFDCD9CE), // outlined-control border
+    textPrimary = Color(0xFF141413), // charcoal ink
+    textSecondary = Color(0xFF6B6862),
+    textTertiary = Color(0xFFA6A299),
+    accent = Color(0xFFC15F3C), // Crail peach
+    primary = Color(0xFFC15F3C),
     onPrimary = Color(0xFFFFFFFF),
-    memory = Color(0xFF2E7BF6),
+    memory = Color(0xFF2E7BF6), // data signal (distinct from the brand accent)
     performance = Color(0xFF22C55E),
     readinessGood = Color(0xFF22C55E),
-    readinessWarn = Color(0xFFE0900B),
+    readinessWarn = Color(0xFFE0900B), // amber
     readinessBad = Color(0xFFEF4444),
     coverageTrack = Color(0xFF8A94A6),
     reasoning = Color(0xFF7C5CFC),
@@ -95,25 +95,25 @@ val LightSpeedrunColors = SpeedrunColors(
     hard = Color(0xFFE0900B),
     good = Color(0xFF22C55E),
     easy = Color(0xFF2E7BF6),
-    onSignal = Color(0xFFFFFFFF),
+    onSignal = Color(0xFF141413),
     isDark = false,
 )
 
 val DarkSpeedrunColors = SpeedrunColors(
-    background = Color(0xFF0C0D0F),
-    surface = Color(0xFF17181B),
-    surfaceElevated = Color(0xFF1E2024),
-    separator = Color(0xFF2A2D31),
-    border = Color(0xFF3A3D42),
-    textPrimary = Color(0xFFF2F3F5),
-    textSecondary = Color(0xFF9AA0A8),
-    textTertiary = Color(0xFF6B7078),
-    accent = Color(0xFF4B93FF),
-    primary = Color(0xFF4B93FF),
-    onPrimary = Color(0xFF0C0D0F),
+    background = Color(0xFF141413), // charcoal paper (grouped canvas, dark)
+    surface = Color(0xFF1E1D1B), // grouped cells
+    surfaceElevated = Color(0xFF232220),
+    separator = Color(0xFF302F2C), // hairline (dark)
+    border = Color(0xFF3A3833),
+    textPrimary = Color(0xFFFAF9F5), // Pampas cream
+    textSecondary = Color(0xFFB0AEA5), // mid gray
+    textTertiary = Color(0xFF7C7970),
+    accent = Color(0xFF6A9BCC), // accent blue (the dark/print pairing)
+    primary = Color(0xFF6A9BCC),
+    onPrimary = Color(0xFFFFFFFF),
     memory = Color(0xFF4B93FF),
-    performance = Color(0xFF30D158),
-    readinessGood = Color(0xFF30D158),
+    performance = Color(0xFF788C5D), // forest green (dark secondary)
+    readinessGood = Color(0xFF788C5D),
     readinessWarn = Color(0xFFFBBF24),
     readinessBad = Color(0xFFFF6B6B),
     coverageTrack = Color(0xFF6B7280),
@@ -123,7 +123,7 @@ val DarkSpeedrunColors = SpeedrunColors(
     hard = Color(0xFFFBBF24),
     good = Color(0xFF30D158),
     easy = Color(0xFF4B93FF),
-    onSignal = Color(0xFFFFFFFF),
+    onSignal = Color(0xFF141413),
     isDark = true,
 )
 

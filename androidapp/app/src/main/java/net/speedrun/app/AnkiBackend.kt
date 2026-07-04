@@ -7,10 +7,12 @@ import anki.backend.BackendError
 import anki.card_rendering.RenderCardResponse
 import anki.card_rendering.RenderExistingCardRequest
 import anki.card_rendering.RenderedTemplateNode
+import anki.collection.OpChangesWithId
 import anki.collection.OpenCollectionRequest
 import anki.decks.DeckId
 import anki.decks.DeckTreeNode
 import anki.decks.DeckTreeRequest
+import anki.decks.FilteredDeckForUpdate
 import anki.generic.StringList
 import anki.import_export.ImportAnkiPackageOptions
 import anki.import_export.ImportAnkiPackageRequest
@@ -28,14 +30,21 @@ import anki.speedrun.FeedbackReport
 import anki.speedrun.GetDueReasoningRequest
 import anki.speedrun.GetPracticeQuestionsRequest
 import anki.speedrun.PerformanceReport
+import anki.speedrun.PracticeBankSummary
 import anki.speedrun.QuestionItem
 import anki.speedrun.QuestionItemId
 import anki.speedrun.QuestionItems
 import anki.speedrun.ReadinessSnapshot
 import anki.speedrun.RecordAttemptRequest
 import anki.speedrun.RecordAttemptResponse
+import anki.speedrun.SeedSampleHistoryRequest
+import anki.speedrun.SeedSampleHistoryResponse
 import anki.speedrun.SessionReasoningRoundRequest
+import anki.speedrun.SetTopicMapResponse
 import anki.speedrun.TopicMap
+import anki.speedrun.TopicMapEntry
+import anki.speedrun.TopicSignal
+import anki.speedrun.TopicSignalsReport
 import anki.sync.FullUploadOrDownloadRequest
 import anki.sync.SyncAuth
 import anki.sync.SyncCollectionRequest
@@ -80,6 +89,22 @@ class AnkiBackend private constructor(private var ptr: Long) {
             .build()
         return DeckTreeNode.parseFrom(run(SVC_DECKS, M_DECK_TREE, req.toByteArray()))
     }
+
+    /** A filtered deck ready to edit (did=0 to create a new one). */
+    fun getOrCreateFilteredDeck(did: Long): FilteredDeckForUpdate =
+        FilteredDeckForUpdate.parseFrom(
+            run(
+                SVC_DECKS,
+                M_GET_OR_CREATE_FILTERED_DECK,
+                DeckId.newBuilder().setDid(did).build().toByteArray(),
+            ),
+        )
+
+    /** Create/rebuild a filtered deck; returns its deck id. */
+    fun addOrUpdateFilteredDeck(deck: FilteredDeckForUpdate): Long =
+        OpChangesWithId.parseFrom(
+            run(SVC_DECKS, M_ADD_OR_UPDATE_FILTERED_DECK, deck.toByteArray()),
+        ).id
 
     fun setCurrentDeck(deckId: Long) {
         run(SVC_DECKS, M_SET_CURRENT_DECK, DeckId.newBuilder().setDid(deckId).build().toByteArray())
@@ -189,6 +214,26 @@ class AnkiBackend private constructor(private var ptr: Long) {
     fun getFeedbackReport(): FeedbackReport =
         FeedbackReport.parseFrom(run(SVC_SPEEDRUN, M_GET_FEEDBACK_REPORT, ByteArray(0)))
 
+    /** Per-topic counts of the held-out bank, for the MCAT-section Practice landing. */
+    /** Seed a labeled sample study history (mature cards + attempts) for demos. */
+    fun seedSampleHistory(): SeedSampleHistoryResponse =
+        SeedSampleHistoryResponse.parseFrom(
+            run(
+                SVC_SPEEDRUN,
+                M_SEED_SAMPLE_HISTORY,
+                SeedSampleHistoryRequest.newBuilder().build().toByteArray(),
+            ),
+        )
+
+    fun getPracticeBankSummary(): PracticeBankSummary =
+        PracticeBankSummary.parseFrom(run(SVC_SPEEDRUN, M_GET_PRACTICE_BANK_SUMMARY, ByteArray(0)))
+
+    /** Per-topic coverage/memory/performance raw counts for the topic dashboard. */
+    fun getTopicSignals(): List<TopicSignal> =
+        TopicSignalsReport.parseFrom(
+            run(SVC_SPEEDRUN, M_GET_TOPIC_SIGNALS, ByteArray(0)),
+        ).topicsList
+
     /** Register one held-out question item; returns its stored id. */
     fun addQuestionItem(item: QuestionItem): Long =
         QuestionItemId.parseFrom(run(SVC_SPEEDRUN, M_ADD_QUESTION_ITEM, item.toByteArray())).id
@@ -208,6 +253,16 @@ class AnkiBackend private constructor(private var ptr: Long) {
 
     fun getTopicMap(): TopicMap =
         TopicMap.parseFrom(run(SVC_SPEEDRUN, M_GET_TOPIC_MAP, ByteArray(0)))
+
+    /** Replace the coverage topic map (e.g. the 31-category content outline). */
+    fun setTopicMap(entries: List<TopicMapEntry>): Int =
+        SetTopicMapResponse.parseFrom(
+            run(
+                SVC_SPEEDRUN,
+                M_SET_TOPIC_MAP,
+                TopicMap.newBuilder().addAllEntries(entries).build().toByteArray(),
+            ),
+        ).topics
 
     fun seedMcatTopicOutline() {
         run(SVC_SPEEDRUN, M_SEED_MCAT_OUTLINE, ByteArray(0))
@@ -281,6 +336,8 @@ class AnkiBackend private constructor(private var ptr: Long) {
         private const val SVC_DECKS = 7
         private const val M_DECK_TREE = 4
         private const val M_SET_CURRENT_DECK = 22
+        private const val M_GET_OR_CREATE_FILTERED_DECK = 19
+        private const val M_ADD_OR_UPDATE_FILTERED_DECK = 20
 
         private const val SVC_SCHEDULER = 13
         private const val M_GET_QUEUED_CARDS = 3
@@ -300,6 +357,7 @@ class AnkiBackend private constructor(private var ptr: Long) {
         private const val M_COMPUTE_READINESS = 3
         private const val M_ADD_QUESTION_ITEM = 5
         private const val M_PERFORMANCE_REPORT = 7
+        private const val M_SET_TOPIC_MAP = 8
         private const val M_GET_TOPIC_MAP = 9
         private const val M_SEED_MCAT_OUTLINE = 10
         private const val M_COVERAGE_REPORT = 11
@@ -311,6 +369,9 @@ class AnkiBackend private constructor(private var ptr: Long) {
         private const val M_GET_SESSION_REASONING_ROUND = 22
         private const val M_GET_DUE_REASONING = 23
         private const val M_GET_FEEDBACK_REPORT = 24
+        private const val M_GET_PRACTICE_BANK_SUMMARY = 25
+        private const val M_SEED_SAMPLE_HISTORY = 26
+        private const val M_GET_TOPIC_SIGNALS = 27
 
         // BackendSyncService (service index 1) - see out/pylib/anki/_backend_generated.py.
         private const val SVC_SYNC = 1

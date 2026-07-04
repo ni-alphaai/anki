@@ -37,15 +37,15 @@ def available() -> bool:
     return _VENV_PY.exists() and (_TOOLS / "speedrun_ai" / "coach.py").exists()
 
 
-def _run(payload: dict) -> dict | None:
+def _run_module(module: str, payload: dict, timeout: int = 30) -> dict | None:
     try:
         proc = subprocess.run(
-            [str(_VENV_PY), "-m", "speedrun_ai.diagnose_cli"],
+            [str(_VENV_PY), "-m", module],
             input=json.dumps(payload),
             text=True,
             capture_output=True,
             cwd=str(_TOOLS),
-            timeout=30,
+            timeout=timeout,
             check=False,
         )
         if proc.returncode != 0 or not proc.stdout.strip():
@@ -53,6 +53,30 @@ def _run(payload: dict) -> dict | None:
         return json.loads(proc.stdout)
     except Exception:
         return None
+
+
+def _run(payload: dict) -> dict | None:
+    return _run_module("speedrun_ai.diagnose_cli", payload)
+
+
+def classify_categories(
+    items: list[dict], categories: list[dict]
+) -> dict[str, str] | None:
+    """Classify note texts into MCAT content categories via the coach (its LLM
+    calls are cached on disk, so repeats are free/deterministic). ``items`` is
+    ``[{"id","text"}]`` and ``categories`` is ``[{"id","name","concept"}]``;
+    returns ``{note_id: category_id}`` or None when AI is unavailable/errors."""
+    if not available() or not items:
+        return None
+    res = _run_module(
+        "speedrun_ai.classify_cli",
+        {"items": items, "categories": categories},
+        timeout=90,
+    )
+    if not res:
+        return None
+    out = res.get("assignments")
+    return out if isinstance(out, dict) else None
 
 
 def _future_result(fut: Any) -> dict | None:

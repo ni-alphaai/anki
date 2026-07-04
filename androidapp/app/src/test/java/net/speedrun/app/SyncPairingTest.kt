@@ -19,6 +19,15 @@ class SyncPairingTest {
     }
 
     @Test
+    fun prefersUsbUrlWhenRequested() {
+        val p = SyncPairing.parse(
+            """{"v":1,"url":"http://192.168.1.20:57539","usb_url":"http://127.0.0.1:55413/","user":"speedrun","token":"tok"}""",
+        )!!
+        assertEquals("http://127.0.0.1:55413/", p.resolveUrl(preferUsb = true))
+        assertEquals("http://192.168.1.20:57539", p.resolveUrl(preferUsb = false))
+    }
+
+    @Test
     fun trimsWhitespace() {
         val p = SyncPairing.parse("""{"url":" http://x:1 ","user":" speedrun ","token":" tok "}""")
         assertEquals(SyncPairing("http://x:1", "speedrun", "tok"), p)

@@ -77,7 +77,7 @@ pub struct SrProfile {
 }
 
 /// One entry in the topic outline (e.g., an MCAT content category/concept).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SrTopicMapEntry {
     pub topic: String,
     pub label: String,
@@ -507,6 +507,19 @@ impl SqliteStorage {
             .map_err(Into::into)
     }
 
+    /// (topic, count) for every distinct subject tag in the question bank, so
+    /// the Practice landing can size its MCAT section / subject cards.
+    pub(crate) fn sr_question_item_counts_by_topic(&self) -> Result<Vec<(String, u32)>> {
+        self.db
+            .prepare_cached(
+                "select topic, count(*) from sr_question_items group by topic order by topic",
+            )?
+            .query_and_then([], |r| -> Result<(String, u32)> {
+                Ok((r.get(0)?, r.get(1)?))
+            })?
+            .collect()
+    }
+
     /// Each question item with the note text of its linked source card (if
     /// any): (item id, payload, note fields). Used by the leakage check.
     pub(crate) fn sr_question_items_with_note_text(
@@ -658,6 +671,53 @@ impl SqliteStorage {
             .query_and_then([], |row| -> Result<(String, String, f32, u32)> {
                 Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
             })?
+            .collect()
+    }
+
+    /// Per topic, the raw counts behind the three signals, attributed by the
+    /// topic tag on a card's note: (topic, label, weight, notes tagged,
+    /// review cards, mature review cards, exam-style attempts, correct exam-style
+    /// attempts). Performance is attributed via the attempt's card (its note's
+    /// tags), since content-linked questions carry a card of their topic.
+    #[allow(clippy::type_complexity)]
+    pub(crate) fn sr_topic_signals(
+        &self,
+    ) -> Result<Vec<(String, String, f32, u32, u32, u32, u32, u32)>> {
+        self.db
+            .prepare_cached(
+                "select t.topic, t.label, t.weight, \
+                 (select count(*) from notes n \
+                    where n.tags like '% ' || t.topic || ' %'), \
+                 (select count(*) from cards c join notes n on c.nid = n.id \
+                    where c.type = 2 and n.tags like '% ' || t.topic || ' %'), \
+                 (select count(*) from cards c join notes n on c.nid = n.id \
+                    where c.type = 2 and c.ivl >= 21 \
+                    and n.tags like '% ' || t.topic || ' %'), \
+                 (select count(*) from sr_attempts a \
+                    join cards c on a.cid = c.id join notes n on c.nid = n.id \
+                    where a.question_type != 0 \
+                    and n.tags like '% ' || t.topic || ' %'), \
+                 (select count(*) from sr_attempts a \
+                    join cards c on a.cid = c.id join notes n on c.nid = n.id \
+                    where a.question_type != 0 and a.correct = 1 \
+                    and n.tags like '% ' || t.topic || ' %') \
+                 from sr_topic_map t order by t.topic",
+            )?
+            .query_and_then(
+                [],
+                |row| -> Result<(String, String, f32, u32, u32, u32, u32, u32)> {
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                        row.get(5)?,
+                        row.get(6)?,
+                        row.get(7)?,
+                    ))
+                },
+            )?
             .collect()
     }
 }

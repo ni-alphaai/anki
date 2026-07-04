@@ -21,56 +21,58 @@ private fun geist(weight: Int) = Font(
     variationSettings = FontVariation.Settings(FontVariation.weight(weight)),
 )
 
-@OptIn(ExperimentalTextApi::class)
-private fun fraunces(weight: Int) = Font(
-    resId = R.font.fraunces_var,
-    weight = FontWeight(weight),
-    variationSettings = FontVariation.Settings(FontVariation.weight(weight)),
-)
-
-/** Geist - the crisp product sans: body, labels, numbers, and every control. */
+/**
+ * Geist - a clean grotesque sans standing in for SF Pro (SF can't ship off
+ * Apple platforms). One family, weight-driven hierarchy - the iOS way - carries
+ * everything from the large title to captions.
+ */
 val GeistSans = FontFamily(geist(400), geist(500), geist(600), geist(700))
 
-/** Fraunces - the warm, high-contrast display serif: titles and the readout. */
-val Display = FontFamily(fraunces(500), fraunces(600), fraunces(700))
-
 /**
- * Type roles from the shared Readout spec, mapped onto Material3's slots so every
- * `Text` can consume a role via `MaterialTheme.typography.*` (see the semantic
- * aliases below) and nothing hardcodes `fontSize`. Fraunces carries the readout +
- * titles; Geist carries all UI/body. Readouts use tabular lining figures so digits
- * don't jitter.
+ * iOS-style type scale (SF Pro sizing/weights), mapped onto Material3's slots so
+ * every `Text` consumes a role via `MaterialTheme.typography.*` (semantic aliases
+ * below) and nothing hardcodes `fontSize`. One sans family throughout; hierarchy
+ * comes from weight, not a serif. Readout/large-title use tight tracking + tabular
+ * lining figures so the SF-display look holds and digits don't jitter.
  *
- *   readout  40/44 600 Fraunces (tnum) -> displayLarge
- *   title    30/34 600 Fraunces         -> headlineLarge
- *   heading  20/26 600 Geist            -> titleLarge
- *   subhead  17/24 600 Geist            -> titleMedium
- *   bodyLg   17/26 400 Geist            -> bodyLarge
- *   body     15/22 400 Geist            -> bodyMedium
- *   label    13/16 500 Geist (UPPER)    -> labelMedium
- *   caption  12/16 400 Geist            -> bodySmall
+ *   readout  44/48 700 (tnum, tight)  -> displayLarge   (the gauge score)
+ *   title    34/41 700 (large title)  -> headlineLarge
+ *   heading  22/28 600 (title2/3)     -> titleLarge
+ *   subhead  17/22 600 (headline)     -> titleMedium
+ *   bodyLg   17/25 400 (body)         -> bodyLarge
+ *   body     15/20 400 (subheadline)  -> bodyMedium
+ *   button   17/22 600                -> labelLarge
+ *   label    13/18 500 (footnote hdr) -> labelMedium
+ *   caption  13/18 400 (footnote)     -> bodySmall
  */
 val SpeedrunTypography = Typography(
     displayLarge = TextStyle(
-        fontFamily = Display,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 40.sp,
-        lineHeight = 44.sp,
+        fontFamily = GeistSans,
+        fontWeight = FontWeight.Bold,
+        fontSize = 44.sp,
+        lineHeight = 48.sp,
+        letterSpacing = (-0.02).em,
         fontFeatureSettings = "tnum, lnum",
     ),
-    headlineLarge = TextStyle(fontFamily = Display, fontWeight = FontWeight.SemiBold, fontSize = 30.sp, lineHeight = 34.sp),
-    titleLarge = TextStyle(fontFamily = GeistSans, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 26.sp),
-    titleMedium = TextStyle(fontFamily = GeistSans, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, lineHeight = 24.sp),
-    bodyLarge = TextStyle(fontFamily = GeistSans, fontWeight = FontWeight.Normal, fontSize = 17.sp, lineHeight = 26.sp),
-    bodyMedium = TextStyle(fontFamily = GeistSans, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 22.sp),
-    bodySmall = TextStyle(fontFamily = GeistSans, fontWeight = FontWeight.Normal, fontSize = 12.sp, lineHeight = 16.sp),
-    labelLarge = TextStyle(fontFamily = GeistSans, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 20.sp),
+    headlineLarge = TextStyle(
+        fontFamily = GeistSans,
+        fontWeight = FontWeight.Bold,
+        fontSize = 34.sp,
+        lineHeight = 41.sp,
+        letterSpacing = (-0.015).em,
+    ),
+    titleLarge = TextStyle(fontFamily = GeistSans, fontWeight = FontWeight.SemiBold, fontSize = 22.sp, lineHeight = 28.sp),
+    titleMedium = TextStyle(fontFamily = GeistSans, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, lineHeight = 22.sp),
+    bodyLarge = TextStyle(fontFamily = GeistSans, fontWeight = FontWeight.Normal, fontSize = 17.sp, lineHeight = 25.sp),
+    bodyMedium = TextStyle(fontFamily = GeistSans, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 20.sp),
+    bodySmall = TextStyle(fontFamily = GeistSans, fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 18.sp),
+    labelLarge = TextStyle(fontFamily = GeistSans, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, lineHeight = 22.sp),
     labelMedium = TextStyle(
         fontFamily = GeistSans,
         fontWeight = FontWeight.Medium,
         fontSize = 13.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.04.em,
+        lineHeight = 18.sp,
+        letterSpacing = 0.03.em,
     ),
     labelSmall = TextStyle(fontFamily = GeistSans, fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 16.sp),
 )

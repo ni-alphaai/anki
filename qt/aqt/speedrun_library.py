@@ -10,8 +10,12 @@ match:
   share links are resolved past the virus-scan interstitial),
 - one-tap import of the bundled, open-licensed MMLU practice pack,
 - import-your-own (a file picker, or a pasted direct link),
-- a first-run onboarding dialog (weeks-to-exam + target score) that seeds the
-  exam profile via ``SetExamProfile``.
+- a first-run onboarding dialog (exam date + target tier) that seeds the exam
+  profile via ``SetExamProfile``.
+
+The catalog + import actions render inline through ``speedrun_theme.library_body``
+(painted into the main webview by speedrun.py); only the exam-profile editor and
+the native file/link pickers remain OS dialogs.
 
 Everything runs through the existing ImportExport / SpeedrunService boundary.
 There is no AI here; network access happens only when the user taps a button.
@@ -19,6 +23,7 @@ There is no AI here; network access happens only when the user taps a button.
 
 from __future__ import annotations
 
+import csv
 import json
 import os
 import re
@@ -30,14 +35,13 @@ from typing import TypeVar
 
 import aqt
 from anki import import_export_pb2, speedrun_pb2
+from aqt import speedrun_mcat as mcat
 from aqt import speedrun_theme as theme
 from aqt.qt import (
     QDate,
     QDateEdit,
     QDialog,
     QDialogButtonBox,
-    QFrame,
-    QHBoxLayout,
     QInputDialog,
     QLabel,
     QPushButton,
@@ -154,6 +158,86 @@ def _import_question_pack(col, pack: dict) -> int:
         )
         imported += 1
     return imported
+
+
+# --- CSV question-bank import (UWorld/AAMC-style exports) --------------------
+#
+# A flexible column mapping so users can drop in their own exported question
+# banks. Rows become the same payload shape as the JSON packs, then flow through
+# _import_question_pack -> add_question_item.
+
+_CSV_TOPIC_KEYS = ("subject", "topic", "section", "category")
+_CSV_STEM_KEYS = ("stem", "question", "prompt", "question_text")
+_CSV_CORRECT_KEYS = ("correct", "answer", "correct_index", "correct_answer", "key")
+_CSV_EXPLANATION_KEYS = ("explanation", "rationale", "solution", "feedback")
+
+
+def _csv_first(row: dict, keys: tuple[str, ...]) -> str:
+    for key in keys:
+        value = str(row.get(key, "")).strip()
+        if value:
+            return value
+    return ""
+
+
+def _csv_options(row: dict) -> list[str]:
+    """Option cells as option_a..option_e, opt_a.., optiona.., or bare a..e."""
+    options = []
+    for letter in "abcde":
+        for key in (f"option_{letter}", f"opt_{letter}", f"option{letter}", letter):
+            value = str(row.get(key, "")).strip()
+            if value:
+                options.append(value)
+                break
+    return options
+
+
+def _csv_correct_index(raw: str, options: list[str]) -> int | None:
+    """A correct-answer cell as a letter (A-E), a 1-based number, or the answer
+    text, resolved to a 0-based option index (None if it doesn't resolve)."""
+    raw = raw.strip()
+    if not raw:
+        return None
+    if len(raw) == 1 and raw.isalpha():
+        idx = ord(raw.upper()) - ord("A")
+        return idx if 0 <= idx < len(options) else None
+    if raw.isdigit():
+        num = int(raw)
+        if num == 0:
+            return 0
+        if 1 <= num <= len(options):
+            return num - 1
+    return options.index(raw) if raw in options else None
+
+
+def _csv_to_pack(path: str) -> dict:
+    """Parse a CSV of multiple-choice questions into the question-pack shape.
+
+    Flexible headers: a subject/topic column, a stem/question column, option
+    columns (option_a..option_e or bare a..e), a correct column (a letter, a
+    1-based number, or the answer text), and an optional explanation column.
+    """
+    questions = []
+    with open(path, newline="", encoding="utf-8-sig") as handle:
+        for raw_row in csv.DictReader(handle):
+            row = {(k or "").strip().lower(): (v or "") for k, v in raw_row.items()}
+            stem = _csv_first(row, _CSV_STEM_KEYS)
+            options = _csv_options(row)
+            index = _csv_correct_index(_csv_first(row, _CSV_CORRECT_KEYS), options)
+            if not stem or len(options) < 2 or index is None:
+                continue
+            topic = _csv_first(row, _CSV_TOPIC_KEYS)
+            questions.append(
+                {
+                    "topic": mcat.canonical_subject(topic) if topic else "",
+                    "stem": stem,
+                    "options": options,
+                    "correct_index": index,
+                    "explanation": _csv_first(row, _CSV_EXPLANATION_KEYS),
+                    "provenance": 0,  # user-authored import
+                }
+            )
+    return {"questions": questions}
 
 
 # --- Google Drive download --------------------------------------------------
@@ -286,6 +370,9 @@ def import_local_file(mw: aqt.AnkiQt, path: str) -> None:
             pack = json.loads(Path(path).read_text(encoding="utf-8"))
             n = _import_question_pack(mw.col, pack)
             return f"Imported {n} practice questions."
+        if lower.endswith(".csv"):
+            n = _import_question_pack(mw.col, _csv_to_pack(path))
+            return f"Imported {n} practice questions from CSV."
         return _import_package_file(mw, path)
 
     def on_done(msg: str) -> None:
@@ -296,6 +383,287 @@ def import_local_file(mw: aqt.AnkiQt, path: str) -> None:
 
 
 _CFG_EXAMPLE = "speedrunExampleLoaded"
+_CFG_SAMPLE = "speedrunSampleSeeded"
+
+# The open-licensed, per-topic MCAT content library (built by
+# tools/build_content_library.py): a tagged flashcard deck across all 31 AAMC
+# content categories plus matched practice questions, keyed by content-category
+# id (1A..10A). Cards are tagged with their content-category id and subject so
+# coverage attribution and the per-section practice bank both see them.
+_CONTENT_PACK = "speedrun_content_library.json"
+_CFG_CONTENT = "speedrunContentLibraryLoaded"
+_CONTENT_DECK = "MCAT Content Library"
+
+
+_topic_meta_cache: dict[str, dict] | None = None
+
+
+def topic_meta() -> dict[str, dict]:
+    """Map each content-category id (1A..10A) to its display metadata
+    ``{name, section, subject, weight}`` from the bundled content library, so the
+    topic dashboard can group the coverage/signal topics by MCAT section. Cached;
+    returns an empty dict when the library isn't bundled."""
+    global _topic_meta_cache
+    if _topic_meta_cache is None:
+        lib = _load_pack(_CONTENT_PACK) or {}
+        topics = lib.get("topics", {})
+        _topic_meta_cache = {
+            str(cid): {
+                "name": str(t.get("name", cid)),
+                "section": str(t.get("section", "")),
+                "subject": str(t.get("subject", "")),
+                "weight": float(t.get("weight", 1.0)),
+            }
+            for cid, t in topics.items()
+        }
+    return _topic_meta_cache
+
+
+def ensure_content_topic_map(col) -> bool:
+    """Make the coverage topic map the 31 AAMC content categories (from the
+    bundled library) so cards grouped by category id (1A..10E) actually attribute
+    to a topic. Returns True if the map was applied. Cheap + idempotent."""
+    lib = _load_pack(_CONTENT_PACK)
+    if not lib:
+        return False
+    _load_content_topic_map(col, lib.get("topics", {}))
+    return True
+
+
+_CFG_TOPIC_MAP = "speedrunTopicMap"
+
+
+def apply_topic_map_from_config(col) -> bool:
+    """Apply a topic map synced via collection config (chunk sync does not carry
+    ``sr_topic_map`` rows). Returns True when a non-empty map was applied."""
+    try:
+        raw = col.get_config(_CFG_TOPIC_MAP, None)
+        if not raw:
+            return False
+        entries = [
+            speedrun_pb2.TopicMapEntry(
+                topic=str(item.get("topic", "")),
+                label=str(item.get("label", "")),
+                weight=float(item.get("weight", 1.0)),
+            )
+            for item in raw
+            if item.get("topic")
+        ]
+        if not entries:
+            return False
+        col._backend.set_topic_map(entries)
+        return True
+    except Exception:
+        return False
+
+
+def refresh_readiness_after_sync(col) -> None:
+    """Reconcile topic map + recompute readiness after a collection sync.
+
+    Cards and ``sr_attempts`` sync via chunks, but ``sr_topic_map`` does not.
+    Without this, the desktop can show 0% coverage and an abstaining readiness
+    score even though review history arrived from the phone."""
+    covered = 0
+    try:
+        covered = col._backend.get_coverage_report().topics_covered
+    except Exception:
+        pass
+    if covered == 0:
+        apply_topic_map_from_config(col)
+        try:
+            covered = col._backend.get_coverage_report().topics_covered
+        except Exception:
+            covered = 0
+        if covered == 0:
+            ensure_content_topic_map(col)
+    try:
+        col._backend.compute_readiness()
+    except Exception:
+        pass
+
+
+def _load_content_topic_map(col, topics: dict) -> None:
+    """Load the 31-category AAMC content outline as the coverage topic map, so
+    coverage and readiness score against the real content categories the
+    library's cards are tagged with, not just the coarse 10 foundational
+    concepts. Persisted in the collection, so this only needs to run at import."""
+    try:
+        entries = [
+            speedrun_pb2.TopicMapEntry(
+                topic=cid,
+                label=str(topic.get("name", cid)),
+                weight=float(topic.get("weight", 1.0)),
+            )
+            for cid, topic in topics.items()
+        ]
+        if entries:
+            col._backend.set_topic_map(entries)
+    except Exception:
+        pass
+
+
+def _do_import_content_library(col) -> tuple[int, int] | None:
+    """Import the open-licensed MCAT content library: a tagged flashcard deck
+    across all 31 content categories plus the matched practice questions, and
+    load the 31-category coverage map.
+
+    Returns (cards_added, questions_added), (0, 0) if already imported, or None
+    if the pack isn't bundled. Idempotent via a config flag; caller refreshes.
+    """
+    lib = _load_pack(_CONTENT_PACK)
+    if lib is None:
+        return None
+    topics = lib.get("topics", {})
+    _load_content_topic_map(col, topics)
+    if col.get_config(_CFG_CONTENT, False):
+        return (0, 0)
+    did = col.decks.id(_CONTENT_DECK)
+    model = col.models.by_name("Basic")
+    cards_added = 0
+    questions: list[dict] = []
+    for cid, topic in topics.items():
+        subject = str(topic.get("subject", ""))
+        for card in topic.get("cards", []):
+            note = col.new_note(model)
+            note["Front"] = card.get("front", "")
+            note["Back"] = card.get("back", "")
+            note.tags = [tag for tag in (cid, subject) if tag]
+            col.add_note(note, did)
+            cards_added += 1
+        for q in topic.get("questions", []):
+            questions.append(
+                {
+                    "topic": subject,
+                    "card_tag": cid,
+                    "stem": q.get("stem", ""),
+                    "options": q.get("options", []),
+                    "correct_index": q.get("correct_index", 0),
+                    "explanation": q.get("explanation", ""),
+                    "provenance": 1,  # open_licensed
+                }
+            )
+    n_q = _import_question_pack(col, {"questions": questions})
+    col.set_config(_CFG_CONTENT, True)
+    return (cards_added, n_q)
+
+
+def import_content_library(mw: aqt.AnkiQt) -> None:
+    """One-tap import of the full open-licensed MCAT content library (Library
+    button). Idempotent; loads the 31-category coverage map either way."""
+    col = mw.col
+    if col is None:
+        return
+    if _load_pack(_CONTENT_PACK) is None:
+        showWarning(
+            "The content library isn't bundled with this build. Run "
+            "tools/build_content_library.py, or import a .json pack via "
+            "'Import your own'."
+        )
+        return
+    try:
+        result = _do_import_content_library(col)
+    except Exception as exc:  # pragma: no cover - surfaced to the user
+        showWarning(f"Speedrun: content library import failed: {exc}")
+        return
+    _refresh(mw)
+    if result == (0, 0):
+        tooltip("The MCAT content library is already imported.")
+    elif result:
+        tooltip(
+            f"Imported {result[0]} cards + {result[1]} questions across the 31 "
+            "MCAT content categories."
+        )
+
+
+def seed_sample_history(mw: aqt.AnkiQt) -> None:
+    """Seed a labeled sample study history so all three scores show with ranges
+    for a demo: mark existing cards as mature review cards and record exam-style +
+    SRS attempts (with predictions), via the shared engine RPC. The readiness
+    score stays COMPUTED from this seeded history, never hand-set - it is clearly
+    surfaced as sample data."""
+    col = mw.col
+    if col is None:
+        return
+    # One-time: don't re-seed (and re-tooltip) on repeat clicks / restarts.
+    if col.get_config(_CFG_SAMPLE, False):
+        tooltip("Sample study history is already loaded.")
+        return
+
+    def task():
+        # 0 => the engine's demo defaults (30 mature cards, 24 exam + 12 SRS).
+        return col._backend.seed_sample_history(
+            mature_cards=0, exam_attempts=0, srs_attempts=0
+        )
+
+    def on_done(resp) -> None:
+        _refresh(mw)
+        if getattr(resp, "cards_matured", 0) == 0:
+            tooltip("Import a deck first, then load sample study history.")
+            return
+        col.set_config(_CFG_SAMPLE, True)
+        tooltip(
+            f"Loaded sample study history: {resp.cards_matured} mature cards + "
+            f"{resp.attempts_recorded} attempts. Your three scores now show "
+            "(sample data)."
+        )
+
+    _run_with_progress(mw, "Loading sample study history…", task, on_done)
+
+
+def clear_study_data_for_sync_test(mw: aqt.AnkiQt, on_done=None) -> None:
+    """Wipe Speedrun study history on this desktop so sync can be re-tested.
+
+    Deletes practice attempts and readiness snapshots, resets matured sample
+    cards back to new, and clears the sample-loaded flag. Imported decks and
+    the topic map stay in place."""
+    from anki.cards import CardId
+    from aqt.utils import askUser
+
+    col = mw.col
+    if col is None:
+        return
+    if not askUser(
+        "Clear Speedrun study history on this desktop?\n\n"
+        "Removes practice attempts and resets matured sample cards. "
+        'Imported decks stay. Then tap "Use phone data" to re-test sync.',
+        title="Speedrun",
+    ):
+        return
+
+    def task() -> tuple[int, int]:
+        attempt_cards = col.db.list("select distinct cid from sr_attempts")
+        card_ids: set[int] = set(attempt_cards)
+        try:
+            content_did = col.decks.id(_CONTENT_DECK)
+            if content_did:
+                for cid in col.find_cards(f"deck:{content_did} prop:ivl>=1"):
+                    card_ids.add(cid)
+        except Exception:
+            pass
+        attempts = col.db.scalar("select count(*) from sr_attempts") or 0
+        col.db.execute("delete from sr_attempts")
+        col.db.execute("delete from sr_readiness")
+        if card_ids:
+            col.sched.schedule_cards_as_new(
+                [CardId(cid) for cid in card_ids],
+                restore_position=False,
+                reset_counts=True,
+            )
+        col.set_config(_CFG_SAMPLE, False)
+        refresh_readiness_after_sync(col)
+        return attempts, len(card_ids)
+
+    def finished(counts: tuple[int, int]) -> None:
+        attempts, cards = counts
+        _refresh(mw)
+        tooltip(
+            f"Cleared {attempts} attempts and reset {cards} cards. "
+            'Tap "Use phone data" to pull from the phone.'
+        )
+        if callable(on_done):
+            on_done(counts)
+
+    _run_with_progress(mw, "Clearing study data…", task, finished)
 
 
 def _do_import_e2e(col) -> tuple[int, int] | None:
@@ -357,8 +725,11 @@ def import_e2e_pack(mw: aqt.AnkiQt) -> None:
 
 
 def maybe_load_example_deck(mw: aqt.AnkiQt) -> None:
-    """First-run demo convenience: seed the bundled biology example deck once, on
-    a fresh/empty collection. Skipped if the user already has decks or cards."""
+    """First-run demo convenience: seed the bundled open-licensed MCAT content
+    library once, on a fresh/empty collection (a tagged deck across all 31
+    content categories plus matched practice questions, and the coverage map).
+    Skipped if the user already has decks or cards. Falls back to the smaller
+    biology example deck if the content library isn't bundled."""
     col = mw.col
     if col is None:
         return
@@ -369,11 +740,12 @@ def maybe_load_example_deck(mw: aqt.AnkiQt) -> None:
         if user_decks or col.card_count() > 0:
             col.set_config(_CFG_EXAMPLE, True)  # existing content: never auto-seed
             return
-        _do_import_e2e(col)
+        if _do_import_content_library(col) is None:
+            _do_import_e2e(col)
         col.set_config(_CFG_EXAMPLE, True)
         _refresh(mw)
     except Exception as exc:  # pragma: no cover - never block startup
-        print(f"speedrun: example deck auto-load skipped: {exc}")
+        print(f"speedrun: example content auto-load skipped: {exc}")
 
 
 def import_mmlu_pack(mw: aqt.AnkiQt) -> None:
@@ -434,158 +806,61 @@ def _content_status(mw: aqt.AnkiQt) -> str:
     return " · ".join(bits)
 
 
-# --- library dialog ---------------------------------------------------------
+# --- inline library (rendered into the main webview by speedrun.py) ---------
+#
+# The library is a Speedrun screen like Home/Practice/Settings: speedrun.py paints
+# ``theme.library_body`` into mw.web and routes the ``speedrun:lib:*`` pycmds back
+# to the action functions below. The catalog data + native file/link pickers live
+# here; the pickers are the only OS dialogs, parented on the main window.
 
 
-class LibraryDialog(QDialog):
-    """Desktop equivalent of the mobile Library: popular decks, the MMLU pack,
-    and import-your-own, all one tap."""
-
-    def __init__(self, mw: aqt.AnkiQt) -> None:
-        super().__init__(mw)
-        self.mw = mw
-        self.setWindowTitle("Speedrun library")
-        disable_help_button(self)
-        self.resize(560, 520)
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(*_DIALOG_MARGINS)
-        layout.setSpacing(12)
-
-        layout.addWidget(_mark(QLabel("Library"), role="display"))
-        layout.addWidget(
-            _mark(
-                QLabel(f"On this device: {_content_status(mw)}"),
-                role="muted",
-            )
-        )
-
-        layout.addWidget(_mark(QLabel("GUIDED END-TO-END TEST"), role="eyebrow"))
-        e2e = QFrame()
-        e2e.setProperty("srCard", "1")
-        e2e_row = QHBoxLayout(e2e)
-        e2e_row.setContentsMargins(14, 12, 14, 12)
-        e2e_meta = QVBoxLayout()
-        e2e_meta.addWidget(_mark(QLabel("Biology e2e test"), role="title"))
-        e2e_meta.addWidget(
-            _mark(
-                QLabel(
-                    "15 biology cards + 6 topic-matched questions. Review, finish, and the reasoning round pulls matched (not random) questions."
-                ),
-                role="muted",
-            )
-        )
-        e2e_meta.itemAt(1).widget().setWordWrap(True)  # type: ignore[attr-defined]
-        e2e_row.addLayout(e2e_meta, 1)
-        add_e2e = _mark(QPushButton("Add e2e test"), primary=True)
-        qconnect(add_e2e.clicked, lambda: import_e2e_pack(self.mw))
-        e2e_row.addWidget(add_e2e)
-        layout.addWidget(e2e)
-
-        layout.addWidget(_divider())
-
-        layout.addWidget(_mark(QLabel("POPULAR DECKS"), role="eyebrow"))
-        for deck in _POPULAR_DECKS:
-            layout.addWidget(self._deck_card(deck))
-
-        layout.addWidget(_divider())
-
-        layout.addWidget(_mark(QLabel("PRACTICE QUESTIONS"), role="eyebrow"))
-        mmlu_row = QHBoxLayout()
-        mmlu_meta = QVBoxLayout()
-        mmlu_meta.addWidget(_mark(QLabel("MMLU MCAT-relevant pack"), role="title"))
-        mmlu_meta.addWidget(
-            _mark(QLabel("Open-licensed held-out questions (MIT)."), role="muted")
-        )
-        mmlu_row.addLayout(mmlu_meta, 1)
-        add_mmlu = _mark(QPushButton("Add pack"), primary=True)
-        qconnect(add_mmlu.clicked, lambda: import_mmlu_pack(self.mw))
-        mmlu_row.addWidget(add_mmlu)
-        layout.addLayout(mmlu_row)
-
-        layout.addWidget(_divider())
-
-        layout.addWidget(_mark(QLabel("IMPORT YOUR OWN"), role="eyebrow"))
-        own_row = QHBoxLayout()
-        pick = QPushButton("Choose file…")
-        qconnect(pick.clicked, self._pick_file)
-        paste = QPushButton("Paste a link…")
-        qconnect(paste.clicked, self._paste_link)
-        own_row.addWidget(pick)
-        own_row.addWidget(paste)
-        own_row.addStretch(1)
-        layout.addLayout(own_row)
-        layout.addWidget(
-            _mark(
-                QLabel(
-                    ".apkg / .colpkg decks or .json question packs. Drive links work."
-                ),
-                role="muted",
-            )
-        )
-
-        layout.addStretch(1)
-        close_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
-        qconnect(close_box.rejected, self.reject)
-        layout.addWidget(close_box)
-
-        self.setStyleSheet(theme.dialog_qss(_night()))
-
-    def _deck_card(self, deck: dict) -> QWidget:
-        card = QFrame()
-        card.setProperty("srCard", "1")
-        row = QHBoxLayout(card)
-        row.setContentsMargins(14, 12, 14, 12)
-        meta = QVBoxLayout()
-        meta.addWidget(_mark(QLabel(deck["name"]), role="title"))
-        meta.addWidget(_mark(QLabel(deck["section"]), role="muted"))
-        meta.addWidget(_mark(QLabel(deck["size"]), role="muted"))
-        row.addLayout(meta, 1)
-        btn = _mark(QPushButton("Download & import"), primary=True)
-        qconnect(
-            btn.clicked,
-            lambda _=False, d=deck: download_and_import_deck(
-                self.mw, d["url"], d["name"]
-            ),
-        )
-        row.addWidget(btn)
-        return card
-
-    def _pick_file(self) -> None:
-        path = getFile(
-            self,
-            "Import a deck or question pack",
-            None,
-            key="speedrun_import",
-            filter="Anki / Speedrun (*.apkg *.colpkg *.json)",
-        )
-        if isinstance(path, (list, tuple)):
-            path = path[0] if path else None
-        if path:
-            import_local_file(self.mw, str(path))
-
-    def _paste_link(self) -> None:
-        url, ok = QInputDialog.getText(
-            self,
-            "Import from a link",
-            "Direct .apkg/.colpkg/.json link (Drive links work):",
-        )
-        if ok and url.strip():
-            name = url.strip().rsplit("/", 1)[-1][:40] or "deck"
-            download_and_import_deck(self.mw, url.strip(), name)
+def content_status(mw: aqt.AnkiQt) -> str:
+    """One-line summary of on-device content, for the library header."""
+    return _content_status(mw)
 
 
-def _divider() -> QFrame:
-    line = QFrame()
-    line.setFrameShape(QFrame.Shape.HLine)
-    line.setProperty("srRole", "divider")
-    return line
+def popular_decks() -> list[dict]:
+    """The curated starter catalog rendered as cards on the library screen."""
+    return _POPULAR_DECKS
 
 
-def open_library(mw: aqt.AnkiQt) -> None:
+def download_popular_deck(mw: aqt.AnkiQt, index: int) -> None:
+    """Download + import the catalog deck at ``index`` (from the library card)."""
+    if mw.col is None or not 0 <= index < len(_POPULAR_DECKS):
+        return
+    deck = _POPULAR_DECKS[index]
+    download_and_import_deck(mw, deck["url"], deck["name"])
+
+
+def pick_file(mw: aqt.AnkiQt) -> None:
+    """Choose a local deck or question pack to import (native file picker)."""
     if mw.col is None:
         return
-    LibraryDialog(mw).exec()
+    path = getFile(
+        mw,
+        "Import a deck or question pack",
+        None,
+        key="speedrun_import",
+        filter="Anki / Speedrun (*.apkg *.colpkg *.json *.csv)",
+    )
+    if isinstance(path, (list, tuple)):
+        path = path[0] if path else None
+    if path:
+        import_local_file(mw, str(path))
+
+
+def paste_link(mw: aqt.AnkiQt) -> None:
+    """Import from a pasted direct link (Google Drive links resolve)."""
+    if mw.col is None:
+        return
+    url, ok = QInputDialog.getText(
+        mw,
+        "Import from a link",
+        "Direct .apkg/.colpkg/.json link (Drive links work):",
+    )
+    if ok and url.strip():
+        name = url.strip().rsplit("/", 1)[-1][:40] or "deck"
+        download_and_import_deck(mw, url.strip(), name)
 
 
 # --- first-run onboarding ---------------------------------------------------

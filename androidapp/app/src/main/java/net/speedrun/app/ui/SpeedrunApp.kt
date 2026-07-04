@@ -10,19 +10,20 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
@@ -33,6 +34,7 @@ import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.School
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -47,12 +49,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -65,6 +66,7 @@ import net.speedrun.app.OpenState
 import net.speedrun.app.ui.screens.DashboardScreen
 import net.speedrun.app.ui.screens.DeckOverviewScreen
 import net.speedrun.app.ui.screens.DecksScreen
+import net.speedrun.app.ui.screens.DiagnosticScreen
 import net.speedrun.app.ui.screens.GetStartedScreen
 import net.speedrun.app.ui.screens.LibraryScreen
 import net.speedrun.app.ui.screens.OnboardingScreen
@@ -72,7 +74,9 @@ import net.speedrun.app.ui.screens.PracticeScreen
 import net.speedrun.app.ui.screens.ReviewScreen
 import net.speedrun.app.ui.screens.SettingsScreen
 import net.speedrun.app.ui.screens.StatsScreen
-import net.speedrun.app.ui.theme.Radius
+import net.speedrun.app.ui.screens.SyncScreen
+import net.speedrun.app.ui.screens.TopicDetailScreen
+import net.speedrun.app.ui.screens.TopicSectionDetailScreen
 import net.speedrun.app.ui.theme.Space
 import net.speedrun.app.ui.theme.Speedrun
 import net.speedrun.app.ui.theme.body
@@ -82,6 +86,12 @@ import net.speedrun.app.ui.theme.heading
 object Selection {
     var deckId: Long = 0L
     var deckName: String = ""
+    // The MCAT content-category id for the topic drill-in (set before nav).
+    var topicId: String = ""
+    // The MCAT section key for the section drill-in (set before nav).
+    var sectionKey: String = ""
+    // Subject tags to filter Practice to (empty = mixed diagnostic).
+    var practiceSubjects: List<String> = emptyList()
 }
 
 private data class Tab(
@@ -133,11 +143,12 @@ private fun MainScaffold() {
     var start by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
         var hasContent = runCatching { EngineRepository.hasContent() }.getOrDefault(false)
-        // Demo convenience: on a fresh install, seed the bundled biology example
-        // deck so there is something to review immediately (skipped if the user
-        // already has content, and only ever once).
+        // Demo convenience: on a fresh install, seed the open-licensed MCAT
+        // content library (cards + questions across all 31 categories, and the
+        // coverage map) so there is something to review and a filled practice
+        // bank immediately (skipped if the user already has content; only once).
         if (!hasContent && !AppSettings.exampleLoaded) {
-            runCatching { EngineRepository.importE2eBiology(context) }
+            runCatching { EngineRepository.importContentLibrary(context) }
             AppSettings.setExampleLoaded(context, true)
             hasContent = runCatching { EngineRepository.hasContent() }.getOrDefault(false)
         }
@@ -180,7 +191,15 @@ private fun MainScaffold() {
             }
             composable("onboarding") {
                 OnboardingScreen(onDone = {
-                    nav.navigate("decks") { popUpTo("onboarding") { inclusive = true } }
+                    // First run flows into the placement diagnostic; later exam
+                    // edits (diagnostic already done) return straight to Decks.
+                    val next = if (!AppSettings.diagnosticDone) "diagnostic" else "decks"
+                    nav.navigate(next) { popUpTo("onboarding") { inclusive = true } }
+                })
+            }
+            composable("diagnostic") {
+                DiagnosticScreen(onDone = {
+                    nav.navigate("decks") { popUpTo("diagnostic") { inclusive = true } }
                 })
             }
             composable("decks") {
@@ -198,13 +217,72 @@ private fun MainScaffold() {
                             nav.navigate("review")
                         }
                     },
-                    onPractice = { nav.navigate("practice") },
+                    onPractice = {
+                        Selection.practiceSubjects = emptyList()
+                        nav.navigate("practice")
+                    },
                     onOpenSettings = { nav.navigate("settings") },
+                    onOpenSection = { key ->
+                        Selection.sectionKey = key
+                        nav.navigate("section")
+                    },
                 )
             }
-            composable("dashboard") { DashboardScreen() }
+            composable("dashboard") {
+                DashboardScreen(
+                    onPractice = {
+                        Selection.practiceSubjects = emptyList()
+                        nav.navigate("practice")
+                    },
+                    onEditExam = { nav.navigate("onboarding") },
+                    onOpenSection = { key ->
+                        Selection.sectionKey = key
+                        nav.navigate("section")
+                    },
+                )
+            }
+            composable(
+                "section",
+                enterTransition = pushEnter,
+                popExitTransition = pushPopExit,
+            ) {
+                TopicSectionDetailScreen(
+                    sectionKey = Selection.sectionKey,
+                    onBack = { nav.popBackStack() },
+                    onOpenTopic = { id ->
+                        Selection.topicId = id
+                        nav.navigate("topic")
+                    },
+                )
+            }
+            composable(
+                "topic",
+                enterTransition = pushEnter,
+                popExitTransition = pushPopExit,
+            ) {
+                TopicDetailScreen(
+                    topicId = Selection.topicId,
+                    onBack = { nav.popBackStack() },
+                    onReview = {
+                        val id = Selection.topicId
+                        scope.launch {
+                            val deckId = runCatching { EngineRepository.reviewTopic(id) }.getOrNull()
+                            if (deckId != null && deckId != 0L) {
+                                Selection.deckId = deckId
+                                nav.navigate("review")
+                            }
+                        }
+                    },
+                    onPractice = { subjects ->
+                        Selection.practiceSubjects = subjects
+                        nav.navigate("practice")
+                    },
+                )
+            }
             composable("progress") { StatsScreen() }
-            composable("library") { LibraryScreen() }
+            composable("library") {
+                LibraryScreen(onOpenDashboard = { navigateTab(nav, "dashboard") })
+            }
             composable(
                 "settings",
                 enterTransition = pushEnter,
@@ -213,7 +291,16 @@ private fun MainScaffold() {
                 SettingsScreen(
                     onBack = { nav.popBackStack() },
                     onEditExam = { nav.navigate("onboarding") },
+                    onOpenSync = { nav.navigate("sync") },
+                    onRetakeDiagnostic = { nav.navigate("diagnostic") },
                 )
+            }
+            composable(
+                "sync",
+                enterTransition = pushEnter,
+                popExitTransition = pushPopExit,
+            ) {
+                SyncScreen(onBack = { nav.popBackStack() })
             }
             composable(
                 "overview",
@@ -259,41 +346,40 @@ private fun navigateTab(nav: androidx.navigation.NavController, route: String) {
 @Composable
 private fun BottomBar(current: String?, onSelect: (String) -> Unit) {
     val c = Speedrun.colors
-    // A floating surface pill (cohesive with the warm canvas, not a stark black
-    // slab); the active tab sits in an accent-tinted circle with an accent icon.
-    Box(Modifier.fillMaxWidth().padding(horizontal = Space.xxl, vertical = Space.m)) {
+    // A standard iOS tab bar: a full-width bar on `surface` with a hairline top
+    // separator, each tab a stacked SF-style icon + 10pt label, tinted with the
+    // accent when active and secondary gray otherwise. Sits above the home
+    // indicator via navigationBarsPadding.
+    Column(Modifier.fillMaxWidth().background(c.surface)) {
+        HorizontalDivider(thickness = 0.5.dp, color = c.separator)
         Row(
-            Modifier.fillMaxWidth()
-                .shadow(
-                    elevation = 12.dp,
-                    shape = RoundedCornerShape(Radius.pill),
-                    clip = false,
-                    ambientColor = Color.Black.copy(alpha = 0.05f),
-                    spotColor = Color.Black.copy(alpha = 0.12f),
-                )
-                .clip(RoundedCornerShape(Radius.pill))
-                .background(c.surface)
-                .border(1.dp, c.separator, RoundedCornerShape(Radius.pill))
-                .padding(Space.s),
+            Modifier.fillMaxWidth().navigationBarsPadding().height(50.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             tabs.forEach { tab ->
                 val selected = current == tab.route
-                Box(
-                    Modifier.size(48.dp).clip(CircleShape)
-                        .background(if (selected) c.accent.copy(alpha = 0.12f) else Color.Transparent)
+                val tint = if (selected) c.accent else c.textSecondary
+                Column(
+                    Modifier.weight(1f).fillMaxHeight()
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                         ) { onSelect(tab.route) },
-                    contentAlignment = Alignment.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
                 ) {
                     Icon(
                         if (selected) tab.selected else tab.unselected,
                         contentDescription = tab.label,
-                        tint = if (selected) c.accent else c.textTertiary,
-                        modifier = Modifier.size(24.dp),
+                        tint = tint,
+                        modifier = Modifier.size(26.dp),
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        tab.label,
+                        color = tint,
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                     )
                 }
             }

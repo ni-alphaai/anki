@@ -25,8 +25,10 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 import uuid
+from collections.abc import Callable
 from typing import Any, TypeVar
 
 import aqt
@@ -34,7 +36,9 @@ from anki import speedrun_pb2
 from anki.cards import Card
 from aqt import gui_hooks
 from aqt import speedrun_ai as srai
+from aqt import speedrun_grouping as grouping
 from aqt import speedrun_library as library
+from aqt import speedrun_mcat as mcat
 from aqt import speedrun_sync as srsync
 from aqt import speedrun_theme as theme
 from aqt import speedrun_voice as voice
@@ -75,6 +79,8 @@ _CFG_DELAYED_FB = "speedrunDelayedFeedbackExperiment"
 # A student at/above this overall exam-style accuracy counts as proficient for
 # the withhold experiment (mirrors the engine's PROFICIENT_THRESHOLD).
 _PROFICIENT_THRESHOLD = 0.8
+# Client-only flag: the first-run onboarding placement quiz has been offered.
+_CFG_DIAGNOSTIC = "speedrunDiagnosticDone"
 _REASONING_ROUND_SIZE = 5
 
 
@@ -258,6 +264,10 @@ def setup(mw: aqt.AnkiQt) -> None:
     qconnect(exam.triggered, lambda: _set_exam_target(mw))
     menu.addAction(exam)
 
+    diagnostic = QAction("Run placement diagnostic…", mw)
+    qconnect(diagnostic.triggered, lambda: _start_diagnostic(mw))
+    menu.addAction(diagnostic)
+
     setup_action = QAction("Set up Speedrun…", mw)
     qconnect(setup_action.triggered, lambda: library.open_onboarding(mw))
     menu.addAction(setup_action)
@@ -272,6 +282,8 @@ def _on_collection_loaded(_col) -> None:
     if mw is None:
         return
 
+    _scrub_stale_sync_urls(mw.pm)
+
     # Anki's first setupStyle() ran before our style_did_init hook registered, so
     # rebuild the app stylesheet now that the collection (and toggle) are loaded.
     _reapply_app_style()
@@ -282,10 +294,12 @@ def _on_collection_loaded(_col) -> None:
         # Reveal the app-shell sidebar and land on Home (the readiness
         # dashboard), so the app opens on its value surface rather than a bare
         # deck list. Deferred with the rest of first-run so Anki's own startup
-        # state has settled first.
+        # state has settled first. If the placement diagnostic is offered, it
+        # owns the webview instead of the dashboard.
         _apply_shell_visibility(mw)
         if mw.col is not None and _modern_on(mw.col):
-            _show_workspace(mw, "dashboard")
+            if not maybe_start_diagnostic(mw):
+                _show_workspace(mw, "dashboard")
         # If this collection was already paired with a phone, bring the local
         # sync server up and sync so the phone can reach fresh data immediately.
         if mw.col is not None and srsync.is_paired(mw.col):
@@ -648,6 +662,245 @@ def _collect(col, fresh: bool) -> dict:
     return data
 
 
+# Per-topic evidence gates: much lower than the global readiness gates, since a
+# single content category accumulates far less evidence than the whole deck. Used
+# only to phrase a topic's status honestly, never to fabricate a score.
+_TOPIC_MIN_ATTEMPTS = 3
+
+
+def _topic_status(t: dict) -> tuple[str, str]:
+    """A short status label + colour kind for one topic, from its raw counts."""
+    if t["cards"] == 0:
+        return ("Not in your decks", "muted")
+    if t["review"] == 0 and t["attempts"] == 0:
+        return ("Not started", "muted")
+    perf = t["performance"]
+    if t["attempts"] >= _TOPIC_MIN_ATTEMPTS and perf is not None and perf < 0.55:
+        return ("Needs work", "danger")
+    mem = t["memory"]
+    if mem is not None and mem >= 0.7 and (perf is None or perf >= 0.65):
+        return ("Strong", "perf")
+    return ("Building", "memory")
+
+
+def _collect_topic_dashboard(mw) -> dict:
+    """Per-topic coverage/memory/performance grouped by MCAT section, for the
+    topic-centric Home dashboard and the per-topic drill-in. Backed by the
+    engine's GetTopicSignals (raw counts); fractions + status derived here."""
+    col = mw.col
+    try:
+        signals = list(col._backend.get_topic_signals())
+    except Exception:
+        signals = []
+    meta = library.topic_meta()
+
+    topics: dict[str, dict] = {}
+    for s in signals:
+        review, mature = int(s.review_cards), int(s.mature_cards)
+        attempts, correct = int(s.exam_attempts), int(s.exam_correct)
+        m = meta.get(s.topic, {})
+        sec = _section_for_topic(s.topic)
+        t = {
+            "id": s.topic,
+            "name": m.get("name") or s.label or s.topic,
+            "section_key": sec["key"] if sec else "",
+            "section": sec["short"] if sec else "",
+            "subject": m.get("subject", ""),
+            "weight": float(m.get("weight", s.weight)),
+            "cards": int(s.cards),
+            "covered": bool(s.covered),
+            "review": review,
+            "mature": mature,
+            "attempts": attempts,
+            "correct": correct,
+            "memory": (mature / review) if review else None,
+            "performance": (correct / attempts) if attempts else None,
+        }
+        t["status"], t["kind"] = _topic_status(t)
+        topics[s.topic] = t
+
+    sections: list[dict] = []
+    for sec in mcat.SECTIONS:
+        rows = sorted(
+            (t for t in topics.values() if t["section_key"] == sec["key"]),
+            key=lambda t: (-t["weight"], t["name"]),
+        )
+        sections.append(
+            _topic_section_summary(
+                sec["key"], sec["short"], sec["full"], not sec["subjects"], rows
+            )
+        )
+
+    other = sorted(
+        (t for t in topics.values() if not t["section_key"]),
+        key=lambda t: (-t["weight"], t["name"]),
+    )
+    if other:
+        sections.append(
+            _topic_section_summary("other", "Other", "Uncategorized topics", False, other)
+        )
+
+    return {"sections": sections, "has_topics": bool(topics)}
+
+
+def _section_for_topic(topic_id: str) -> dict | None:
+    """The MCAT section a topic id belongs to, from its Foundational Concept
+    number (leading digits of ``1A``..``10E`` or ``fc1``..``fc10``): FC1-3 ->
+    Bio/Biochem, FC4-5 -> Chem/Phys, FC6-10 -> Psych/Soc. Mirrors the mobile
+    ``Mcat.sectionForTopic`` so both platforms group topics identically."""
+    m = re.match(r"(?:fc)?(\d+)", str(topic_id).lower())
+    if not m:
+        return None
+    fc = int(m.group(1))
+    key = (
+        "bio_biochem"
+        if 1 <= fc <= 3
+        else "chem_phys"
+        if 4 <= fc <= 5
+        else "psych_soc"
+        if 6 <= fc <= 10
+        else ""
+    )
+    return next((s for s in mcat.SECTIONS if s["key"] == key), None) if key else None
+
+
+def _topic_section_summary(
+    key: str, short: str, full: str, disabled: bool, rows: list[dict]
+) -> dict:
+    total = len(rows)
+    covered = sum(1 for t in rows if t["covered"])
+    sum_review = sum(t["review"] for t in rows)
+    sum_mature = sum(t["mature"] for t in rows)
+    sum_att = sum(t["attempts"] for t in rows)
+    sum_cor = sum(t["correct"] for t in rows)
+    return {
+        "key": key,
+        "short": short,
+        "full": full,
+        "disabled": disabled,
+        "total": total,
+        "covered": covered,
+        "coverage": (covered / total) if total else 0.0,
+        "memory": (sum_mature / sum_review) if sum_review else None,
+        "performance": (sum_cor / sum_att) if sum_att else None,
+        "topics": rows,
+    }
+
+
+def _collect_deck_list(mw) -> dict:
+    """Flatten the scheduler's deck-due tree (name / New / Learn / Due) for the
+    Speedrun-styled all-decks list."""
+    rows: list[dict] = []
+
+    def walk(node: object, depth: int) -> None:
+        for child in getattr(node, "children", []):
+            rows.append(
+                {
+                    "id": child.deck_id,
+                    "name": child.name,
+                    "depth": depth,
+                    "new": child.new_count,
+                    "learn": child.learn_count,
+                    "review": child.review_count,
+                }
+            )
+            if not getattr(child, "collapsed", False):
+                walk(child, depth + 1)
+
+    try:
+        walk(mw.col.sched.deck_due_tree(), 0)
+    except Exception:
+        pass
+    return {"decks": rows, "studied": "Your decks, by New / Learn / Due — tap to study."}
+
+
+def _open_deck(mw: aqt.AnkiQt, deck_id: int) -> None:
+    """Select a deck and open its (reskinned) overview to study it."""
+    global _ws_active
+    try:
+        from anki.decks import DeckId
+
+        mw.col.decks.select(DeckId(deck_id))
+    except Exception:
+        pass
+    _ws_active = None
+    mw.moveToState("overview")
+    _render_sidebar(mw)
+
+
+def _deck_action(mw: aqt.AnkiQt, arg: str) -> None:
+    """Route ``speedrun:deck:*``: the deck-list action buttons + a deck id to open."""
+    if arg == "create":
+        try:
+            from aqt.operations.deck import add_deck_dialog
+
+            if op := add_deck_dialog(parent=mw):
+                op.run_in_background()
+        except Exception as exc:
+            tooltip(f"Could not create deck: {exc}")
+    elif arg == "import":
+        try:
+            mw.onImport()
+        except Exception as exc:
+            tooltip(f"Could not open import: {exc}")
+    elif arg == "shared":
+        try:
+            from aqt.utils import openLink
+
+            openLink(f"{aqt.appShared}decks/")
+        except Exception:
+            pass
+    else:
+        try:
+            _open_deck(mw, int(arg))
+        except ValueError:
+            pass
+
+
+def _collect_progress(col) -> dict:
+    """Gather the Progress screen's chart data: the three signals, calibration
+    bins, misses-by-cause, and per-topic coverage."""
+    backend = col._backend
+    snap = backend.compute_readiness()
+    cov = backend.get_coverage_report()
+    data: dict = {
+        "memory": snap.memory,
+        "performance": snap.performance,
+        "coverage": snap.coverage,
+        "memory_ok": snap.memory_sufficient,
+        "perf_ok": snap.performance_sufficient,
+        "gap": snap.recall_perf_gap,
+        "sufficient": snap.sufficient,
+        "cov_total": cov.topics_total,
+        "cov_covered": cov.topics_covered,
+        "weighted": cov.weighted_coverage,
+        "topics": [
+            {"label": t.label or t.topic, "covered": t.covered, "weight": t.weight}
+            for t in cov.topics
+        ],
+    }
+    try:
+        c = backend.get_calibration_report()
+        data["calibration"] = {
+            "sufficient": c.sufficient,
+            "n": c.n,
+            "brier": c.brier,
+            "logloss": c.log_loss,
+            "bins": [
+                {
+                    "mean_predicted": b.mean_predicted,
+                    "mean_outcome": b.mean_outcome,
+                    "count": b.count,
+                }
+                for b in c.bins
+            ],
+        }
+    except Exception:
+        data["calibration"] = None
+    data["feedback"] = _feedback_report(col)
+    return data
+
+
 def _next_action(data: dict) -> dict:
     """The single recommended step, with the command that performs it so the
     panel's card can be a real button (not inert text)."""
@@ -834,71 +1087,121 @@ def _flag_practice(mw: aqt.AnkiQt) -> None:
 # --- pycmd bridge -----------------------------------------------------------
 
 
+def _cmd_seed(mw: aqt.AnkiQt) -> None:
+    try:
+        mw.col._backend.seed_mcat_topic_outline()
+        _refresh(mw, "Seeded MCAT topics. Tag cards with a topic to cover it.")
+    except Exception as exc:
+        tooltip(f"Could not seed outline: {exc}")
+
+
+def _cmd_refresh(mw: aqt.AnkiQt) -> None:
+    try:
+        mw.col._backend.compute_readiness()
+    except Exception:
+        pass
+    _refresh(mw)
+
+
+def _cmd_pq_next(mw: aqt.AnkiQt) -> None:
+    if _ws_practice is not None:
+        _ws_practice.advance()
+
+
+def _cmd_customstudy(mw: aqt.AnkiQt) -> None:
+    try:
+        from aqt.customstudy import CustomStudy
+
+        CustomStudy.fetch_data_and_show(mw)
+    except Exception:
+        _open_home()
+
+
+def _cmd_download_deck(mw: aqt.AnkiQt, arg: str) -> None:
+    try:
+        library.download_popular_deck(mw, int(arg))
+    except ValueError:
+        pass
+
+
+# Exact-match pycmds -> handler(mw). Lambda values defer name resolution to call
+# time, so this table can sit next to the router even though many handlers are
+# defined further down the module.
+_EXACT_CMDS: dict[str, Callable[[aqt.AnkiQt], object]] = {
+    _EXPLAIN_CMD: lambda mw: _start_self_explanation(mw),
+    "speedrun:seed": _cmd_seed,
+    "speedrun:exam": lambda mw: _set_exam_target(mw),
+    "speedrun:practice": lambda mw: _show_workspace(mw, "practice"),
+    "speedrun:practicelater": lambda mw: _flag_practice(mw),
+    "speedrun:report": lambda mw: _show_feedback_report(mw),
+    "speedrun:library": lambda mw: _show_workspace(mw, "library"),
+    "speedrun:lib:content": lambda mw: library.import_content_library(mw),
+    "speedrun:lib:sample": lambda mw: library.seed_sample_history(mw),
+    "speedrun:lib:e2e": lambda mw: library.import_e2e_pack(mw),
+    "speedrun:lib:mmlu": lambda mw: library.import_mmlu_pack(mw),
+    "speedrun:diag:start": lambda mw: _start_diagnostic(mw),
+    "speedrun:diag:skip": lambda mw: _skip_diagnostic(mw),
+    "speedrun:ai:toggle": lambda mw: _toggle_ai(mw),
+    "speedrun:lib:pick": lambda mw: library.pick_file(mw),
+    "speedrun:lib:paste": lambda mw: library.paste_link(mw),
+    "speedrun:settings": lambda mw: _show_workspace(mw, "settings"),
+    "speedrun:dashboard": lambda mw: _show_workspace(mw, "dashboard"),
+    "speedrun:decks": lambda mw: _show_workspace(mw, "decks"),
+    "speedrun:decks:all": lambda mw: _show_workspace(mw, "alldecks"),
+    "speedrun:decks:native": lambda mw: _open_native_decks(mw),
+    "speedrun:group": lambda mw: _group_cards(mw),
+    "speedrun:back": lambda mw: _leave_workspace(mw),
+    "speedrun:syncnow": lambda mw: _sync_now_from_screen(mw),
+    "speedrun:syncpull": lambda mw: _sync_pull_from_phone(mw),
+    "speedrun:syncpush": lambda mw: _sync_push_to_phone(mw),
+    "speedrun:syncusb": lambda mw: _refresh_usb_tunnel(mw),
+    "speedrun:syncclear": lambda mw: _clear_for_sync_test(mw),
+    "speedrun:pq:next": _cmd_pq_next,
+    "speedrun:pr:home": lambda mw: _show_workspace(mw, "practice"),
+    "speedrun:customstudy": _cmd_customstudy,
+    "speedrun:refresh": _cmd_refresh,
+}
+
+# Prefix pycmds -> handler(mw, remainder). No prefix is a prefix of another, so
+# first match wins.
+_PREFIX_CMDS: list[tuple[str, Callable[[aqt.AnkiQt, str], object]]] = [
+    ("speedrun:lib:deck:", _cmd_download_deck),
+    ("speedrun:ws:", lambda mw, a: _show_workspace(mw, a)),
+    ("speedrun:nav:", lambda mw, a: _navigate(mw, a)),
+    ("speedrun:set:", lambda mw, a: _ws_set(mw, a)),
+    ("speedrun:sync:", lambda mw, a: _ws_sync(mw, a)),
+    ("speedrun:pq:submit:", lambda mw, a: _ws_practice_submit(a)),
+    ("speedrun:theme:", lambda mw, a: _set_theme_mode(mw, a)),
+    ("speedrun:deck:", lambda mw, a: _deck_action(mw, a)),
+    ("speedrun:section:", lambda mw, a: _show_section(mw, a)),
+    ("speedrun:topic:", lambda mw, a: _open_topic(mw, a)),
+    ("speedrun:pr:sec:", lambda mw, a: _show_practice_section(mw, a)),
+    (
+        "speedrun:pr:go:",
+        lambda mw, a: _start_practice(mw, [t for t in a.split(",") if t]),
+    ),
+    ("speedrun:toggle:", lambda mw, a: _toggle(mw, a)),
+]
+
+
 def _on_js_message(handled: tuple[bool, object], message: str, context: object):
-    """Route Speedrun panel/button actions; leave all other messages alone."""
+    """Route Speedrun panel/button actions; leave all other messages alone.
+
+    Dispatches through the exact/prefix tables above so this stays a flat, cheap
+    lookup rather than a long branching chain."""
     if not message.startswith("speedrun:"):
         return handled
     mw = aqt.mw
     if mw is None or mw.col is None:
         return (True, None)
-
-    if message == _EXPLAIN_CMD:
-        _start_self_explanation(mw)
-    elif message == "speedrun:seed":
-        try:
-            mw.col._backend.seed_mcat_topic_outline()
-            _refresh(mw, "Seeded MCAT topics. Tag cards with a topic to cover it.")
-        except Exception as exc:
-            tooltip(f"Could not seed outline: {exc}")
-    elif message == "speedrun:exam":
-        _set_exam_target(mw)
-    elif message == "speedrun:practice":
-        _show_workspace(mw, "practice")
-    elif message == "speedrun:practicelater":
-        _flag_practice(mw)
-    elif message == "speedrun:report":
-        _show_feedback_report(mw)
-    elif message == "speedrun:library":
-        library.open_library(mw)
-    elif message == "speedrun:settings":
-        _show_workspace(mw, "settings")
-    elif message == "speedrun:dashboard":
-        _show_workspace(mw, "dashboard")
-    elif message == "speedrun:decks":
-        _leave_workspace(mw)
-    elif message.startswith("speedrun:ws:"):
-        _show_workspace(mw, message.rsplit(":", 1)[-1])
-    elif message.startswith("speedrun:nav:"):
-        _navigate(mw, message.rsplit(":", 1)[-1])
-    elif message == "speedrun:back":
-        _leave_workspace(mw)
-    elif message.startswith("speedrun:set:"):
-        _ws_set(mw, message.split(":", 2)[2])
-    elif message == "speedrun:syncnow":
-        _sync_now_from_screen(mw)
-    elif message.startswith("speedrun:sync:"):
-        _ws_sync(mw, message[len("speedrun:sync:") :])
-    elif message.startswith("speedrun:pq:submit:"):
-        _ws_practice_submit(message[len("speedrun:pq:submit:") :])
-    elif message == "speedrun:pq:next":
-        if _ws_practice is not None:
-            _ws_practice.advance()
-    elif message == "speedrun:customstudy":
-        try:
-            from aqt.customstudy import CustomStudy
-
-            CustomStudy.fetch_data_and_show(mw)
-        except Exception:
-            _open_home()
-    elif message == "speedrun:refresh":
-        try:
-            mw.col._backend.compute_readiness()
-        except Exception:
-            pass
-        _refresh(mw)
-    elif message.startswith("speedrun:toggle:"):
-        _toggle(mw, message.rsplit(":", 1)[-1])
-
+    exact = _EXACT_CMDS.get(message)
+    if exact is not None:
+        exact(mw)
+        return (True, None)
+    for prefix, handler in _PREFIX_CMDS:
+        if message.startswith(prefix):
+            handler(mw, message[len(prefix) :])
+            break
     return (True, None)
 
 
@@ -923,6 +1226,24 @@ def _toggle(mw: aqt.AnkiQt, key: str) -> None:
         _reapply_app_style()
         _apply_shell_visibility(mw)
     tooltip("On." if not current else "Off.")
+
+
+def _toggle_ai(mw: aqt.AnkiQt) -> None:
+    """Flip the source-grounded AI coach on/off from the rail chip. AI is always
+    optional - everything still scores with it off - so this is a one-click switch
+    from anywhere, mirrored by the Settings row."""
+    col = mw.col
+    if col is None:
+        return
+    if not srai.available():
+        tooltip("AI coach isn't installed in this build.")
+        return
+    current = bool(col.get_config(srai._CFG_AI_DIAGNOSIS, False))
+    col.set_config(srai._CFG_AI_DIAGNOSIS, not current)
+    _render_sidebar(mw)
+    if _ws_active is not None:
+        _show_workspace(mw, _ws_active)
+    tooltip(f"AI coach {'on' if not current else 'off'}.")
 
 
 def _refresh(mw: aqt.AnkiQt, msg: str | None = None) -> None:
@@ -993,11 +1314,12 @@ def _render_ws(mw: aqt.AnkiQt, body: str) -> None:
 
 # --- app shell: persistent left sidebar -------------------------------------
 #
-# Speedrun's primary chrome is a persistent left rail (Home / Study / Practice /
-# Library / Settings) rendered into its own webview, so it is never clobbered by
-# an Anki state change the way content painted into the main webview is. Home /
-# Practice / Settings render as Speedrun screens in mw.web; Study hands off to
-# Anki's native deck -> overview -> reviewer flow.
+# Speedrun's only navigation surface is a persistent left rail (Home / Decks /
+# Add / Browse / Stats / Practice / Library / Settings) rendered into its own
+# webview, so it is never clobbered by an Anki state change the way content
+# painted into the main webview is. Home / Practice / Library / Settings render as
+# Speedrun screens in mw.web; Decks hands off to Anki's native deck -> overview ->
+# reviewer flow; Add / Browse / Stats open Anki's native dialogs on top.
 
 _shell_web: Any = None
 _shell_holder: Any = None
@@ -1011,10 +1333,16 @@ class _ShellContext:
 _shell_ctx = _ShellContext()
 
 # Map the active Speedrun screen (_ws_active) to the sidebar item to highlight.
-# None (no Speedrun screen showing) means a native Anki state is active = Study.
+# None (no Speedrun screen showing) means a native Anki state is active = Decks.
 _SECTION_FOR_WS = {
     "dashboard": "home",
+    "topic": "home",
+    "section": "decks",
+    "decks": "decks",
+    "alldecks": "decks",
     "practice": "practice",
+    "progress": "progress",
+    "library": "library",
     "settings": "settings",
     # These screens have no matching nav item, so no sidebar item highlights.
     "sync": "sync",
@@ -1069,7 +1397,8 @@ def _sidebar_bridge(message: object) -> object:
 
 
 def _shell_active_section() -> str:
-    return _SECTION_FOR_WS.get(_ws_active or "", "study")
+    # No Speedrun screen showing -> a native Anki deck/review state is active.
+    return _SECTION_FOR_WS.get(_ws_active or "", "decks")
 
 
 def _sync_chip_state(mw: aqt.AnkiQt) -> dict:
@@ -1087,36 +1416,120 @@ def _render_sidebar(mw: aqt.AnkiQt | None) -> None:
     if web is None or mw is None or mw.col is None:
         return
     try:
-        html = theme.sidebar_html(_shell_active_section(), _sync_chip_state(mw))
+        ai_state = {"available": srai.available(), "enabled": srai.enabled(mw.col)}
+        html = theme.sidebar_html(
+            _shell_active_section(),
+            _sync_chip_state(mw),
+            ai_state,
+            _current_theme_mode(mw),
+        )
         web.stdHtml(html, head=theme.page_style(), context=_shell_ctx)
     except Exception as exc:  # pragma: no cover - never break navigation
         print(f"speedrun: sidebar render failed: {exc}")
 
 
+def _current_theme_mode(mw: aqt.AnkiQt) -> str:
+    """The persisted appearance choice as a rail-toggle key."""
+    try:
+        from aqt.theme import Theme
+
+        return {Theme.FOLLOW_SYSTEM: "system", Theme.LIGHT: "light", Theme.DARK: "dark"}.get(
+            mw.pm.theme(), "system"
+        )
+    except Exception:
+        return "system"
+
+
+def _set_theme_mode(mw: aqt.AnkiQt, mode: str) -> None:
+    """Switch the app between System / Light / Dark (persisted by Anki), then
+    re-render the shell + current Speedrun screen so the new palette takes hold."""
+    try:
+        from aqt.theme import Theme
+
+        theme_for = {
+            "system": Theme.FOLLOW_SYSTEM,
+            "light": Theme.LIGHT,
+            "dark": Theme.DARK,
+        }
+        mw.set_theme(theme_for.get(mode, Theme.FOLLOW_SYSTEM))
+    except Exception as exc:
+        print(f"speedrun: set theme failed: {exc}")
+        return
+    # Re-render our own webviews so they pick up the new night-mode palette
+    # (Anki refreshes its native screens itself).
+    _render_sidebar(mw)
+    if _ws_active in (
+        "dashboard", "decks", "alldecks", "practice", "library", "settings", "progress"
+    ):
+        _show_workspace(mw, _ws_active)
+
+
+_toolbar_height_patched = False
+
+
+def _retire_native_toolbar(mw: aqt.AnkiQt) -> None:
+    """Full nav consolidation: the sidebar owns Decks / Add / Browse / Stats /
+    Sync, so Anki's native top toolbar is redundant chrome. Anki re-derives the
+    toolbar height from its content on every redraw (TopWebView._onHeight ->
+    setFixedHeight), so a one-shot hide won't stick; instead we wrap that callback
+    to clamp the height to 0 while the modern shell is on, and let it size
+    normally when the modern UI is toggled off (vanilla Anki)."""
+    global _toolbar_height_patched
+    tb = getattr(mw, "toolbarWeb", None)
+    if tb is None:
+        return
+    if not _toolbar_height_patched:
+        original = tb._onHeight
+
+        def _clamped(qvar: object) -> None:
+            if mw.col is not None and _modern_on(mw.col):
+                tb.setFixedHeight(0)
+                tb.setVisible(False)
+                return
+            original(qvar)
+
+        tb._onHeight = _clamped  # type: ignore[method-assign]
+        _toolbar_height_patched = True
+    if mw.col is not None and _modern_on(mw.col):
+        # Height 0 keeps Anki's height-recompute from re-expanding it; hiding the
+        # widget removes it outright (the sidebar owns Decks/Add/Browse/Stats/Sync).
+        tb.setFixedHeight(0)
+        tb.setVisible(False)
+    else:
+        tb.setVisible(True)
+        tb.adjustHeightToFit()
+
+
 def _apply_shell_visibility(mw: aqt.AnkiQt) -> None:
     """Show the sidebar when the modern UI is on, hide it otherwise (reverting to
-    vanilla Anki chrome). Re-renders it when shown."""
+    vanilla Anki chrome). Re-renders it when shown and retires/restores the native
+    top toolbar to match."""
     holder = _shell_holder
     if holder is None:
         return
     on = _modern_on(mw.col) if mw.col is not None else False
     holder.setVisible(on)
+    _retire_native_toolbar(mw)
     if on:
         _render_sidebar(mw)
 
 
 def _navigate(mw: aqt.AnkiQt, section: str) -> None:
-    """Handle a sidebar nav click. Study hands off to Anki's native flow, the
-    Speedrun screens render in the main webview, and Library opens its dialog."""
-    global _ws_active
+    """Handle a sidebar nav click. Decks hands off to Anki's native deck flow,
+    Add/Browse/Stats open Anki's native dialogs on top, and the Speedrun screens
+    (Home / Decks / Practice / Library / Settings) render in the main webview."""
     if mw.col is None:
         return
-    if section == "study":
-        _ws_active = None
-        mw.moveToState("deckBrowser")
-        _render_sidebar(mw)
+    if section in ("decks", "study"):  # "study" kept as a legacy alias
+        _show_workspace(mw, "decks")
+    elif section == "add":
+        mw.onAddCard()
+    elif section == "browse":
+        mw.onBrowse()
+    elif section in ("stats", "progress"):
+        _show_workspace(mw, "progress")
     elif section == "library":
-        library.open_library(mw)
+        _show_workspace(mw, "library")
     elif section == "sync":
         _show_sync_pair(mw)
     elif section in ("practice", "settings"):
@@ -1129,20 +1542,32 @@ def _navigate(mw: aqt.AnkiQt, section: str) -> None:
 #
 # The desktop hosts the sync server (speedrun_sync manages the child process +
 # credentials); this section owns the client-side orchestration: point Anki's
-# own sync at the local server, run the native sync, and drive the pairing UI.
-
-_original_sync_button = None
+# own sync at the local server, run the sync (auto-resolving full syncs toward
+# upload), and drive the pairing UI.
 
 
 def _qr_svg(text: str) -> str:
     """Render a payload string as an inline SVG QR (dark modules on white, so it
-    scans in both light and dark themes)."""
+    scans in both light and dark themes).
+
+    segno emits ``<svg width="N" height="N">`` with no ``viewBox``; the pairing
+    screen's CSS then forces the SVG to 220px. Without a viewBox that CROPS the
+    QR (the intrinsic size exceeds 220), cutting off the quiet zone / finder
+    modules so a phone can't decode it. We swap the fixed size for a viewBox so
+    the whole code scales to fit and stays scannable.
+    """
     try:
         import segno
 
-        return segno.make(text, error="m").svg_inline(
+        svg = segno.make(text, error="m").svg_inline(
             scale=5, border=2, dark="#16181D", light="#FFFFFF"
         )
+        m = re.match(r'<svg width="(\d+(?:\.\d+)?)" height="(\d+(?:\.\d+)?)"', svg)
+        if m:
+            svg = svg.replace(
+                m.group(0), f'<svg viewBox="0 0 {m.group(1)} {m.group(2)}"', 1
+            )
+        return svg
     except Exception as exc:  # pragma: no cover - QR is best-effort
         print(f"speedrun: qr generation failed: {exc}")
         return ""
@@ -1153,12 +1578,16 @@ def _sync_pair_data(mw: aqt.AnkiQt) -> dict:
     data: dict = {"running": running}
     if running:
         payload = srsync.pairing_payload(mw)
+        usb_ok, usb_status = srsync.setup_usb_tunnel()
         data.update(
             {
                 "url": payload.get("url", ""),
+                "usb_url": payload.get("usb_url", ""),
                 "user": payload.get("user", ""),
                 "token": payload.get("token", ""),
                 "qr_svg": _qr_svg(json.dumps(payload)),
+                "usb_ready": usb_ok,
+                "usb_status": usb_status,
             }
         )
     return data
@@ -1185,22 +1614,390 @@ def _show_sync_pair(
         _sync_to_local(mw)
 
 
-def _run_native_sync(mw: aqt.AnkiQt) -> None:
-    """Run Anki's real sync via the original (unpatched) toolbar handler."""
-    if _original_sync_button is not None:
-        _original_sync_button()
+def _after_local_sync(mw: aqt.AnkiQt, on_done: object = None) -> None:
+    """Refresh the UI after a sync so phone reviews show up on the desktop."""
+    from aqt.qt import QTimer
+
+    def land_on_home() -> None:
+        try:
+            if mw.col is not None:
+                mw.col._load_scheduler()
+                library.refresh_readiness_after_sync(mw.col)
+        except Exception:
+            pass
+        try:
+            _show_workspace(mw, "dashboard")
+            mw.toolbar.redraw()
+        except Exception:
+            pass
+        _render_sidebar(mw)
+        if callable(on_done):
+            on_done()
+
+    try:
+        mw.reset()
+    except Exception:
+        land_on_home()
+        return
+    # Reset paints the native deck list first; replace it on the next tick.
+    QTimer.singleShot(0, land_on_home)
+
+
+def _valid_sync_url(url: str | None) -> bool:
+    """True when ``url`` is a usable http(s) sync base (host + port required)."""
+    if not url:
+        return False
+    try:
+        from urllib.parse import urlparse
+
+        p = urlparse(url.strip())
+        return p.scheme in ("http", "https") and bool(p.hostname) and p.port is not None
+    except Exception:
+        return False
+
+
+def _scrub_stale_sync_urls(pm) -> None:
+    """Drop malformed saved endpoints (e.g. ``http://127.0.0.1:`` with no port)."""
+    try:
+        if not _valid_sync_url(pm.custom_sync_url()):
+            pm.set_custom_sync_url(None)
+        if not _valid_sync_url(pm._current_sync_url()):
+            pm.set_current_sync_url(None)
+    except Exception:
+        pass
+
+
+def _patch_profile_sync_auth(mw: aqt.AnkiQt) -> None:
+    """Pin every sync call to the live embedded server when this collection is paired.
+
+    Anki's own helpers (media sync, full upload/download, status checks) read
+    ``pm.sync_auth()``, which otherwise reuses a stale ``currentSyncUrl`` like
+    ``http://127.0.0.1:`` and fails with ``error sending request for url ()``.
+    """
+    pm = mw.pm
+    original = pm.sync_auth
+
+    def patched():
+        auth = original()
+        if auth is None or mw.col is None or not srsync.is_paired(mw.col):
+            return auth
+        url = _pin_local_sync_url(mw)
+        if not url:
+            return None
+        from anki.sync import SyncAuth
+
+        return SyncAuth(
+            hkey=auth.hkey,
+            endpoint=url,
+            io_timeout_secs=auth.io_timeout_secs,
+        )
+
+    pm.sync_auth = patched  # type: ignore[method-assign]
+
+
+def _local_sync_auth(mw: aqt.AnkiQt, url: str):
+    """Return sync auth pinned to the live local server URL."""
+    from anki.sync import SyncAuth
+
+    auth = mw.pm.sync_auth()
+    if auth is None:
+        return None
+    return SyncAuth(
+        hkey=auth.hkey,
+        endpoint=url,
+        io_timeout_secs=auth.io_timeout_secs,
+    )
+
+
+def _pin_local_sync_url(mw: aqt.AnkiQt) -> str | None:
+    """Start the embedded server if needed and point the profile at its URL."""
+    if not srsync.start_server(mw):
+        return None
+    url = srsync.local_url()
+    if not _valid_sync_url(url):
+        return None
+    # Overwrite both slots: a poisoned currentSyncUrl (missing port) otherwise
+    # wins over customSyncUrl and breaks media sync + full sync helpers.
+    mw.pm.set_custom_sync_url(url)
+    mw.pm.set_current_sync_url(url)
+    return url
+
+
+def _local_full_download(
+    mw: aqt.AnkiQt, server_usn: int | None, on_done: object
+) -> None:
+    """Full download pinned to the live embedded server (not stale profile URL)."""
+    from aqt import gui_hooks
+    from aqt import sync as anki_sync
+    from aqt.qt import QTimer
+    from aqt.utils import qconnect, tr
+
+    url = _pin_local_sync_url(mw)
+    if not url or mw.col is None:
+        tooltip(
+            "Sync server is not running. Open Sync with phone and tap "
+            "Start & show code."
+        )
+        if callable(on_done):
+            on_done()
+        return
+    auth = _local_sync_auth(mw, url)
+    if auth is None:
+        tooltip("Not signed in to the local sync server.")
+        if callable(on_done):
+            on_done()
+        return
+
+    label = tr.sync_downloading_from_ankiweb()
+
+    def on_timer() -> None:
+        anki_sync.on_full_sync_timer(mw, label)
+
+    timer = QTimer(mw)
+    qconnect(timer.timeout, on_timer)
+    timer.start(150)
+    gui_hooks.collection_will_temporarily_close(mw.col)
+
+    def download() -> None:
+        mw.create_backup_now()
+        mw.col.close_for_full_sync()
+        mw.col.full_upload_or_download(
+            auth=auth, server_usn=server_usn, upload=False
+        )
+
+    def on_future_done(fut) -> None:
+        timer.stop()
+        mw.reopen(after_full_sync=True)
+        mw.reset()
+        try:
+            fut.result()
+        except Exception as err:
+            anki_sync.handle_sync_error(mw, err)
+        mw.media_syncer.start_monitoring()
+        if callable(on_done):
+            on_done()
+
+    mw.taskman.with_progress(download, on_future_done)
+
+
+def _local_full_upload(
+    mw: aqt.AnkiQt, server_usn: int | None, on_done: object
+) -> None:
+    """Full upload pinned to the live embedded server (not stale profile URL)."""
+    from aqt import gui_hooks
+    from aqt import sync as anki_sync
+    from aqt.qt import QTimer
+    from aqt.utils import qconnect, tr
+
+    url = _pin_local_sync_url(mw)
+    if not url or mw.col is None:
+        tooltip(
+            "Sync server is not running. Open Sync with phone and tap "
+            "Start & show code."
+        )
+        if callable(on_done):
+            on_done()
+        return
+    auth = _local_sync_auth(mw, url)
+    if auth is None:
+        tooltip("Not signed in to the local sync server.")
+        if callable(on_done):
+            on_done()
+        return
+
+    gui_hooks.collection_will_temporarily_close(mw.col)
+    mw.col.close_for_full_sync()
+    label = tr.sync_uploading_to_ankiweb()
+
+    def on_timer() -> None:
+        anki_sync.on_full_sync_timer(mw, label)
+
+    timer = QTimer(mw)
+    qconnect(timer.timeout, on_timer)
+    timer.start(150)
+
+    def on_future_done(fut) -> None:
+        timer.stop()
+        mw.reopen(after_full_sync=True)
+        mw.reset()
+        try:
+            fut.result()
+        except Exception as err:
+            anki_sync.handle_sync_error(mw, err)
+            if callable(on_done):
+                on_done()
+            return
+        mw.media_syncer.start_monitoring()
+        if callable(on_done):
+            on_done()
+
+    mw.taskman.with_progress(
+        lambda: mw.col.full_upload_or_download(
+            auth=auth, server_usn=server_usn, upload=True
+        ),
+        on_future_done,
+    )
+
+
+def _run_local_sync(mw: aqt.AnkiQt, on_done: object = None) -> None:
+    """Sync the collection with the embedded local server.
+
+    Incremental merges run inside ``sync_collection`` and finish as NO_CHANGES.
+    Full syncs are resolved without the AnkiWeb conflict dialog: upload only
+    when the server explicitly requires it, download when the server is newer
+    or ambiguous (so phone uploads reach the desktop instead of being overwritten).
+    """
+    from aqt import sync as anki_sync
+
+    url = _pin_local_sync_url(mw)
+    if not url or mw.col is None:
+        tooltip(
+            "Sync server is not running. Open Sync with phone and tap "
+            "Start & show code."
+        )
+        return
+    auth = _local_sync_auth(mw, url)
+    if auth is None:
+        _sync_to_local(mw, on_done)
+        return
+
+    def done() -> None:
+        _after_local_sync(mw, on_done)
+
+    def on_future_done(fut: Any) -> None:
+        try:
+            mw.col._load_scheduler()
+        except Exception:
+            pass
+        try:
+            out = fut.result()
+        except Exception as err:
+            tooltip(f"Sync unavailable: {err}")
+            return done()
+        try:
+            mw.pm.set_host_number(out.host_number)
+            if out.new_endpoint and _valid_sync_url(out.new_endpoint):
+                mw.pm.set_current_sync_url(out.new_endpoint)
+        except Exception:
+            pass
+        if out.required in (out.NO_CHANGES, out.NORMAL_SYNC):
+            try:
+                mw.media_syncer.start_monitoring()
+            except Exception:
+                pass
+            return done()
+        server_usn = out.server_media_usn if mw.pm.media_syncing_enabled() else None
+        if out.required == out.FULL_DOWNLOAD:
+            _local_full_download(mw, server_usn, done)
+        elif out.required == out.FULL_UPLOAD:
+            _local_full_upload(mw, server_usn, done)
+        else:
+            # FULL_SYNC: pull server/phone changes onto desktop by default.
+            _local_full_download(mw, server_usn, done)
+
+    mw.taskman.with_progress(
+        lambda: mw.col.sync_collection(auth, mw.pm.media_syncing_enabled()),
+        on_future_done,
+        label="Syncing…",
+        immediate=True,
+    )
+
+
+def _sync_directional_local(mw: aqt.AnkiQt, *, upload: bool, on_done=None) -> None:
+    """Force a one-way full sync with the embedded server."""
+    if mw.col is None or not srsync.start_server(mw):
+        tooltip("Sync server is not running.")
+        return
+    url = _pin_local_sync_url(mw)
+    if not url:
+        return
+    auth = _local_sync_auth(mw, url)
+    if auth is None:
+        _sync_to_local(
+            mw,
+            on_done=lambda: _sync_directional_local(mw, upload=upload, on_done=on_done),
+        )
+        return
+
+    def done() -> None:
+        _after_local_sync(mw, on_done)
+
+    server_usn = None
+    if upload:
+        _local_full_upload(mw, server_usn, done)
+    else:
+        _local_full_download(mw, server_usn, done)
+
+
+def _sync_pull_from_phone(mw: aqt.AnkiQt) -> None:
+    """Download the server's collection (phone uploads land here)."""
+    if not srsync.start_server(mw):
+        _show_sync_pair(mw, start=False)
+        return
+    _show_sync_pair(mw, start=False, status_msg="Pulling phone changes…")
+    _sync_directional_local(
+        mw,
+        upload=False,
+        on_done=lambda: tooltip("Desktop updated from phone."),
+    )
+
+
+def _sync_push_to_phone(mw: aqt.AnkiQt) -> None:
+    """Upload this desktop collection to the server for the phone to mirror."""
+    if not srsync.start_server(mw):
+        _show_sync_pair(mw, start=False)
+        return
+    _show_sync_pair(mw, start=False, status_msg="Pushing desktop copy…")
+    _sync_directional_local(
+        mw,
+        upload=True,
+        on_done=lambda: tooltip("Server updated with desktop copy."),
+    )
+
+
+def _refresh_usb_tunnel(mw: aqt.AnkiQt) -> None:
+    """Re-run adb reverse and refresh the Sync screen USB status."""
+    if not srsync.start_server(mw):
+        _show_sync_pair(mw, start=False, status_msg="Could not start sync server.")
+        return
+    ok, msg = srsync.setup_usb_tunnel()
+    _show_sync_pair(mw, start=False, status_msg=msg if ok else f"USB: {msg}")
+
+
+def _clear_for_sync_test(mw: aqt.AnkiQt) -> None:
+    """Clear local study history so sync from the phone can be re-tested."""
+
+    def on_done(_counts) -> None:
+        _render_sidebar(mw)
+        if _ws_active in (
+            "dashboard", "decks", "alldecks", "practice", "library", "settings",
+            "progress", "sync",
+        ):
+            if _ws_active == "sync":
+                _show_sync_pair(
+                    mw,
+                    start=False,
+                    status_msg='Cleared. Tap "Use phone data" to pull from the phone.',
+                )
+            else:
+                _show_workspace(mw, _ws_active)
+
+    library.clear_study_data_for_sync_test(mw, on_done=on_done)
 
 
 def _sync_to_local(mw: aqt.AnkiQt, on_done=None) -> None:
     """Start the local server, sign Anki's own sync in against it, and sync. This
     is the shared path for the toolbar Sync button, the chip, and auto-sync."""
-    if mw.col is None or not srsync.start_server(mw):
+    if mw.col is None:
+        return
+    url = _pin_local_sync_url(mw)
+    if not url:
+        tooltip(
+            "Sync server is not running. Open Sync with phone and tap "
+            "Start & show code."
+        )
         return
     user, token = srsync.creds(mw.col)
-    url = srsync.local_url()
-    if not url:
-        return
-    mw.pm.set_custom_sync_url(url)
 
     def do_login():
         return mw.col.sync_login(username=user, password=token, endpoint=url)
@@ -1217,9 +2014,8 @@ def _sync_to_local(mw: aqt.AnkiQt, on_done=None) -> None:
         except Exception:
             pass
         srsync.mark_paired(mw.col)
-        _run_native_sync(mw)
-        if on_done is not None:
-            on_done()
+        # Auto-resolving sync (on_done fires after it completes).
+        _run_local_sync(mw, on_done)
 
     mw.taskman.with_progress(do_login, after_login, parent=mw)
 
@@ -1230,9 +2026,7 @@ def _sync_now_from_screen(mw: aqt.AnkiQt) -> None:
         _show_sync_pair(mw, start=False)
         return
     _show_sync_pair(mw, start=False, status_msg="Syncing…")
-    _sync_to_local(
-        mw, on_done=lambda: _show_sync_pair(mw, start=False, status_msg="Synced.")
-    )
+    _sync_to_local(mw, on_done=lambda: tooltip("Synced."))
 
 
 _last_autosync: float = 0.0
@@ -1259,7 +2053,7 @@ def _on_app_state_changed(state: object) -> None:
     if not srsync.start_server(mw):
         return
     _last_autosync = now
-    _run_native_sync(mw)
+    _run_local_sync(mw)
 
 
 def _settings_items(col) -> list[dict]:
@@ -1315,12 +2109,9 @@ def _settings_items(col) -> list[dict]:
 def _install_sync_button_override(mw: aqt.AnkiQt) -> None:
     """Route the toolbar Sync button to the one-button phone-sync flow instead of
     AnkiWeb (this fork's modified schema can't sync to AnkiWeb). When already
-    paired it syncs to the local server directly; otherwise it opens the
-    Sync-with-phone screen (start server + show QR). The original handler is
-    saved so _run_native_sync can run the real Anki sync without recursing."""
-    global _original_sync_button
-    _original_sync_button = mw.on_sync_button_clicked
-
+    paired it syncs to the local server directly (auto-resolving via
+    ``_run_local_sync``); otherwise it opens the Sync-with-phone screen (start
+    server + show QR)."""
     def patched() -> None:
         col = mw.col
         if col is not None and srsync.is_paired(col):
@@ -1329,6 +2120,41 @@ def _install_sync_button_override(mw: aqt.AnkiQt) -> None:
             _show_sync_pair(mw)
 
     mw.on_sync_button_clicked = patched  # type: ignore[method-assign]
+
+    _scrub_stale_sync_urls(mw.pm)
+    _patch_profile_sync_auth(mw)
+
+    # Anki auto-syncs on startup/shutdown by default, using the stored custom
+    # sync url. Our embedded server binds a fresh port each launch, so that url
+    # is stale on open -> "error sending request for url ()". We own sync (via the
+    # toolbar button + a guarded focus auto-sync), so switch Anki's native
+    # unattended auto-sync off -- persisted, and blocked this session too.
+    try:
+        mw.pm.profile["autoSync"] = False
+        mw.can_auto_sync = lambda: False  # type: ignore[method-assign]
+    except Exception:
+        pass
+
+    # Belt-and-suspenders: route EVERY sync failure (incl. Anki's full-sync
+    # helpers, which bypass our own handler) through a quiet tooltip instead of
+    # the blocking "A network error occurred" modal.
+    try:
+        import aqt.sync as _anki_sync
+        from anki.errors import Interrupted, SyncError, SyncErrorKind
+
+        def _quiet_sync_error(mw_: object, err: Exception) -> None:
+            if isinstance(err, SyncError) and err.kind is SyncErrorKind.AUTH:
+                try:
+                    mw_.pm.clear_sync_auth()  # type: ignore[attr-defined]
+                except Exception:
+                    pass
+            if isinstance(err, Interrupted):
+                return
+            tooltip(f"Sync unavailable: {err}")
+
+        _anki_sync.handle_sync_error = _quiet_sync_error  # type: ignore[assignment]
+    except Exception:
+        pass
 
 
 def _sync_info(mw: aqt.AnkiQt) -> dict:
@@ -1410,33 +2236,404 @@ def _ws_set(mw: aqt.AnkiQt, key: str) -> None:
     _show_workspace(mw, "settings")
 
 
-def _fetch_practice_questions(mw: aqt.AnkiQt) -> list[dict]:
+_PRACTICE_SET_SIZE = 20
+
+
+def _fetch_practice_questions(
+    mw: aqt.AnkiQt, topics: list[str] | None = None
+) -> list[dict]:
+    """Load a practice set. With no topics, a mixed diagnostic across the whole
+    bank; with topics, an even split filtered to those subjects (merged, so a
+    whole section pulls from each of its subjects)."""
     try:
-        raw = list(mw.col._backend.get_practice_questions(limit=20, topic=""))
+        if not topics:
+            raw = list(
+                mw.col._backend.get_practice_questions(
+                    limit=_PRACTICE_SET_SIZE, topic=""
+                )
+            )
+            return _parse_question_items(raw)
+        per = max(_PRACTICE_SET_SIZE // len(topics), 4)
+        merged: list[dict] = []
+        for topic in topics:
+            raw = list(mw.col._backend.get_practice_questions(limit=per, topic=topic))
+            merged = _merge_questions(
+                merged, _parse_question_items(raw), len(merged) + per
+            )
+        return merged[:_PRACTICE_SET_SIZE]
     except Exception as exc:
         tooltip(f"Could not load practice questions: {exc}")
         return []
-    return _parse_question_items(raw)
+
+
+def _bank_counts(mw: aqt.AnkiQt) -> dict[str, int]:
+    """Per-subject question counts from the backend bank summary (empty on any
+    error, so the Practice landing still renders)."""
+    try:
+        summary = mw.col._backend.get_practice_bank_summary()
+        return {row.topic: int(row.count) for row in summary.topics}
+    except Exception:
+        return {}
+
+
+def _practice_landing(mw: aqt.AnkiQt) -> dict:
+    counts = _bank_counts(mw)
+    sections = []
+    for sec in mcat.SECTIONS:
+        sec_count = sum(counts.get(subject, 0) for subject in sec["subjects"])
+        sections.append(
+            {
+                "key": sec["key"],
+                "short": sec["short"],
+                "full": sec["full"],
+                "subjects": sec["subjects"],
+                "count": sec_count,
+            }
+        )
+    return {
+        "mode": "landing",
+        "total": sum(counts.values()),
+        "sections": sections,
+    }
+
+
+def _practice_section(mw: aqt.AnkiQt, key: str) -> dict | None:
+    sec = mcat.section_by_key(key)
+    if sec is None:
+        return None
+    counts = _bank_counts(mw)
+    subjects = [
+        {
+            "subject": subject,
+            "label": mcat.subject_label(subject),
+            "count": counts.get(subject, 0),
+        }
+        for subject in sec["subjects"]
+    ]
+    return {
+        "mode": "section",
+        "section": {"key": sec["key"], "short": sec["short"], "full": sec["full"]},
+        "count": sum(s["count"] for s in subjects),
+        "subjects": subjects,
+    }
+
+
+def _show_practice_section(mw: aqt.AnkiQt, key: str) -> None:
+    """Render a section drill-down; fall back to the landing on an unknown key."""
+    global _ws_active
+    data = _practice_section(mw, key)
+    if data is None:
+        _show_workspace(mw, "practice")
+        return
+    _ws_active = "practice"
+    _render_ws(mw, theme.practice_body(data))
+    _render_sidebar(mw)
+
+
+def _start_practice(mw: aqt.AnkiQt, topics: list[str]) -> None:
+    """Start a topic-filtered runner (empty ``topics`` = mixed diagnostic)."""
+    global _ws_active, _ws_practice
+    questions = _fetch_practice_questions(mw, topics or None)
+    if not questions:
+        tooltip("No practice questions available for that selection yet.")
+        return
+    _ws_active = "practice"
+    _ws_practice = _WsPractice(mw, questions)
+    _ws_practice.render()
+    _render_sidebar(mw)
+
+
+# --- first-run placement diagnostic -----------------------------------------
+#
+# Right after onboarding (exam date + target), offer a short mixed placement
+# quiz. It reuses the practice runner but records to its own session so the
+# answers seed the performance + coverage + calibration signals, then shows a
+# per-section read with an honest (often still-abstaining) readiness.
+
+_DIAGNOSTIC_SID = "onboarding-diagnostic"
+_DIAGNOSTIC_PER_SECTION = 5
+
+
+def _diagnostic_questions(mw: aqt.AnkiQt) -> list[dict]:
+    """A balanced placement set: up to _DIAGNOSTIC_PER_SECTION exam-style
+    questions from each scored MCAT section that has a question bank (CARS has
+    none), drawn from the practice bank via the existing per-subject fetch."""
+    out: list[dict] = []
+    for sec in mcat.SECTIONS:
+        subjects = sec.get("subjects") or []
+        if not subjects:
+            continue
+        out.extend(_fetch_practice_questions(mw, subjects)[:_DIAGNOSTIC_PER_SECTION])
+    return out
+
+
+def _start_diagnostic(mw: aqt.AnkiQt) -> None:
+    """Run the placement quiz through the practice runner, in its own session, and
+    show the per-section report on completion."""
+    global _ws_active, _ws_practice
+    if mw.col is None:
+        return
+    mw.col.set_config(_CFG_DIAGNOSTIC, True)
+    questions = _diagnostic_questions(mw)
+    if not questions:
+        tooltip("No practice questions available for a diagnostic yet.")
+        _show_workspace(mw, "dashboard")
+        return
+    _ws_active = "practice"
+    _ws_practice = _WsPractice(
+        mw, questions, session_id=_DIAGNOSTIC_SID, on_complete=_show_diagnostic_report
+    )
+    _ws_practice.render()
+    _render_sidebar(mw)
+
+
+def _skip_diagnostic(mw: aqt.AnkiQt) -> None:
+    if mw.col is not None:
+        mw.col.set_config(_CFG_DIAGNOSTIC, True)
+    _show_workspace(mw, "dashboard")
+
+
+def _show_diagnostic_report(mw: aqt.AnkiQt, runner: "_WsPractice") -> None:
+    """Render the placement result: per-section accuracy + an honest readiness
+    read (abstains until the give-up gate is met)."""
+    global _ws_active
+    if mw.col is not None:
+        mw.col.set_config(_CFG_DIAGNOSTIC, True)
+    sections = []
+    total_c = total_n = 0
+    for sec in mcat.SECTIONS:
+        stat = runner.section_stats.get(sec["key"])
+        if not stat:
+            continue
+        correct, n = stat[0], stat[1]
+        total_c += correct
+        total_n += n
+        sections.append(
+            {
+                "short": sec["short"],
+                "full": sec["full"],
+                "correct": correct,
+                "total": n,
+                "pct": round(100 * correct / n) if n else 0,
+            }
+        )
+    overall = {
+        "correct": total_c,
+        "total": total_n,
+        "pct": round(100 * total_c / total_n) if total_n else 0,
+    }
+    readiness: dict = {"sufficient": False, "reason": ""}
+    try:
+        snap = mw.col._backend.compute_readiness()
+        readiness = {
+            "sufficient": bool(snap.sufficient),
+            "scaled": int(snap.readiness_scaled),
+            "low": int(snap.low_scaled),
+            "high": int(snap.high_scaled),
+            "reason": str(snap.reason),
+        }
+    except Exception:
+        pass
+    _ws_active = "practice"
+    _render_ws(
+        mw,
+        theme.diagnostic_report_body(
+            {"sections": sections, "overall": overall, "readiness": readiness}
+        ),
+    )
+    _render_sidebar(mw)
+
+
+def maybe_start_diagnostic(mw: aqt.AnkiQt) -> bool:
+    """Offer the first-run placement quiz once, after onboarding, when the modern
+    UI is on and the practice bank has questions. Returns True if the intro was
+    shown (so first-run doesn't paint the dashboard over it)."""
+    global _ws_active
+    col = mw.col
+    if col is None or not _modern_on(col):
+        return False
+    if col.get_config(_CFG_DIAGNOSTIC, False):
+        return False
+    try:
+        if sum(_bank_counts(mw).values()) <= 0:
+            return False
+    except Exception:
+        return False
+    count = len(_diagnostic_questions(mw))
+    if count <= 0:
+        return False
+    _ws_active = "practice"
+    _render_ws(mw, theme.diagnostic_intro_body(count))
+    _render_sidebar(mw)
+    return True
 
 
 def _show_workspace(mw: aqt.AnkiQt, tab: str) -> None:
-    """Render a Speedrun screen (home/dashboard, practice, or settings) into the
-    main webview and sync the sidebar highlight."""
-    global _ws_active, _ws_practice
+    """Render a Speedrun screen (home/dashboard, practice, library, or settings)
+    into the main webview and sync the sidebar highlight."""
+    global _ws_active
     if mw.col is None:
         return
     if tab == "practice":
         _ws_active = "practice"
-        if _ws_practice is None or _ws_practice.done():
-            _ws_practice = _WsPractice(mw, _fetch_practice_questions(mw))
-        _ws_practice.render()
+        # Resume an in-progress runner; otherwise show the MCAT-section landing.
+        if _ws_practice is not None and not _ws_practice.done():
+            _ws_practice.render()
+        else:
+            _render_ws(mw, theme.practice_body(_practice_landing(mw)))
+    elif tab == "library":
+        _ws_active = "library"
+        _render_ws(
+            mw, theme.library_body(library.content_status(mw), library.popular_decks())
+        )
     elif tab == "settings":
         _ws_active = "settings"
         _render_ws(mw, theme.settings_body(_settings_items(mw.col), _sync_info(mw)))
+    elif tab == "progress":
+        _ws_active = "progress"
+        _render_ws(mw, theme.progress_body(_collect_progress(mw.col)))
+    elif tab == "decks":
+        _ws_active = "decks"
+        dash = _collect_topic_dashboard(mw)
+        ungrouped = grouping.ungrouped_note_count(mw.col)
+        _render_ws(mw, theme.decks_topic_body(dash, ungrouped))
+    elif tab == "alldecks":
+        _ws_active = "alldecks"
+        _render_ws(mw, theme.deck_list_body(_collect_deck_list(mw)))
     else:
         _ws_active = "dashboard"
-        _render_ws(mw, theme._stack(_collect(mw.col, fresh=True)))
+        body = theme._stack(_collect(mw.col, fresh=True))
+        body += theme.topic_dashboard_html(_collect_topic_dashboard(mw))
+        _render_ws(mw, body)
     _render_sidebar(mw)
+
+
+def _show_topic_detail(mw: aqt.AnkiQt, topic_id: str) -> None:
+    """Render one topic's focused view (its three signals + actions only)."""
+    global _ws_active
+    if mw.col is None:
+        return
+    dash = _collect_topic_dashboard(mw)
+    topic = next(
+        (
+            t
+            for sec in dash.get("sections", [])
+            for t in sec.get("topics", [])
+            if t["id"] == topic_id
+        ),
+        None,
+    )
+    if topic is None:
+        _show_workspace(mw, "dashboard")
+        return
+    _ws_active = "topic"
+    _render_ws(mw, theme.topic_detail_body(topic))
+    _render_sidebar(mw)
+
+
+def _open_topic(mw: aqt.AnkiQt, arg: str) -> None:
+    """Route ``speedrun:topic:*``: a bare id opens the topic view; ``study:<id>``
+    opens the browser filtered to that topic's cards; ``practice:<id>`` starts a
+    practice runner for the topic's subject."""
+    if arg.startswith("study:"):
+        _study_topic(mw, arg[len("study:") :])
+    elif arg.startswith("review:"):
+        _review_topic(mw, arg[len("review:") :])
+    elif arg.startswith("practice:"):
+        tid = arg[len("practice:") :]
+        subject = library.topic_meta().get(tid, {}).get("subject")
+        if subject:
+            topics = [subject]
+        else:
+            # No per-category subject (e.g. the coarse 10-FC map): fall back to
+            # the topic's whole section rather than a mixed all-sections set.
+            sec = _section_for_topic(tid)
+            topics = list(sec["subjects"]) if sec else []
+        _start_practice(mw, topics)
+    else:
+        _show_topic_detail(mw, arg)
+
+
+def _show_section(mw: aqt.AnkiQt, key: str) -> None:
+    """Render one MCAT section's page (its subtopics), reached by tapping a
+    section card on Home / Decks."""
+    global _ws_active
+    if mw.col is None:
+        return
+    dash = _collect_topic_dashboard(mw)
+    sec = next((s for s in dash.get("sections", []) if s.get("key") == key), None)
+    if sec is None:
+        _show_workspace(mw, "decks")
+        return
+    _ws_active = "section"
+    _render_ws(mw, theme.section_detail_body(sec))
+    _render_sidebar(mw)
+
+
+def _review_topic(mw: aqt.AnkiQt, topic_id: str) -> None:
+    """Build (or reuse) a filtered deck of this topic's cards and study it, so
+    'Review memory cards' opens a real review session (not just the browser)."""
+    try:
+        from anki.decks import DeckId, FilteredDeckConfig
+        from aqt.operations.scheduling import add_or_update_filtered_deck
+    except Exception:
+        _study_topic(mw, topic_id)
+        return
+    name = f"Speedrun review · {topic_id}"
+    try:
+        existing = mw.col.decks.by_name(name)
+        existing_id = int(existing["id"]) if existing and existing.get("dyn") else 0
+        deck = mw.col.sched.get_or_create_filtered_deck(deck_id=existing_id)
+        deck.name = name
+        cfg = deck.config
+        cfg.reschedule = True
+        del cfg.search_terms[:]
+        cfg.search_terms.append(
+            FilteredDeckConfig.SearchTerm(search=f"tag:{topic_id}", limit=200, order=0)
+        )
+    except Exception:
+        _study_topic(mw, topic_id)
+        return
+
+    def success(out: object) -> None:
+        global _ws_active
+        try:
+            mw.col.decks.set_current(DeckId(out.id))  # type: ignore[attr-defined]
+        except Exception:
+            pass
+        _ws_active = None
+        mw.moveToState("overview")
+        _render_sidebar(mw)
+
+    add_or_update_filtered_deck(parent=mw, deck=deck).success(success).run_in_background()
+
+
+def _study_topic(mw: aqt.AnkiQt, topic_id: str) -> None:
+    """Open the card browser filtered to a topic's tag, so the student can study
+    or review exactly that content category."""
+    try:
+        browser = aqt.dialogs.open("Browser", mw)
+        browser.search_for(f"tag:{topic_id}")
+    except Exception:
+        try:
+            aqt.dialogs.open("Browser", mw, search=(f"tag:{topic_id}",))
+        except Exception:
+            tooltip(f"Search your cards for tag:{topic_id}")
+
+
+def _open_native_decks(mw: aqt.AnkiQt) -> None:
+    """Escape hatch from the topic view to Anki's native deck browser."""
+    global _ws_active
+    _ws_active = None
+    mw.moveToState("deckBrowser")
+    _render_sidebar(mw)
+
+
+def _group_cards(mw: aqt.AnkiQt) -> None:
+    """Auto-classify untagged cards into MCAT topics, then refresh the view so
+    the newly-grouped cards appear under their content categories."""
+    grouping.group_and_report(mw)
+    _show_workspace(mw, "decks" if _ws_active != "dashboard" else "dashboard")
 
 
 def _leave_workspace(mw: aqt.AnkiQt) -> None:
@@ -1448,7 +2645,7 @@ def _leave_workspace(mw: aqt.AnkiQt) -> None:
 
 def _on_state_changed(new_state: str, old_state: str) -> None:
     """A native Anki state move (Decks/overview/review) leaves the Speedrun
-    screen; reflect that as the Study section in the sidebar."""
+    screen; reflect that as the Decks section in the sidebar."""
     global _ws_active
     _ws_active = None
     _render_sidebar(aqt.mw)
@@ -1476,7 +2673,14 @@ class _WsPractice:
 
     _CONFIDENCE = {1: 0.35, 2: 0.6, 3: 0.85}
 
-    def __init__(self, mw: aqt.AnkiQt, questions: list[dict]) -> None:
+    def __init__(
+        self,
+        mw: aqt.AnkiQt,
+        questions: list[dict],
+        *,
+        session_id: str | None = None,
+        on_complete: "Callable[[aqt.AnkiQt, _WsPractice], None] | None" = None,
+    ) -> None:
         self.mw = mw
         self.questions = questions
         self.index = 0
@@ -1490,6 +2694,11 @@ class _WsPractice:
         self.ai: dict | None = None
         self._ai_index: int | None = None
         self._withhold = False
+        # Optional overrides so the same runner backs the onboarding diagnostic:
+        # a dedicated session id and a completion hook, plus per-section tallies.
+        self.session_id = session_id
+        self.on_complete = on_complete
+        self.section_stats: dict[str, list[int]] = {}
         if questions and bool(mw.col.get_config(_CFG_DELAYED_FB, False)):
             try:
                 perf = mw.col._backend.get_performance_report().performance_rate
@@ -1527,13 +2736,19 @@ class _WsPractice:
         correct = sel == q["correct_index"]
         if correct:
             self.correct_count += 1
+        # Tally per MCAT section (subject -> section) for the diagnostic report.
+        section = mcat.section_key_for_subject(str(q.get("topic", ""))) or "other"
+        stat = self.section_stats.setdefault(section, [0, 0])
+        stat[1] += 1
+        if correct:
+            stat[0] += 1
         self.selected = sel
         took_ms = max(int((time.monotonic() - self.shown_at) * 1000), 0)
         predicted = self._CONFIDENCE.get(conf_index)
         req = speedrun_pb2.RecordAttemptRequest(
             card_id=q["card_id"],
             note_id=0,
-            session_id=_state.session_id,
+            session_id=self.session_id or _state.session_id,
             answered_at_ms=int(time.time() * 1000),
             took_ms=took_ms,
             question_type=2,
@@ -1629,14 +2844,17 @@ class _WsPractice:
     def advance(self) -> None:
         self.index += 1
         if self.index >= len(self.questions):
-            tooltip(
-                f"Practice complete: {self.correct_count}/{len(self.questions)} correct. "
-                "These now feed your performance signal and calibration."
-            )
             try:
                 self.mw.col._backend.compute_readiness()
             except Exception:
                 pass
+            if self.on_complete is not None:
+                self.on_complete(self.mw, self)
+                return
+            tooltip(
+                f"Practice complete: {self.correct_count}/{len(self.questions)} correct. "
+                "These now feed your performance signal and calibration."
+            )
             _show_workspace(self.mw, "dashboard")
             return
         self.answered = False
