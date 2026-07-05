@@ -1,0 +1,42 @@
+# Fly.io deployment for the Speedrun/Anki sync server.
+#
+# One-time setup (from this directory, with the repo root as build context):
+#   fly launch --no-deploy --copy-config --name speedrun-sync
+#   fly volumes create speedrun_sync_data --size 3 --region <your-region>
+#   fly secrets set SYNC_USER1="student:$(openssl rand -hex 16)"
+#   fly deploy --dockerfile deploy/sync-server/Dockerfile
+#
+# Then point both apps at https://speedrun-sync.fly.dev with that user/password
+# (or encode it in the desktop's "Sync with phone" QR).
+#
+# NOTE: a single machine + one persistent volume is required - Anki's server
+# keeps a SQLite collection on disk and must not run multiple instances against
+# the same volume. Keep min/max machines at 1.
+
+app = "speedrun-sync"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  SYNC_HOST = "0.0.0.0"
+  SYNC_PORT = "8080"
+  SYNC_BASE = "/data"
+  # SYNC_USER1 is set via `fly secrets set` (never commit credentials).
+
+[[mounts]]
+  source = "speedrun_sync_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512
