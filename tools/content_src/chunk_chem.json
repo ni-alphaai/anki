@@ -1,472 +1,472 @@
 {
-  "5A": {
-    "cards": [
-      {
-        "front": "Why is water a good solvent for ionic and polar substances?",
-        "back": "Water is polar with a bent geometry and can hydrogen bond, so it surrounds and stabilizes ions and polar molecules through ion-dipole and dipole-dipole interactions (solvation).",
-        "source": "OpenStax Chemistry 2e - Solutions",
-        "license": "CC BY 4.0"
-      },
-      {
-        "front": "Define pH and give the relationship between pH and pOH at 25 degrees C.",
-        "back": "pH = -log[H3O+]; at 25 degrees C, pH + pOH = 14 because Kw = [H3O+][OH-] = 1.0 x 10^-14.",
-        "source": "OpenStax Chemistry 2e - Acids and Bases",
-        "license": "CC BY 4.0"
-      },
-      {
-        "front": "What are the two components of a buffer solution?",
-        "back": "A buffer contains a weak acid and its conjugate base (or a weak base and its conjugate acid) in appreciable amounts, resisting pH change when small amounts of acid or base are added.",
-        "source": "OpenStax Chemistry 2e - Acid-Base Equilibria",
-        "license": "CC BY 4.0"
-      },
-      {
-        "front": "State the Henderson-Hasselbalch equation.",
-        "back": "pH = pKa + log([A-]/[HA]), where [A-] is the conjugate base concentration and [HA] is the weak acid concentration; pH equals pKa when the two are equal.",
-        "source": "OpenStax Chemistry 2e - Acid-Base Equilibria",
-        "license": "CC BY 4.0"
-      },
-      {
-        "front": "What is the solubility product constant, Ksp?",
-        "back": "Ksp is the equilibrium constant for a slightly soluble ionic solid dissolving into its ions; a larger Ksp generally reflects greater solubility for salts of the same ion ratio.",
-        "source": "OpenStax Chemistry 2e - Solubility Equilibria",
-        "license": "CC BY 4.0"
-      },
-      {
-        "front": "Why does ice float on liquid water?",
-        "back": "In ice, hydrogen bonds hold molecules in an open hexagonal lattice that is less dense than liquid water, so solid ice floats and water is densest near 4 degrees C.",
-        "source": "OpenStax Chemistry 2e - Liquids and Solids",
-        "license": "CC BY 4.0"
-      }
-    ],
-    "questions": [
-      {
-        "stem": "What is the pH of a 0.001 M aqueous solution of HCl at 25 degrees C?",
-        "options": [
-          "1",
-          "2",
-          "3",
-          "11"
+    "5A": {
+        "cards": [
+            {
+                "front": "Why is water a good solvent for ionic and polar substances?",
+                "back": "Water is polar with a bent geometry and can hydrogen bond, so it surrounds and stabilizes ions and polar molecules through ion-dipole and dipole-dipole interactions (solvation).",
+                "source": "OpenStax Chemistry 2e - Solutions",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "Define pH and give the relationship between pH and pOH at 25 degrees C.",
+                "back": "pH = -log[H3O+]; at 25 degrees C, pH + pOH = 14 because Kw = [H3O+][OH-] = 1.0 x 10^-14.",
+                "source": "OpenStax Chemistry 2e - Acids and Bases",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What are the two components of a buffer solution?",
+                "back": "A buffer contains a weak acid and its conjugate base (or a weak base and its conjugate acid) in appreciable amounts, resisting pH change when small amounts of acid or base are added.",
+                "source": "OpenStax Chemistry 2e - Acid-Base Equilibria",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "State the Henderson-Hasselbalch equation.",
+                "back": "pH = pKa + log([A-]/[HA]), where [A-] is the conjugate base concentration and [HA] is the weak acid concentration; pH equals pKa when the two are equal.",
+                "source": "OpenStax Chemistry 2e - Acid-Base Equilibria",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What is the solubility product constant, Ksp?",
+                "back": "Ksp is the equilibrium constant for a slightly soluble ionic solid dissolving into its ions; a larger Ksp generally reflects greater solubility for salts of the same ion ratio.",
+                "source": "OpenStax Chemistry 2e - Solubility Equilibria",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "Why does ice float on liquid water?",
+                "back": "In ice, hydrogen bonds hold molecules in an open hexagonal lattice that is less dense than liquid water, so solid ice floats and water is densest near 4 degrees C.",
+                "source": "OpenStax Chemistry 2e - Liquids and Solids",
+                "license": "CC BY 4.0"
+            }
         ],
-        "correct_index": 2,
-        "explanation": "HCl is a strong acid that fully dissociates, so [H3O+] = 0.001 M = 1 x 10^-3, and pH = -log(1 x 10^-3) = 3.",
-        "source": "OpenStax Chemistry 2e - Acids and Bases",
-        "license": "CC BY 4.0"
-      },
-      {
-        "stem": "A buffer is prepared with a weak acid (pKa = 4.74) such that the conjugate base concentration equals the weak acid concentration. What is the approximate pH?",
-        "options": [
-          "4.74",
-          "7.00",
-          "9.26",
-          "2.37"
+        "questions": [
+            {
+                "stem": "What is the pH of a 0.001 M aqueous solution of HCl at 25 degrees C?",
+                "options": [
+                    "1",
+                    "2",
+                    "3",
+                    "11"
+                ],
+                "correct_index": 2,
+                "explanation": "HCl is a strong acid that fully dissociates, so [H3O+] = 0.001 M = 1 x 10^-3, and pH = -log(1 x 10^-3) = 3.",
+                "source": "OpenStax Chemistry 2e - Acids and Bases",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "A buffer is prepared with a weak acid (pKa = 4.74) such that the conjugate base concentration equals the weak acid concentration. What is the approximate pH?",
+                "options": [
+                    "4.74",
+                    "7.00",
+                    "9.26",
+                    "2.37"
+                ],
+                "correct_index": 0,
+                "explanation": "By Henderson-Hasselbalch, when [A-] = [HA] the log term is log(1) = 0, so pH = pKa = 4.74.",
+                "source": "OpenStax Chemistry 2e - Acid-Base Equilibria",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "Which property of water is most directly responsible for its unusually high boiling point compared with other small molecules like CH4?",
+                "options": [
+                    "Its high molar mass",
+                    "Extensive hydrogen bonding between molecules",
+                    "Its covalent O-H bonds being unusually weak",
+                    "Its ability to ionize completely"
+                ],
+                "correct_index": 1,
+                "explanation": "Hydrogen bonding among water molecules requires substantial energy to overcome, raising the boiling point well above that of comparably sized nonpolar molecules.",
+                "source": "OpenStax Chemistry 2e - Liquids and Solids",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "What is the pH of a 0.01 M NaOH solution at 25 degrees C?",
+                "options": [
+                    "7",
+                    "2",
+                    "14",
+                    "12"
+                ],
+                "correct_index": 3,
+                "explanation": "NaOH is a strong base giving [OH-] = 0.01 M, so pOH = -log(0.01) = 2 and pH = 14 - 2 = 12.",
+                "source": "OpenStax Chemistry 2e - Acids and Bases",
+                "license": "CC BY 4.0"
+            }
+        ]
+    },
+    "5B": {
+        "cards": [
+            {
+                "front": "List the three main types of intermolecular forces from weakest to strongest (for comparable molecular sizes).",
+                "back": "London dispersion forces (weakest), dipole-dipole forces, and hydrogen bonding (strongest); ion-dipole forces are stronger still but involve ions.",
+                "source": "OpenStax Chemistry 2e - Liquids and Solids",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What three atoms must hydrogen be bonded to for hydrogen bonding to occur?",
+                "back": "Hydrogen bonding requires H covalently bonded to a highly electronegative atom, specifically N, O, or F, interacting with a lone pair on another N, O, or F.",
+                "source": "OpenStax Chemistry 2e - Liquids and Solids",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What does VSEPR theory predict, and what shape results from four bonding pairs and no lone pairs?",
+                "back": "VSEPR predicts molecular geometry by minimizing electron-pair repulsion; four bonding pairs with no lone pairs give a tetrahedral shape with about 109.5 degree angles.",
+                "source": "OpenStax Chemistry 2e - Chemical Bonding and Molecular Geometry",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "When is a molecule with polar bonds nonpolar overall?",
+                "back": "A molecule is nonpolar when its bond dipoles are symmetric and cancel, as in linear CO2 or tetrahedral CCl4, giving no net molecular dipole moment.",
+                "source": "OpenStax Chemistry 2e - Chemical Bonding and Molecular Geometry",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "How does London dispersion force strength change with molecular size or polarizability?",
+                "back": "Dispersion forces increase with more electrons and greater polarizability (typically larger molar mass), which raises boiling points among nonpolar substances.",
+                "source": "OpenStax Chemistry 2e - Liquids and Solids",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "Distinguish a sigma bond from a pi bond.",
+                "back": "A sigma bond forms by end-on orbital overlap along the internuclear axis; a pi bond forms by side-on overlap of parallel p orbitals. A double bond has one sigma and one pi bond.",
+                "source": "OpenStax Chemistry 2e - Advanced Theories of Covalent Bonding",
+                "license": "CC BY 4.0"
+            }
         ],
-        "correct_index": 0,
-        "explanation": "By Henderson-Hasselbalch, when [A-] = [HA] the log term is log(1) = 0, so pH = pKa = 4.74.",
-        "source": "OpenStax Chemistry 2e - Acid-Base Equilibria",
-        "license": "CC BY 4.0"
-      },
-      {
-        "stem": "Which property of water is most directly responsible for its unusually high boiling point compared with other small molecules like CH4?",
-        "options": [
-          "Its high molar mass",
-          "Extensive hydrogen bonding between molecules",
-          "Its covalent O-H bonds being unusually weak",
-          "Its ability to ionize completely"
+        "questions": [
+            {
+                "stem": "Which molecule can act as a hydrogen bond donor?",
+                "options": [
+                    "CH4",
+                    "NH3",
+                    "CF4",
+                    "CO2"
+                ],
+                "correct_index": 1,
+                "explanation": "NH3 has H atoms bonded directly to nitrogen (a highly electronegative atom), so it can donate hydrogen bonds; the others lack H bonded to N, O, or F.",
+                "source": "OpenStax Chemistry 2e - Liquids and Solids",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "According to VSEPR theory, what is the molecular geometry of a molecule with a central atom having two bonding regions and two lone pairs, such as H2O?",
+                "options": [
+                    "Linear",
+                    "Trigonal planar",
+                    "Bent",
+                    "Tetrahedral"
+                ],
+                "correct_index": 2,
+                "explanation": "Water has four electron domains (tetrahedral electron geometry) but two are lone pairs, giving a bent molecular shape with an angle near 104.5 degrees.",
+                "source": "OpenStax Chemistry 2e - Chemical Bonding and Molecular Geometry",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "Which of the following is nonpolar overall despite containing polar bonds?",
+                "options": [
+                    "H2O",
+                    "NH3",
+                    "CO2",
+                    "HCl"
+                ],
+                "correct_index": 2,
+                "explanation": "CO2 is linear and symmetric, so its two C=O bond dipoles point in opposite directions and cancel, giving zero net dipole.",
+                "source": "OpenStax Chemistry 2e - Chemical Bonding and Molecular Geometry",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "Among the noble gases He, Ne, Ar, and Xe, which has the highest boiling point?",
+                "options": [
+                    "Xe",
+                    "Ar",
+                    "Ne",
+                    "He"
+                ],
+                "correct_index": 0,
+                "explanation": "Xenon has the most electrons and greatest polarizability, giving the strongest London dispersion forces and thus the highest boiling point of these noble gases.",
+                "source": "OpenStax Chemistry 2e - Liquids and Solids",
+                "license": "CC BY 4.0"
+            }
+        ]
+    },
+    "5C": {
+        "cards": [
+            {
+                "front": "What physical property does simple distillation exploit to separate a mixture?",
+                "back": "Distillation separates components by differences in boiling point (volatility); the more volatile component vaporizes first and is condensed and collected.",
+                "source": "OpenStax Organic Chemistry - Purification Techniques",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "On what basis does liquid-liquid extraction separate compounds?",
+                "back": "Extraction separates solutes by their differing solubility (partitioning) between two immiscible solvents, often an organic layer and an aqueous layer.",
+                "source": "OpenStax Organic Chemistry - Purification Techniques",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "In chromatography, what are the stationary and mobile phases?",
+                "back": "The stationary phase is fixed (e.g., silica on a plate or in a column) and the mobile phase moves through it; components separate by differing affinity for the two phases.",
+                "source": "OpenStax Organic Chemistry - Chromatography",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "How is the retention factor (Rf) calculated in thin-layer chromatography?",
+                "back": "Rf = (distance traveled by the spot) / (distance traveled by the solvent front); it is a characteristic ratio between 0 and 1 for a given compound and system.",
+                "source": "OpenStax Organic Chemistry - Chromatography",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What property separates molecules during gel electrophoresis of DNA?",
+                "back": "An electric field drives negatively charged DNA through a gel matrix; smaller fragments migrate faster and farther, so molecules separate mainly by size.",
+                "source": "OpenStax Biology 2e - Biotechnology",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "When is fractional distillation preferred over simple distillation?",
+                "back": "Fractional distillation is used when component boiling points are close; the fractionating column provides many vaporization-condensation cycles for better separation.",
+                "source": "OpenStax Organic Chemistry - Purification Techniques",
+                "license": "CC BY 4.0"
+            }
         ],
-        "correct_index": 1,
-        "explanation": "Hydrogen bonding among water molecules requires substantial energy to overcome, raising the boiling point well above that of comparably sized nonpolar molecules.",
-        "source": "OpenStax Chemistry 2e - Liquids and Solids",
-        "license": "CC BY 4.0"
-      },
-      {
-        "stem": "What is the pH of a 0.01 M NaOH solution at 25 degrees C?",
-        "options": [
-          "7",
-          "2",
-          "14",
-          "12"
+        "questions": [
+            {
+                "stem": "A student wants to separate two miscible liquids with boiling points of 78 degrees C and 118 degrees C. Which technique is most appropriate?",
+                "options": [
+                    "Filtration",
+                    "Distillation",
+                    "Gel electrophoresis",
+                    "Recrystallization"
+                ],
+                "correct_index": 1,
+                "explanation": "The liquids differ in boiling point and are mixed together, so distillation, which separates by volatility, is the correct choice.",
+                "source": "OpenStax Organic Chemistry - Purification Techniques",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "In gel electrophoresis, DNA fragments separate primarily according to which property?",
+                "options": [
+                    "Boiling point",
+                    "Molecular size",
+                    "Optical rotation",
+                    "Color"
+                ],
+                "correct_index": 1,
+                "explanation": "DNA is uniformly negatively charged, so under an electric field it separates by size, with smaller fragments moving farther through the gel.",
+                "source": "OpenStax Biology 2e - Biotechnology",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "In a thin-layer chromatography experiment, a compound travels 4.0 cm while the solvent front travels 8.0 cm. What is the Rf value?",
+                "options": [
+                    "2.0",
+                    "0.25",
+                    "0.50",
+                    "1.0"
+                ],
+                "correct_index": 2,
+                "explanation": "Rf = distance traveled by compound / distance traveled by solvent front = 4.0 / 8.0 = 0.50.",
+                "source": "OpenStax Organic Chemistry - Chromatography",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "Liquid-liquid extraction relies most directly on differences in which property between two immiscible solvents?",
+                "options": [
+                    "Solubility of the solute in each solvent",
+                    "Boiling point of the solute",
+                    "Molecular charge of the solute",
+                    "Melting point of the solvents"
+                ],
+                "correct_index": 0,
+                "explanation": "Extraction works because a solute partitions between two immiscible solvents based on its relative solubility in each phase.",
+                "source": "OpenStax Organic Chemistry - Purification Techniques",
+                "license": "CC BY 4.0"
+            }
+        ]
+    },
+    "5D": {
+        "cards": [
+            {
+                "front": "What functional group defines a carboxylic acid, and why is it acidic?",
+                "back": "A carboxylic acid contains -COOH (carbonyl plus hydroxyl on the same carbon); it is acidic because the resulting carboxylate anion is resonance stabilized.",
+                "source": "OpenStax Organic Chemistry - Carboxylic Acids",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What type of bond links two monosaccharides in a disaccharide, and how does it form?",
+                "back": "A glycosidic bond links the monosaccharides; it forms by a dehydration (condensation) reaction that removes a molecule of water.",
+                "source": "OpenStax Biology 2e - Carbohydrates",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What three components make up a nucleotide?",
+                "back": "A nucleotide consists of a five-carbon sugar (ribose or deoxyribose), a phosphate group, and a nitrogenous base (a purine or pyrimidine).",
+                "source": "OpenStax Biology 2e - Nucleic Acids",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "Distinguish saturated from unsaturated fatty acids.",
+                "back": "Saturated fatty acids have only single C-C bonds and pack tightly (often solid); unsaturated fatty acids have one or more C=C double bonds that introduce kinks, lowering the melting point.",
+                "source": "OpenStax Biology 2e - Lipids",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What is the difference between enantiomers and diastereomers?",
+                "back": "Enantiomers are nonsuperimposable mirror images (opposite at every stereocenter); diastereomers are stereoisomers that are not mirror images (differ at some but not all stereocenters).",
+                "source": "OpenStax Organic Chemistry - Stereochemistry",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "Which functional groups react to form a peptide (amide) bond between amino acids?",
+                "back": "The carboxyl group (-COOH) of one amino acid reacts with the amino group (-NH2) of another, forming an amide bond with loss of water.",
+                "source": "OpenStax Biology 2e - Proteins",
+                "license": "CC BY 4.0"
+            }
         ],
-        "correct_index": 3,
-        "explanation": "NaOH is a strong base giving [OH-] = 0.01 M, so pOH = -log(0.01) = 2 and pH = 14 - 2 = 12.",
-        "source": "OpenStax Chemistry 2e - Acids and Bases",
-        "license": "CC BY 4.0"
-      }
-    ]
-  },
-  "5B": {
-    "cards": [
-      {
-        "front": "List the three main types of intermolecular forces from weakest to strongest (for comparable molecular sizes).",
-        "back": "London dispersion forces (weakest), dipole-dipole forces, and hydrogen bonding (strongest); ion-dipole forces are stronger still but involve ions.",
-        "source": "OpenStax Chemistry 2e - Liquids and Solids",
-        "license": "CC BY 4.0"
-      },
-      {
-        "front": "What three atoms must hydrogen be bonded to for hydrogen bonding to occur?",
-        "back": "Hydrogen bonding requires H covalently bonded to a highly electronegative atom, specifically N, O, or F, interacting with a lone pair on another N, O, or F.",
-        "source": "OpenStax Chemistry 2e - Liquids and Solids",
-        "license": "CC BY 4.0"
-      },
-      {
-        "front": "What does VSEPR theory predict, and what shape results from four bonding pairs and no lone pairs?",
-        "back": "VSEPR predicts molecular geometry by minimizing electron-pair repulsion; four bonding pairs with no lone pairs give a tetrahedral shape with about 109.5 degree angles.",
-        "source": "OpenStax Chemistry 2e - Chemical Bonding and Molecular Geometry",
-        "license": "CC BY 4.0"
-      },
-      {
-        "front": "When is a molecule with polar bonds nonpolar overall?",
-        "back": "A molecule is nonpolar when its bond dipoles are symmetric and cancel, as in linear CO2 or tetrahedral CCl4, giving no net molecular dipole moment.",
-        "source": "OpenStax Chemistry 2e - Chemical Bonding and Molecular Geometry",
-        "license": "CC BY 4.0"
-      },
-      {
-        "front": "How does London dispersion force strength change with molecular size or polarizability?",
-        "back": "Dispersion forces increase with more electrons and greater polarizability (typically larger molar mass), which raises boiling points among nonpolar substances.",
-        "source": "OpenStax Chemistry 2e - Liquids and Solids",
-        "license": "CC BY 4.0"
-      },
-      {
-        "front": "Distinguish a sigma bond from a pi bond.",
-        "back": "A sigma bond forms by end-on orbital overlap along the internuclear axis; a pi bond forms by side-on overlap of parallel p orbitals. A double bond has one sigma and one pi bond.",
-        "source": "OpenStax Chemistry 2e - Advanced Theories of Covalent Bonding",
-        "license": "CC BY 4.0"
-      }
-    ],
-    "questions": [
-      {
-        "stem": "Which molecule can act as a hydrogen bond donor?",
-        "options": [
-          "CH4",
-          "NH3",
-          "CF4",
-          "CO2"
+        "questions": [
+            {
+                "stem": "Which functional group is present in an aldehyde but not in a ketone?",
+                "options": [
+                    "A carbonyl carbon",
+                    "A carbonyl carbon bonded to at least one hydrogen",
+                    "A hydroxyl group",
+                    "An amino group"
+                ],
+                "correct_index": 1,
+                "explanation": "Both contain a carbonyl (C=O), but in an aldehyde the carbonyl carbon is bonded to at least one hydrogen, whereas in a ketone it is bonded to two carbon atoms.",
+                "source": "OpenStax Organic Chemistry - Aldehydes and Ketones",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "The bond formed between two amino acids in a protein is best described as a(n):",
+                "options": [
+                    "Glycosidic bond",
+                    "Phosphodiester bond",
+                    "Peptide (amide) bond",
+                    "Ester bond"
+                ],
+                "correct_index": 2,
+                "explanation": "Amino acids join through a peptide bond, an amide linkage formed by condensation of one amino acid's carboxyl group with another's amino group.",
+                "source": "OpenStax Biology 2e - Proteins",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "Two molecules are nonsuperimposable mirror images of each other. They are best classified as:",
+                "options": [
+                    "Enantiomers",
+                    "Constitutional isomers",
+                    "Diastereomers",
+                    "Conformational isomers"
+                ],
+                "correct_index": 0,
+                "explanation": "Nonsuperimposable mirror images that differ in configuration at every stereocenter are enantiomers.",
+                "source": "OpenStax Organic Chemistry - Stereochemistry",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "Which of the following best explains why unsaturated fatty acids tend to be liquid at room temperature?",
+                "options": [
+                    "They have higher molar mass than saturated fats",
+                    "Their C=C double bonds create kinks that prevent tight packing",
+                    "They contain more hydrogen atoms per carbon",
+                    "They form stronger hydrogen bonds"
+                ],
+                "correct_index": 1,
+                "explanation": "Cis double bonds introduce bends in the hydrocarbon chain, so the molecules pack less efficiently, weakening dispersion forces and lowering the melting point.",
+                "source": "OpenStax Biology 2e - Lipids",
+                "license": "CC BY 4.0"
+            }
+        ]
+    },
+    "5E": {
+        "cards": [
+            {
+                "front": "Write the Gibbs free energy equation and state the condition for a spontaneous process.",
+                "back": "delta G = delta H - T delta S; a process is spontaneous (at constant T and P) when delta G is less than 0.",
+                "source": "OpenStax Chemistry 2e - Thermodynamics",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "How do the signs of an exothermic and an endothermic reaction's enthalpy change compare?",
+                "back": "An exothermic reaction releases heat and has delta H less than 0; an endothermic reaction absorbs heat and has delta H greater than 0.",
+                "source": "OpenStax Chemistry 2e - Thermochemistry",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "How does a catalyst increase a reaction rate?",
+                "back": "A catalyst provides an alternative pathway with lower activation energy; it is not consumed and does not change delta G or the position of equilibrium.",
+                "source": "OpenStax Chemistry 2e - Kinetics",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "State Le Chatelier's principle.",
+                "back": "If a system at equilibrium is disturbed by a change in concentration, temperature, or pressure, the equilibrium shifts in the direction that partially counteracts the disturbance.",
+                "source": "OpenStax Chemistry 2e - Equilibrium",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What does the equilibrium constant K indicate about the extent of a reaction?",
+                "back": "K is the ratio of product to reactant activities at equilibrium; a K greater than 1 favors products, while a K less than 1 favors reactants.",
+                "source": "OpenStax Chemistry 2e - Equilibrium",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "How does entropy generally change when a substance goes from solid to liquid to gas?",
+                "back": "Entropy increases from solid to liquid to gas because the particles gain positional and motional freedom (greater disorder), so delta S is positive for melting and vaporization.",
+                "source": "OpenStax Chemistry 2e - Thermodynamics",
+                "license": "CC BY 4.0"
+            }
         ],
-        "correct_index": 1,
-        "explanation": "NH3 has H atoms bonded directly to nitrogen (a highly electronegative atom), so it can donate hydrogen bonds; the others lack H bonded to N, O, or F.",
-        "source": "OpenStax Chemistry 2e - Liquids and Solids",
-        "license": "CC BY 4.0"
-      },
-      {
-        "stem": "According to VSEPR theory, what is the molecular geometry of a molecule with a central atom having two bonding regions and two lone pairs, such as H2O?",
-        "options": [
-          "Linear",
-          "Trigonal planar",
-          "Bent",
-          "Tetrahedral"
-        ],
-        "correct_index": 2,
-        "explanation": "Water has four electron domains (tetrahedral electron geometry) but two are lone pairs, giving a bent molecular shape with an angle near 104.5 degrees.",
-        "source": "OpenStax Chemistry 2e - Chemical Bonding and Molecular Geometry",
-        "license": "CC BY 4.0"
-      },
-      {
-        "stem": "Which of the following is nonpolar overall despite containing polar bonds?",
-        "options": [
-          "H2O",
-          "NH3",
-          "CO2",
-          "HCl"
-        ],
-        "correct_index": 2,
-        "explanation": "CO2 is linear and symmetric, so its two C=O bond dipoles point in opposite directions and cancel, giving zero net dipole.",
-        "source": "OpenStax Chemistry 2e - Chemical Bonding and Molecular Geometry",
-        "license": "CC BY 4.0"
-      },
-      {
-        "stem": "Among the noble gases He, Ne, Ar, and Xe, which has the highest boiling point?",
-        "options": [
-          "Xe",
-          "Ar",
-          "Ne",
-          "He"
-        ],
-        "correct_index": 0,
-        "explanation": "Xenon has the most electrons and greatest polarizability, giving the strongest London dispersion forces and thus the highest boiling point of these noble gases.",
-        "source": "OpenStax Chemistry 2e - Liquids and Solids",
-        "license": "CC BY 4.0"
-      }
-    ]
-  },
-  "5C": {
-    "cards": [
-      {
-        "front": "What physical property does simple distillation exploit to separate a mixture?",
-        "back": "Distillation separates components by differences in boiling point (volatility); the more volatile component vaporizes first and is condensed and collected.",
-        "source": "OpenStax Organic Chemistry - Purification Techniques",
-        "license": "CC BY 4.0"
-      },
-      {
-        "front": "On what basis does liquid-liquid extraction separate compounds?",
-        "back": "Extraction separates solutes by their differing solubility (partitioning) between two immiscible solvents, often an organic layer and an aqueous layer.",
-        "source": "OpenStax Organic Chemistry - Purification Techniques",
-        "license": "CC BY 4.0"
-      },
-      {
-        "front": "In chromatography, what are the stationary and mobile phases?",
-        "back": "The stationary phase is fixed (e.g., silica on a plate or in a column) and the mobile phase moves through it; components separate by differing affinity for the two phases.",
-        "source": "OpenStax Organic Chemistry - Chromatography",
-        "license": "CC BY 4.0"
-      },
-      {
-        "front": "How is the retention factor (Rf) calculated in thin-layer chromatography?",
-        "back": "Rf = (distance traveled by the spot) / (distance traveled by the solvent front); it is a characteristic ratio between 0 and 1 for a given compound and system.",
-        "source": "OpenStax Organic Chemistry - Chromatography",
-        "license": "CC BY 4.0"
-      },
-      {
-        "front": "What property separates molecules during gel electrophoresis of DNA?",
-        "back": "An electric field drives negatively charged DNA through a gel matrix; smaller fragments migrate faster and farther, so molecules separate mainly by size.",
-        "source": "OpenStax Biology 2e - Biotechnology",
-        "license": "CC BY 4.0"
-      },
-      {
-        "front": "When is fractional distillation preferred over simple distillation?",
-        "back": "Fractional distillation is used when component boiling points are close; the fractionating column provides many vaporization-condensation cycles for better separation.",
-        "source": "OpenStax Organic Chemistry - Purification Techniques",
-        "license": "CC BY 4.0"
-      }
-    ],
-    "questions": [
-      {
-        "stem": "A student wants to separate two miscible liquids with boiling points of 78 degrees C and 118 degrees C. Which technique is most appropriate?",
-        "options": [
-          "Filtration",
-          "Distillation",
-          "Gel electrophoresis",
-          "Recrystallization"
-        ],
-        "correct_index": 1,
-        "explanation": "The liquids differ in boiling point and are mixed together, so distillation, which separates by volatility, is the correct choice.",
-        "source": "OpenStax Organic Chemistry - Purification Techniques",
-        "license": "CC BY 4.0"
-      },
-      {
-        "stem": "In gel electrophoresis, DNA fragments separate primarily according to which property?",
-        "options": [
-          "Boiling point",
-          "Molecular size",
-          "Optical rotation",
-          "Color"
-        ],
-        "correct_index": 1,
-        "explanation": "DNA is uniformly negatively charged, so under an electric field it separates by size, with smaller fragments moving farther through the gel.",
-        "source": "OpenStax Biology 2e - Biotechnology",
-        "license": "CC BY 4.0"
-      },
-      {
-        "stem": "In a thin-layer chromatography experiment, a compound travels 4.0 cm while the solvent front travels 8.0 cm. What is the Rf value?",
-        "options": [
-          "2.0",
-          "0.25",
-          "0.50",
-          "1.0"
-        ],
-        "correct_index": 2,
-        "explanation": "Rf = distance traveled by compound / distance traveled by solvent front = 4.0 / 8.0 = 0.50.",
-        "source": "OpenStax Organic Chemistry - Chromatography",
-        "license": "CC BY 4.0"
-      },
-      {
-        "stem": "Liquid-liquid extraction relies most directly on differences in which property between two immiscible solvents?",
-        "options": [
-          "Solubility of the solute in each solvent",
-          "Boiling point of the solute",
-          "Molecular charge of the solute",
-          "Melting point of the solvents"
-        ],
-        "correct_index": 0,
-        "explanation": "Extraction works because a solute partitions between two immiscible solvents based on its relative solubility in each phase.",
-        "source": "OpenStax Organic Chemistry - Purification Techniques",
-        "license": "CC BY 4.0"
-      }
-    ]
-  },
-  "5D": {
-    "cards": [
-      {
-        "front": "What functional group defines a carboxylic acid, and why is it acidic?",
-        "back": "A carboxylic acid contains -COOH (carbonyl plus hydroxyl on the same carbon); it is acidic because the resulting carboxylate anion is resonance stabilized.",
-        "source": "OpenStax Organic Chemistry - Carboxylic Acids",
-        "license": "CC BY 4.0"
-      },
-      {
-        "front": "What type of bond links two monosaccharides in a disaccharide, and how does it form?",
-        "back": "A glycosidic bond links the monosaccharides; it forms by a dehydration (condensation) reaction that removes a molecule of water.",
-        "source": "OpenStax Biology 2e - Carbohydrates",
-        "license": "CC BY 4.0"
-      },
-      {
-        "front": "What three components make up a nucleotide?",
-        "back": "A nucleotide consists of a five-carbon sugar (ribose or deoxyribose), a phosphate group, and a nitrogenous base (a purine or pyrimidine).",
-        "source": "OpenStax Biology 2e - Nucleic Acids",
-        "license": "CC BY 4.0"
-      },
-      {
-        "front": "Distinguish saturated from unsaturated fatty acids.",
-        "back": "Saturated fatty acids have only single C-C bonds and pack tightly (often solid); unsaturated fatty acids have one or more C=C double bonds that introduce kinks, lowering the melting point.",
-        "source": "OpenStax Biology 2e - Lipids",
-        "license": "CC BY 4.0"
-      },
-      {
-        "front": "What is the difference between enantiomers and diastereomers?",
-        "back": "Enantiomers are nonsuperimposable mirror images (opposite at every stereocenter); diastereomers are stereoisomers that are not mirror images (differ at some but not all stereocenters).",
-        "source": "OpenStax Organic Chemistry - Stereochemistry",
-        "license": "CC BY 4.0"
-      },
-      {
-        "front": "Which functional groups react to form a peptide (amide) bond between amino acids?",
-        "back": "The carboxyl group (-COOH) of one amino acid reacts with the amino group (-NH2) of another, forming an amide bond with loss of water.",
-        "source": "OpenStax Biology 2e - Proteins",
-        "license": "CC BY 4.0"
-      }
-    ],
-    "questions": [
-      {
-        "stem": "Which functional group is present in an aldehyde but not in a ketone?",
-        "options": [
-          "A carbonyl carbon",
-          "A carbonyl carbon bonded to at least one hydrogen",
-          "A hydroxyl group",
-          "An amino group"
-        ],
-        "correct_index": 1,
-        "explanation": "Both contain a carbonyl (C=O), but in an aldehyde the carbonyl carbon is bonded to at least one hydrogen, whereas in a ketone it is bonded to two carbon atoms.",
-        "source": "OpenStax Organic Chemistry - Aldehydes and Ketones",
-        "license": "CC BY 4.0"
-      },
-      {
-        "stem": "The bond formed between two amino acids in a protein is best described as a(n):",
-        "options": [
-          "Glycosidic bond",
-          "Phosphodiester bond",
-          "Peptide (amide) bond",
-          "Ester bond"
-        ],
-        "correct_index": 2,
-        "explanation": "Amino acids join through a peptide bond, an amide linkage formed by condensation of one amino acid's carboxyl group with another's amino group.",
-        "source": "OpenStax Biology 2e - Proteins",
-        "license": "CC BY 4.0"
-      },
-      {
-        "stem": "Two molecules are nonsuperimposable mirror images of each other. They are best classified as:",
-        "options": [
-          "Enantiomers",
-          "Constitutional isomers",
-          "Diastereomers",
-          "Conformational isomers"
-        ],
-        "correct_index": 0,
-        "explanation": "Nonsuperimposable mirror images that differ in configuration at every stereocenter are enantiomers.",
-        "source": "OpenStax Organic Chemistry - Stereochemistry",
-        "license": "CC BY 4.0"
-      },
-      {
-        "stem": "Which of the following best explains why unsaturated fatty acids tend to be liquid at room temperature?",
-        "options": [
-          "They have higher molar mass than saturated fats",
-          "Their C=C double bonds create kinks that prevent tight packing",
-          "They contain more hydrogen atoms per carbon",
-          "They form stronger hydrogen bonds"
-        ],
-        "correct_index": 1,
-        "explanation": "Cis double bonds introduce bends in the hydrocarbon chain, so the molecules pack less efficiently, weakening dispersion forces and lowering the melting point.",
-        "source": "OpenStax Biology 2e - Lipids",
-        "license": "CC BY 4.0"
-      }
-    ]
-  },
-  "5E": {
-    "cards": [
-      {
-        "front": "Write the Gibbs free energy equation and state the condition for a spontaneous process.",
-        "back": "delta G = delta H - T delta S; a process is spontaneous (at constant T and P) when delta G is less than 0.",
-        "source": "OpenStax Chemistry 2e - Thermodynamics",
-        "license": "CC BY 4.0"
-      },
-      {
-        "front": "How do the signs of an exothermic and an endothermic reaction's enthalpy change compare?",
-        "back": "An exothermic reaction releases heat and has delta H less than 0; an endothermic reaction absorbs heat and has delta H greater than 0.",
-        "source": "OpenStax Chemistry 2e - Thermochemistry",
-        "license": "CC BY 4.0"
-      },
-      {
-        "front": "How does a catalyst increase a reaction rate?",
-        "back": "A catalyst provides an alternative pathway with lower activation energy; it is not consumed and does not change delta G or the position of equilibrium.",
-        "source": "OpenStax Chemistry 2e - Kinetics",
-        "license": "CC BY 4.0"
-      },
-      {
-        "front": "State Le Chatelier's principle.",
-        "back": "If a system at equilibrium is disturbed by a change in concentration, temperature, or pressure, the equilibrium shifts in the direction that partially counteracts the disturbance.",
-        "source": "OpenStax Chemistry 2e - Equilibrium",
-        "license": "CC BY 4.0"
-      },
-      {
-        "front": "What does the equilibrium constant K indicate about the extent of a reaction?",
-        "back": "K is the ratio of product to reactant activities at equilibrium; a K greater than 1 favors products, while a K less than 1 favors reactants.",
-        "source": "OpenStax Chemistry 2e - Equilibrium",
-        "license": "CC BY 4.0"
-      },
-      {
-        "front": "How does entropy generally change when a substance goes from solid to liquid to gas?",
-        "back": "Entropy increases from solid to liquid to gas because the particles gain positional and motional freedom (greater disorder), so delta S is positive for melting and vaporization.",
-        "source": "OpenStax Chemistry 2e - Thermodynamics",
-        "license": "CC BY 4.0"
-      }
-    ],
-    "questions": [
-      {
-        "stem": "A reaction has delta H = -100 kJ/mol and delta S = -0.200 kJ/(mol K). At what temperature does delta G equal zero?",
-        "options": [
-          "200 K",
-          "500 K",
-          "1000 K",
-          "50 K"
-        ],
-        "correct_index": 1,
-        "explanation": "Setting delta G = delta H - T delta S = 0 gives T = delta H / delta S = (-100) / (-0.200) = 500 K.",
-        "source": "OpenStax Chemistry 2e - Thermodynamics",
-        "license": "CC BY 4.0"
-      },
-      {
-        "stem": "For the exothermic equilibrium N2(g) + 3 H2(g) reversible 2 NH3(g), which change shifts the equilibrium toward more NH3?",
-        "options": [
-          "Increasing the temperature",
-          "Removing N2",
-          "Increasing the total pressure by decreasing volume",
-          "Adding a catalyst"
-        ],
-        "correct_index": 2,
-        "explanation": "Increasing pressure by reducing volume shifts equilibrium toward the side with fewer gas moles (2 mol NH3 vs 4 mol reactants), favoring NH3. A catalyst does not shift equilibrium.",
-        "source": "OpenStax Chemistry 2e - Equilibrium",
-        "license": "CC BY 4.0"
-      },
-      {
-        "stem": "Which statement about a catalyst is correct?",
-        "options": [
-          "It shifts the equilibrium toward products",
-          "It makes delta G more negative",
-          "It lowers the activation energy without being consumed",
-          "It increases the equilibrium constant"
-        ],
-        "correct_index": 2,
-        "explanation": "A catalyst speeds up a reaction by lowering the activation energy and is regenerated; it does not change delta G, K, or the equilibrium position.",
-        "source": "OpenStax Chemistry 2e - Kinetics",
-        "license": "CC BY 4.0"
-      },
-      {
-        "stem": "A reaction is endothermic (delta H positive) and has delta S positive. Under which condition is it spontaneous?",
-        "options": [
-          "At all temperatures",
-          "At no temperature",
-          "Only at sufficiently low temperature",
-          "Only at sufficiently high temperature"
-        ],
-        "correct_index": 3,
-        "explanation": "With positive delta H and positive delta S, delta G = delta H - T delta S becomes negative only when T is large enough for the T delta S term to exceed delta H.",
-        "source": "OpenStax Chemistry 2e - Thermodynamics",
-        "license": "CC BY 4.0"
-      }
-    ]
-  }
+        "questions": [
+            {
+                "stem": "A reaction has delta H = -100 kJ/mol and delta S = -0.200 kJ/(mol K). At what temperature does delta G equal zero?",
+                "options": [
+                    "200 K",
+                    "500 K",
+                    "1000 K",
+                    "50 K"
+                ],
+                "correct_index": 1,
+                "explanation": "Setting delta G = delta H - T delta S = 0 gives T = delta H / delta S = (-100) / (-0.200) = 500 K.",
+                "source": "OpenStax Chemistry 2e - Thermodynamics",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "For the exothermic equilibrium N2(g) + 3 H2(g) reversible 2 NH3(g), which change shifts the equilibrium toward more NH3?",
+                "options": [
+                    "Increasing the temperature",
+                    "Removing N2",
+                    "Increasing the total pressure by decreasing volume",
+                    "Adding a catalyst"
+                ],
+                "correct_index": 2,
+                "explanation": "Increasing pressure by reducing volume shifts equilibrium toward the side with fewer gas moles (2 mol NH3 vs 4 mol reactants), favoring NH3. A catalyst does not shift equilibrium.",
+                "source": "OpenStax Chemistry 2e - Equilibrium",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "Which statement about a catalyst is correct?",
+                "options": [
+                    "It shifts the equilibrium toward products",
+                    "It makes delta G more negative",
+                    "It lowers the activation energy without being consumed",
+                    "It increases the equilibrium constant"
+                ],
+                "correct_index": 2,
+                "explanation": "A catalyst speeds up a reaction by lowering the activation energy and is regenerated; it does not change delta G, K, or the equilibrium position.",
+                "source": "OpenStax Chemistry 2e - Kinetics",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "A reaction is endothermic (delta H positive) and has delta S positive. Under which condition is it spontaneous?",
+                "options": [
+                    "At all temperatures",
+                    "At no temperature",
+                    "Only at sufficiently low temperature",
+                    "Only at sufficiently high temperature"
+                ],
+                "correct_index": 3,
+                "explanation": "With positive delta H and positive delta S, delta G = delta H - T delta S becomes negative only when T is large enough for the T delta S term to exceed delta H.",
+                "source": "OpenStax Chemistry 2e - Thermodynamics",
+                "license": "CC BY 4.0"
+            }
+        ]
+    }
 }

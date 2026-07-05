@@ -1,1740 +1,1740 @@
 {
-  "questions": [
-    {
-      "topic": "biochemistry",
-      "card_tag": "1A",
-      "stem": "A peptide bond forms between which two functional groups of adjacent amino acids?",
-      "options": [
-        "The R group of one amino acid and the amino group of another",
-        "Two amino groups",
-        "The carboxyl group of one amino acid and the amino group of another",
-        "Two carboxyl groups"
-      ],
-      "correct_index": 2,
-      "explanation": "During a dehydration reaction, the carboxyl group of one amino acid bonds to the amino group of the next, releasing water and forming the peptide bond.",
-      "provenance": 1
-    },
-    {
-      "topic": "biochemistry",
-      "card_tag": "1A",
-      "stem": "Which interaction is primarily responsible for maintaining the alpha-helix secondary structure of a protein?",
-      "options": [
-        "Hydrogen bonds between backbone atoms",
-        "Disulfide bonds between cysteine residues",
-        "Peptide bonds between side chains",
-        "Ionic bonds between the N- and C-termini"
-      ],
-      "correct_index": 0,
-      "explanation": "Secondary structures such as the alpha helix are held together by hydrogen bonds between the carbonyl oxygen and the amide hydrogen of the polypeptide backbone.",
-      "provenance": 1
-    },
-    {
-      "topic": "biochemistry",
-      "card_tag": "1A",
-      "stem": "A globular protein folds in the aqueous cytoplasm. Which residues are most likely buried in its interior core?",
-      "options": [
-        "Charged residues such as aspartate and lysine",
-        "Polar residues such as serine and threonine",
-        "Residues that hydrogen bond with water",
-        "Nonpolar residues such as valine and leucine"
-      ],
-      "correct_index": 3,
-      "explanation": "Hydrophobic (nonpolar) side chains cluster in the protein interior away from water, while polar and charged residues face the aqueous exterior.",
-      "provenance": 1
-    },
-    {
-      "topic": "biochemistry",
-      "card_tag": "1A",
-      "stem": "Boiling an egg causes the egg white to solidify. Which statement best describes what happens to the proteins?",
-      "options": [
-        "Peptide bonds of the primary structure are hydrolyzed",
-        "The proteins denature, losing higher-order structure while the primary sequence stays intact",
-        "New covalent bonds form to create a stronger quaternary structure",
-        "The amino acid sequence is permanently rearranged"
-      ],
-      "correct_index": 1,
-      "explanation": "Heat denatures proteins by disrupting the noncovalent interactions that hold secondary, tertiary, and quaternary structure, but the covalent peptide bonds of the primary structure remain intact.",
-      "provenance": 1
-    },
-    {
-      "topic": "biochemistry",
-      "card_tag": "1B",
-      "stem": "During transcription, mRNA is built antiparallel and complementary to the template DNA strand. If the template reads 3'-TAC-5', what is the corresponding mRNA sequence?",
-      "options": [
-        "5'-UAC-3'",
-        "5'-AUG-3'",
-        "5'-ATG-3'",
-        "5'-TAC-3'"
-      ],
-      "correct_index": 1,
-      "explanation": "RNA is complementary and antiparallel to the template and uses uracil instead of thymine, so 3'-TAC-5' yields 5'-AUG-3'.",
-      "provenance": 1
-    },
-    {
-      "topic": "biochemistry",
-      "card_tag": "1B",
-      "stem": "Which enzyme synthesizes RNA from a DNA template during transcription?",
-      "options": [
-        "DNA polymerase",
-        "DNA ligase",
-        "Helicase",
-        "RNA polymerase"
-      ],
-      "correct_index": 3,
-      "explanation": "RNA polymerase reads the DNA template and synthesizes a complementary strand of RNA; the other enzymes function in replication or unwinding, not transcription.",
-      "provenance": 1
-    },
-    {
-      "topic": "biochemistry",
-      "card_tag": "1B",
-      "stem": "A mutation changes an mRNA codon from GAA to GAG, but the encoded amino acid (glutamate) is unchanged. This is best classified as a:",
-      "options": [
-        "Nonsense mutation",
-        "Frameshift mutation",
-        "Silent (synonymous) mutation",
-        "Missense mutation"
-      ],
-      "correct_index": 2,
-      "explanation": "Because the genetic code is degenerate, multiple codons can specify the same amino acid, so this base change produces no change in the protein and is silent.",
-      "provenance": 1
-    },
-    {
-      "topic": "biochemistry",
-      "card_tag": "1B",
-      "stem": "In eukaryotic cells, introns are removed and exons are joined by splicing. Where does this processing of pre-mRNA occur?",
-      "options": [
-        "In the nucleus",
-        "In the cytoplasm on ribosomes",
-        "In the mitochondrial matrix",
-        "On the rough endoplasmic reticulum"
-      ],
-      "correct_index": 0,
-      "explanation": "Eukaryotic pre-mRNA is capped, polyadenylated, and spliced within the nucleus before the mature mRNA is exported to the cytoplasm for translation.",
-      "provenance": 1
-    },
-    {
-      "topic": "biology",
-      "card_tag": "1C",
-      "stem": "A pea plant heterozygous for seed color (Yy, with yellow dominant to green) is self-crossed. What fraction of the offspring are expected to be green?",
-      "options": [
-        "0",
-        "1/2",
-        "3/4",
-        "1/4"
-      ],
-      "correct_index": 3,
-      "explanation": "A Yy x Yy cross gives a 1 YY : 2 Yy : 1 yy genotypic ratio, so 1/4 of offspring are homozygous recessive (yy) and show the green phenotype.",
-      "provenance": 1
-    },
-    {
-      "topic": "biology",
-      "card_tag": "1C",
-      "stem": "Which pair of events during meiosis I are the major sources of genetic variation among gametes?",
-      "options": [
-        "DNA replication and cytokinesis",
-        "Crossing over and independent assortment of homologous chromosomes",
-        "Binary fission and budding",
-        "Transcription and translation"
-      ],
-      "correct_index": 1,
-      "explanation": "Crossing over recombines alleles on homologous chromosomes, and independent assortment randomly distributes maternal and paternal chromosomes into gametes, both increasing diversity.",
-      "provenance": 1
-    },
-    {
-      "topic": "biology",
-      "card_tag": "1C",
-      "stem": "A human cell that has completed meiosis to form a gamete contains how many chromosomes?",
-      "options": [
-        "23 (haploid)",
-        "46 (diploid)",
-        "92",
-        "69"
-      ],
-      "correct_index": 0,
-      "explanation": "Meiosis halves the chromosome number, so a human gamete is haploid with 23 chromosomes, restoring 46 upon fertilization.",
-      "provenance": 1
-    },
-    {
-      "topic": "biology",
-      "card_tag": "1C",
-      "stem": "Genes located close together on the same chromosome tend to be inherited together, an exception to independent assortment. This is called:",
-      "options": [
-        "Segregation",
-        "Nondisjunction",
-        "Genetic linkage",
-        "Codominance"
-      ],
-      "correct_index": 2,
-      "explanation": "Linked genes are near each other on the same chromosome and are less likely to be separated by crossing over, so they are often inherited together.",
-      "provenance": 1
-    },
-    {
-      "topic": "biochemistry",
-      "card_tag": "1D",
-      "stem": "In eukaryotic cells, where does glycolysis take place?",
-      "options": [
-        "The mitochondrial matrix",
-        "The inner mitochondrial membrane",
-        "The cytoplasm (cytosol)",
-        "The nucleus"
-      ],
-      "correct_index": 2,
-      "explanation": "Glycolysis occurs in the cytoplasm and does not require oxygen or mitochondria; only later stages of aerobic respiration occur inside mitochondria.",
-      "provenance": 1
-    },
-    {
-      "topic": "biochemistry",
-      "card_tag": "1D",
-      "stem": "Which molecule serves as the final electron acceptor of the electron transport chain during aerobic respiration?",
-      "options": [
-        "Oxygen (O2)",
-        "Carbon dioxide (CO2)",
-        "NAD+",
-        "Pyruvate"
-      ],
-      "correct_index": 0,
-      "explanation": "Oxygen accepts electrons at the end of the electron transport chain and combines with protons to form water, allowing the chain to keep operating.",
-      "provenance": 1
-    },
-    {
-      "topic": "biochemistry",
-      "card_tag": "1D",
-      "stem": "A drug blocks ATP synthase in the inner mitochondrial membrane. What is the most direct consequence?",
-      "options": [
-        "Glycolysis in the cytoplasm immediately stops",
-        "Oxygen can no longer accept electrons",
-        "The proton gradient collapses instantly",
-        "The proton gradient builds up and ATP production by oxidative phosphorylation halts"
-      ],
-      "correct_index": 3,
-      "explanation": "Blocking ATP synthase prevents protons from flowing back into the matrix, so the gradient builds up and ATP synthesis by oxidative phosphorylation stops.",
-      "provenance": 1
-    },
-    {
-      "topic": "biochemistry",
-      "card_tag": "1D",
-      "stem": "During strenuous exercise when oxygen is limited, human muscle cells regenerate the NAD+ needed for glycolysis by:",
-      "options": [
-        "Running the citric acid cycle faster",
-        "Converting pyruvate to lactate via fermentation",
-        "Producing ethanol and carbon dioxide",
-        "Increasing oxidative phosphorylation"
-      ],
-      "correct_index": 1,
-      "explanation": "Human muscle performs lactic acid fermentation, reducing pyruvate to lactate to regenerate NAD+ so glycolysis can continue; alcoholic fermentation occurs in yeast, not humans.",
-      "provenance": 1
-    },
-    {
-      "topic": "biology",
-      "card_tag": "2A",
-      "stem": "A eukaryotic cell that secretes large quantities of protein hormone would be expected to contain an especially abundant amount of which organelle?",
-      "options": [
-        "Smooth endoplasmic reticulum",
-        "Rough endoplasmic reticulum",
-        "Peroxisome",
-        "Central vacuole"
-      ],
-      "correct_index": 1,
-      "explanation": "Ribosomes on the rough ER synthesize proteins that enter the endomembrane system for secretion, so secretory cells are rich in rough ER.",
-      "provenance": 1
-    },
-    {
-      "topic": "biology",
-      "card_tag": "2A",
-      "stem": "What is the primary role of cholesterol within a mammalian plasma membrane?",
-      "options": [
-        "It forms hydrophilic channels for ions",
-        "It supplies ATP for active transport",
-        "It buffers membrane fluidity across a range of temperatures",
-        "It anchors the cell to the extracellular matrix"
-      ],
-      "correct_index": 2,
-      "explanation": "Cholesterol inserts among phospholipids and stabilizes fluidity, keeping the membrane from becoming too rigid when cold or too fluid when warm.",
-      "provenance": 1
-    },
-    {
-      "topic": "biology",
-      "card_tag": "2A",
-      "stem": "A toxin that blocks the electron transport chain would most directly impair the function of which organelle?",
-      "options": [
-        "Golgi apparatus",
-        "Nucleus",
-        "Ribosome",
-        "Mitochondrion"
-      ],
-      "correct_index": 3,
-      "explanation": "The electron transport chain resides in the inner mitochondrial membrane, so blocking it halts oxidative phosphorylation and mitochondrial ATP production.",
-      "provenance": 1
-    },
-    {
-      "topic": "biology",
-      "card_tag": "2A",
-      "stem": "Which feature is found in eukaryotic cells but absent in prokaryotic cells?",
-      "options": [
-        "A membrane-bound nucleus",
-        "A plasma membrane",
-        "Ribosomes",
-        "Cytoplasm"
-      ],
-      "correct_index": 0,
-      "explanation": "Only eukaryotic cells enclose their DNA in a membrane-bound nucleus; the plasma membrane, ribosomes, and cytoplasm are common to both.",
-      "provenance": 1
-    },
-    {
-      "topic": "biology",
-      "card_tag": "2B",
-      "stem": "A bacterium gains an antibiotic-resistance gene after direct cell-to-cell contact through a pilus that transfers a plasmid. Which process is described?",
-      "options": [
-        "Transformation",
-        "Transduction",
-        "Conjugation",
-        "Binary fission"
-      ],
-      "correct_index": 2,
-      "explanation": "Conjugation transfers genetic material, often a plasmid, from one bacterium to another through a pilus-mediated contact.",
-      "provenance": 1
-    },
-    {
-      "topic": "biology",
-      "card_tag": "2B",
-      "stem": "During the lysogenic cycle of a bacteriophage, the viral genome most characteristically:",
-      "options": [
-        "Integrates into the host chromosome as a prophage",
-        "Immediately lyses the host cell",
-        "Is packaged into new virions and released",
-        "Is degraded by host restriction enzymes"
-      ],
-      "correct_index": 0,
-      "explanation": "In lysogeny the phage DNA integrates into the host genome as a prophage and is replicated along with the host DNA rather than causing immediate lysis.",
-      "provenance": 1
-    },
-    {
-      "topic": "biology",
-      "card_tag": "2B",
-      "stem": "Reverse transcriptase, the enzyme used by retroviruses, catalyzes the synthesis of:",
-      "options": [
-        "RNA from a DNA template",
-        "Protein from an RNA template",
-        "Protein from a DNA template",
-        "DNA from an RNA template"
-      ],
-      "correct_index": 3,
-      "explanation": "Reverse transcriptase makes complementary DNA from the viral RNA genome, reversing the usual DNA-to-RNA flow of information.",
-      "provenance": 1
-    },
-    {
-      "topic": "biology",
-      "card_tag": "2B",
-      "stem": "A Gram-negative bacterium differs from a Gram-positive bacterium primarily because it possesses:",
-      "options": [
-        "A much thicker peptidoglycan layer",
-        "An outer membrane containing lipopolysaccharide",
-        "No cell wall at all",
-        "No plasma membrane"
-      ],
-      "correct_index": 1,
-      "explanation": "Gram-negative bacteria have a thin peptidoglycan layer surrounded by an outer membrane rich in lipopolysaccharide, which is why they do not retain crystal violet.",
-      "provenance": 1
-    },
-    {
-      "topic": "biology",
-      "card_tag": "2C",
-      "stem": "DNA is replicated during which phase of the cell cycle?",
-      "options": [
-        "G1 phase",
-        "Mitosis",
-        "S phase",
-        "G2 phase"
-      ],
-      "correct_index": 2,
-      "explanation": "DNA synthesis occurs during the S (synthesis) phase of interphase, producing identical sister chromatids for each chromosome.",
-      "provenance": 1
-    },
-    {
-      "topic": "biology",
-      "card_tag": "2C",
-      "stem": "Which event defines anaphase of mitosis?",
-      "options": [
-        "Chromosomes align at the metaphase plate",
-        "Sister chromatids separate and move to opposite poles",
-        "The nuclear envelope reassembles",
-        "DNA is replicated"
-      ],
-      "correct_index": 1,
-      "explanation": "During anaphase the cohesion between sister chromatids breaks and the chromatids are pulled toward opposite spindle poles.",
-      "provenance": 1
-    },
-    {
-      "topic": "biology",
-      "card_tag": "2C",
-      "stem": "A stem cell that can differentiate into any cell type of the body but cannot form extraembryonic tissue such as placenta is best described as:",
-      "options": [
-        "Pluripotent",
-        "Totipotent",
-        "Multipotent",
-        "Unipotent"
-      ],
-      "correct_index": 0,
-      "explanation": "Pluripotent cells can generate all germ-layer cell types of the body but lack the ability to form extraembryonic tissues, unlike totipotent cells.",
-      "provenance": 1
-    },
-    {
-      "topic": "biology",
-      "card_tag": "2C",
-      "stem": "What is the primary purpose of the cell cycle checkpoints?",
-      "options": [
-        "To speed up DNA replication",
-        "To generate genetic variation among cells",
-        "To trigger apoptosis in every dividing cell",
-        "To ensure conditions and DNA integrity are correct before advancing"
-      ],
-      "correct_index": 3,
-      "explanation": "Checkpoints verify that requirements such as intact DNA and proper chromosome attachment are met before the cell proceeds, preventing propagation of errors.",
-      "provenance": 1
-    },
-    {
-      "topic": "biology",
-      "card_tag": "3A",
-      "stem": "The resting membrane potential of a typical neuron is closest to which value?",
-      "options": [
-        "+30 mV",
-        "0 mV",
-        "-30 mV",
-        "-70 mV"
-      ],
-      "correct_index": 3,
-      "explanation": "A typical neuron rests near -70 mV because the membrane is most permeable to K+ and the Na+/K+ ATPase maintains the ion gradients.",
-      "provenance": 1
-    },
-    {
-      "topic": "biology",
-      "card_tag": "3A",
-      "stem": "The rapid depolarizing (rising) phase of a neuronal action potential is produced mainly by:",
-      "options": [
-        "K+ efflux out of the cell",
-        "Cl- influx into the cell",
-        "Na+ influx into the cell",
-        "Ca2+ efflux out of the cell"
-      ],
-      "correct_index": 2,
-      "explanation": "Voltage-gated Na+ channels open at threshold, and the resulting Na+ influx drives the membrane toward positive potentials during depolarization.",
-      "provenance": 1
-    },
-    {
-      "topic": "biology",
-      "card_tag": "3A",
-      "stem": "Steroid hormones typically exert their effects by binding receptors located:",
-      "options": [
-        "Inside the cell, in the cytoplasm or nucleus",
-        "Only on the extracellular membrane surface",
-        "In the mitochondrial matrix exclusively",
-        "On the outer face of the Golgi apparatus"
-      ],
-      "correct_index": 0,
-      "explanation": "Because steroid hormones are lipid-soluble, they cross the membrane and bind intracellular receptors that regulate transcription.",
-      "provenance": 1
-    },
-    {
-      "topic": "biology",
-      "card_tag": "3A",
-      "stem": "Activation of the sympathetic nervous system would most likely produce which response?",
-      "options": [
-        "Increased salivation",
-        "Increased heart rate",
-        "Constriction of the pupils",
-        "Stimulation of digestive motility"
-      ],
-      "correct_index": 1,
-      "explanation": "The sympathetic fight-or-flight response raises heart rate; increased salivation, pupil constriction, and digestive stimulation are parasympathetic effects.",
-      "provenance": 1
-    },
-    {
-      "topic": "biology",
-      "card_tag": "3B",
-      "stem": "Oxygenated blood returns from the lungs to the heart through the:",
-      "options": [
-        "Pulmonary artery",
-        "Superior vena cava",
-        "Pulmonary veins",
-        "Coronary sinus"
-      ],
-      "correct_index": 2,
-      "explanation": "The pulmonary veins carry freshly oxygenated blood from the lungs into the left atrium; the pulmonary artery instead carries deoxygenated blood to the lungs.",
-      "provenance": 1
-    },
-    {
-      "topic": "biology",
-      "card_tag": "3B",
-      "stem": "In what form is the majority of carbon dioxide transported in the blood?",
-      "options": [
-        "As bicarbonate ions in plasma",
-        "Bound to hemoglobin as carbaminohemoglobin",
-        "Dissolved as CO2 gas in plasma",
-        "Converted to carbon monoxide"
-      ],
-      "correct_index": 0,
-      "explanation": "About two-thirds of CO2 is carried as bicarbonate, generated when carbonic anhydrase in red blood cells converts CO2 and water to carbonic acid that dissociates.",
-      "provenance": 1
-    },
-    {
-      "topic": "biology",
-      "card_tag": "3B",
-      "stem": "The functional filtering unit of the kidney is the:",
-      "options": [
-        "Alveolus",
-        "Villus",
-        "Sarcomere",
-        "Nephron"
-      ],
-      "correct_index": 3,
-      "explanation": "The nephron filters blood and processes the filtrate into urine; alveoli, villi, and sarcomeres are units of the lung, intestine, and muscle respectively.",
-      "provenance": 1
-    },
-    {
-      "topic": "biology",
-      "card_tag": "3B",
-      "stem": "During inhalation at rest, the diaphragm:",
-      "options": [
-        "Relaxes and domes upward",
-        "Contracts and moves downward",
-        "Plays no role in ventilation",
-        "Secretes pulmonary surfactant"
-      ],
-      "correct_index": 1,
-      "explanation": "Contraction flattens the diaphragm downward, increasing thoracic volume and lowering pressure so air enters the lungs.",
-      "provenance": 1
-    },
-    {
-      "topic": "physics",
-      "card_tag": "4A",
-      "stem": "A net force of 12 N acts on a 4 kg block resting on a frictionless surface. What is the block's acceleration?",
-      "options": [
-        "48 m/s²",
-        "0.33 m/s²",
-        "3 m/s²",
-        "16 m/s²"
-      ],
-      "correct_index": 2,
-      "explanation": "By Newton's second law a = F_net/m = 12 N / 4 kg = 3 m/s².",
-      "provenance": 1
-    },
-    {
-      "topic": "physics",
-      "card_tag": "4A",
-      "stem": "A person pushes a box a horizontal distance of 5 m by applying a constant 20 N force in the direction of motion. How much work is done on the box by this force?",
-      "options": [
-        "4 J",
-        "100 J",
-        "25 J",
-        "20 J"
-      ],
-      "correct_index": 1,
-      "explanation": "Work for a force parallel to displacement is W = Fd = 20 N × 5 m = 100 J.",
-      "provenance": 1
-    },
-    {
-      "topic": "physics",
-      "card_tag": "4A",
-      "stem": "A car travels along a straight road at constant velocity. What must be true of the net force on the car?",
-      "options": [
-        "The net force is zero",
-        "The net force is constant and nonzero",
-        "The net force points in the direction of motion",
-        "The net force increases with speed"
-      ],
-      "correct_index": 0,
-      "explanation": "Constant velocity means zero acceleration, so by Newton's second law the net force must be zero.",
-      "provenance": 1
-    },
-    {
-      "topic": "physics",
-      "card_tag": "4A",
-      "stem": "A 10 N force is applied perpendicular to a wrench at a distance of 0.5 m from the bolt (pivot). What is the magnitude of the torque about the bolt?",
-      "options": [
-        "20 N·m",
-        "0.05 N·m",
-        "10 N·m",
-        "5 N·m"
-      ],
-      "correct_index": 3,
-      "explanation": "With the force perpendicular, τ = rF = 0.5 m × 10 N = 5 N·m.",
-      "provenance": 1
-    },
-    {
-      "topic": "physics",
-      "card_tag": "4B",
-      "stem": "An incompressible fluid flows through a horizontal pipe. If the cross-sectional area of the pipe decreases to half its original value, what happens to the fluid's speed?",
-      "options": [
-        "It halves",
-        "It doubles",
-        "It stays the same",
-        "It quadruples"
-      ],
-      "correct_index": 1,
-      "explanation": "By continuity A₁v₁ = A₂v₂; halving the area doubles the speed.",
-      "provenance": 1
-    },
-    {
-      "topic": "physics",
-      "card_tag": "4B",
-      "stem": "As blood flows from a wide artery into a narrower constriction, its speed increases. According to Bernoulli's principle, how does the pressure in the constriction compare to that in the wider region?",
-      "options": [
-        "Higher",
-        "The same",
-        "Cannot be determined",
-        "Lower"
-      ],
-      "correct_index": 3,
-      "explanation": "Bernoulli's principle states that where flow speed is greater, pressure is lower, so the constriction has lower pressure.",
-      "provenance": 1
-    },
-    {
-      "topic": "physics",
-      "card_tag": "4B",
-      "stem": "The gauge pressure at the bottom of an open tank of water depends most directly on which of the following?",
-      "options": [
-        "The depth and the fluid density",
-        "The shape of the container",
-        "The surface area of the top of the fluid",
-        "The material the tank is made of"
-      ],
-      "correct_index": 0,
-      "explanation": "Hydrostatic pressure is P = ρgh, which depends only on fluid density, g, and depth, not on container shape or surface area.",
-      "provenance": 1
-    },
-    {
-      "topic": "physics",
-      "card_tag": "4B",
-      "stem": "If the radius of a blood vessel doubles while pressure difference, length, and viscosity stay constant, by approximately what factor does the flow rate change?",
-      "options": [
-        "2",
-        "4",
-        "16",
-        "8"
-      ],
-      "correct_index": 2,
-      "explanation": "By Poiseuille's law flow rate scales with r⁴, so doubling the radius increases flow by 2⁴ = 16.",
-      "provenance": 1
-    },
-    {
-      "topic": "physics",
-      "card_tag": "4C",
-      "stem": "A resistor of 4 Ω has a potential difference of 12 V across it. What current flows through the resistor?",
-      "options": [
-        "0.33 A",
-        "3 A",
-        "48 A",
-        "16 A"
-      ],
-      "correct_index": 1,
-      "explanation": "By Ohm's law I = V/R = 12 V / 4 Ω = 3 A.",
-      "provenance": 1
-    },
-    {
-      "topic": "physics",
-      "card_tag": "4C",
-      "stem": "Two identical 6 Ω resistors are connected in parallel. What is the equivalent resistance of the combination?",
-      "options": [
-        "12 Ω",
-        "6 Ω",
-        "3 Ω",
-        "1.5 Ω"
-      ],
-      "correct_index": 2,
-      "explanation": "For two equal resistors in parallel the equivalent resistance is half of one, so 6 Ω / 2 = 3 Ω.",
-      "provenance": 1
-    },
-    {
-      "topic": "physics",
-      "card_tag": "4C",
-      "stem": "In an electrochemical cell, at which electrode does oxidation occur?",
-      "options": [
-        "Cathode",
-        "Salt bridge",
-        "Electrolyte",
-        "Anode"
-      ],
-      "correct_index": 3,
-      "explanation": "Oxidation always occurs at the anode, while reduction occurs at the cathode.",
-      "provenance": 1
-    },
-    {
-      "topic": "physics",
-      "card_tag": "4C",
-      "stem": "An electrical device operates at 120 V and draws a current of 2 A. What is its power consumption?",
-      "options": [
-        "240 W",
-        "60 W",
-        "122 W",
-        "480 W"
-      ],
-      "correct_index": 0,
-      "explanation": "Electrical power is P = IV = 2 A × 120 V = 240 W.",
-      "provenance": 1
-    },
-    {
-      "topic": "physics",
-      "card_tag": "4D",
-      "stem": "A wave traveling through a medium has a frequency of 250 Hz and a wavelength of 2 m. What is its speed?",
-      "options": [
-        "250 m/s",
-        "500 m/s",
-        "125 m/s",
-        "1000 m/s"
-      ],
-      "correct_index": 1,
-      "explanation": "Wave speed is v = fλ = 250 Hz × 2 m = 500 m/s.",
-      "provenance": 1
-    },
-    {
-      "topic": "physics",
-      "card_tag": "4D",
-      "stem": "An ambulance with its siren on drives toward a stationary listener. Compared to the emitted sound, what does the listener perceive?",
-      "options": [
-        "A lower pitch",
-        "The same pitch",
-        "A higher pitch",
-        "No sound at all"
-      ],
-      "correct_index": 2,
-      "explanation": "As the source approaches, wavefronts are compressed, raising the observed frequency and thus the perceived pitch.",
-      "provenance": 1
-    },
-    {
-      "topic": "physics",
-      "card_tag": "4D",
-      "stem": "A ray of light passes from air into water, which has a higher index of refraction. How does the ray bend at the surface?",
-      "options": [
-        "Toward the normal",
-        "Away from the normal",
-        "It does not bend",
-        "It reflects entirely back into the air"
-      ],
-      "correct_index": 0,
-      "explanation": "Entering a higher-index, slower medium, the light bends toward the normal, as predicted by Snell's law.",
-      "provenance": 1
-    },
-    {
-      "topic": "physics",
-      "card_tag": "4D",
-      "stem": "If the intensity of a sound increases by a factor of 100, by how much does the sound intensity level increase?",
-      "options": [
-        "10 dB",
-        "2 dB",
-        "100 dB",
-        "20 dB"
-      ],
-      "correct_index": 3,
-      "explanation": "The change is 10 log(100) = 10 × 2 = 20 dB.",
-      "provenance": 1
-    },
-    {
-      "topic": "general_chemistry",
-      "card_tag": "4E",
-      "stem": "A radioactive sample starts with 80 g of an isotope whose half-life is 3 days. How much of the isotope remains after 9 days?",
-      "options": [
-        "40 g",
-        "10 g",
-        "20 g",
-        "5 g"
-      ],
-      "correct_index": 1,
-      "explanation": "Nine days is three half-lives, so 80 g halves three times: 80 to 40 to 20 to 10 g.",
-      "provenance": 1
-    },
-    {
-      "topic": "general_chemistry",
-      "card_tag": "4E",
-      "stem": "During alpha decay, what particle is emitted from the nucleus?",
-      "options": [
-        "A high-energy photon",
-        "An electron",
-        "A proton",
-        "A helium-4 nucleus"
-      ],
-      "correct_index": 3,
-      "explanation": "An alpha particle is a helium-4 nucleus (two protons and two neutrons), so the mass number drops by 4 and the atomic number by 2.",
-      "provenance": 1
-    },
-    {
-      "topic": "general_chemistry",
-      "card_tag": "4E",
-      "stem": "Moving across a period from left to right on the periodic table, how does atomic radius generally change?",
-      "options": [
-        "It decreases",
-        "It increases",
-        "It stays constant",
-        "It doubles"
-      ],
-      "correct_index": 0,
-      "explanation": "Increasing effective nuclear charge across a period pulls electrons closer to the nucleus, so atomic radius decreases.",
-      "provenance": 1
-    },
-    {
-      "topic": "general_chemistry",
-      "card_tag": "4E",
-      "stem": "Two atoms are isotopes of the same element. In what way do they necessarily differ?",
-      "options": [
-        "Number of protons",
-        "Number of electrons in the neutral atom",
-        "Number of neutrons",
-        "Atomic number"
-      ],
-      "correct_index": 2,
-      "explanation": "Isotopes have the same number of protons (same element) but different numbers of neutrons, giving them different mass numbers.",
-      "provenance": 1
-    },
-    {
-      "topic": "general_chemistry",
-      "card_tag": "5A",
-      "stem": "What is the pH of a 0.001 M aqueous solution of HCl at 25 degrees C?",
-      "options": [
-        "1",
-        "2",
-        "3",
-        "11"
-      ],
-      "correct_index": 2,
-      "explanation": "HCl is a strong acid that fully dissociates, so [H3O+] = 0.001 M = 1 x 10^-3, and pH = -log(1 x 10^-3) = 3.",
-      "provenance": 1
-    },
-    {
-      "topic": "general_chemistry",
-      "card_tag": "5A",
-      "stem": "A buffer is prepared with a weak acid (pKa = 4.74) such that the conjugate base concentration equals the weak acid concentration. What is the approximate pH?",
-      "options": [
-        "4.74",
-        "7.00",
-        "9.26",
-        "2.37"
-      ],
-      "correct_index": 0,
-      "explanation": "By Henderson-Hasselbalch, when [A-] = [HA] the log term is log(1) = 0, so pH = pKa = 4.74.",
-      "provenance": 1
-    },
-    {
-      "topic": "general_chemistry",
-      "card_tag": "5A",
-      "stem": "Which property of water is most directly responsible for its unusually high boiling point compared with other small molecules like CH4?",
-      "options": [
-        "Its high molar mass",
-        "Extensive hydrogen bonding between molecules",
-        "Its covalent O-H bonds being unusually weak",
-        "Its ability to ionize completely"
-      ],
-      "correct_index": 1,
-      "explanation": "Hydrogen bonding among water molecules requires substantial energy to overcome, raising the boiling point well above that of comparably sized nonpolar molecules.",
-      "provenance": 1
-    },
-    {
-      "topic": "general_chemistry",
-      "card_tag": "5A",
-      "stem": "What is the pH of a 0.01 M NaOH solution at 25 degrees C?",
-      "options": [
-        "7",
-        "2",
-        "14",
-        "12"
-      ],
-      "correct_index": 3,
-      "explanation": "NaOH is a strong base giving [OH-] = 0.01 M, so pOH = -log(0.01) = 2 and pH = 14 - 2 = 12.",
-      "provenance": 1
-    },
-    {
-      "topic": "general_chemistry",
-      "card_tag": "5B",
-      "stem": "Which molecule can act as a hydrogen bond donor?",
-      "options": [
-        "CH4",
-        "NH3",
-        "CF4",
-        "CO2"
-      ],
-      "correct_index": 1,
-      "explanation": "NH3 has H atoms bonded directly to nitrogen (a highly electronegative atom), so it can donate hydrogen bonds; the others lack H bonded to N, O, or F.",
-      "provenance": 1
-    },
-    {
-      "topic": "general_chemistry",
-      "card_tag": "5B",
-      "stem": "According to VSEPR theory, what is the molecular geometry of a molecule with a central atom having two bonding regions and two lone pairs, such as H2O?",
-      "options": [
-        "Linear",
-        "Trigonal planar",
-        "Bent",
-        "Tetrahedral"
-      ],
-      "correct_index": 2,
-      "explanation": "Water has four electron domains (tetrahedral electron geometry) but two are lone pairs, giving a bent molecular shape with an angle near 104.5 degrees.",
-      "provenance": 1
-    },
-    {
-      "topic": "general_chemistry",
-      "card_tag": "5B",
-      "stem": "Which of the following is nonpolar overall despite containing polar bonds?",
-      "options": [
-        "H2O",
-        "NH3",
-        "CO2",
-        "HCl"
-      ],
-      "correct_index": 2,
-      "explanation": "CO2 is linear and symmetric, so its two C=O bond dipoles point in opposite directions and cancel, giving zero net dipole.",
-      "provenance": 1
-    },
-    {
-      "topic": "general_chemistry",
-      "card_tag": "5B",
-      "stem": "Among the noble gases He, Ne, Ar, and Xe, which has the highest boiling point?",
-      "options": [
-        "Xe",
-        "Ar",
-        "Ne",
-        "He"
-      ],
-      "correct_index": 0,
-      "explanation": "Xenon has the most electrons and greatest polarizability, giving the strongest London dispersion forces and thus the highest boiling point of these noble gases.",
-      "provenance": 1
-    },
-    {
-      "topic": "general_chemistry",
-      "card_tag": "5C",
-      "stem": "A student wants to separate two miscible liquids with boiling points of 78 degrees C and 118 degrees C. Which technique is most appropriate?",
-      "options": [
-        "Filtration",
-        "Distillation",
-        "Gel electrophoresis",
-        "Recrystallization"
-      ],
-      "correct_index": 1,
-      "explanation": "The liquids differ in boiling point and are mixed together, so distillation, which separates by volatility, is the correct choice.",
-      "provenance": 1
-    },
-    {
-      "topic": "general_chemistry",
-      "card_tag": "5C",
-      "stem": "In gel electrophoresis, DNA fragments separate primarily according to which property?",
-      "options": [
-        "Boiling point",
-        "Molecular size",
-        "Optical rotation",
-        "Color"
-      ],
-      "correct_index": 1,
-      "explanation": "DNA is uniformly negatively charged, so under an electric field it separates by size, with smaller fragments moving farther through the gel.",
-      "provenance": 1
-    },
-    {
-      "topic": "general_chemistry",
-      "card_tag": "5C",
-      "stem": "In a thin-layer chromatography experiment, a compound travels 4.0 cm while the solvent front travels 8.0 cm. What is the Rf value?",
-      "options": [
-        "2.0",
-        "0.25",
-        "0.50",
-        "1.0"
-      ],
-      "correct_index": 2,
-      "explanation": "Rf = distance traveled by compound / distance traveled by solvent front = 4.0 / 8.0 = 0.50.",
-      "provenance": 1
-    },
-    {
-      "topic": "general_chemistry",
-      "card_tag": "5C",
-      "stem": "Liquid-liquid extraction relies most directly on differences in which property between two immiscible solvents?",
-      "options": [
-        "Solubility of the solute in each solvent",
-        "Boiling point of the solute",
-        "Molecular charge of the solute",
-        "Melting point of the solvents"
-      ],
-      "correct_index": 0,
-      "explanation": "Extraction works because a solute partitions between two immiscible solvents based on its relative solubility in each phase.",
-      "provenance": 1
-    },
-    {
-      "topic": "biochemistry",
-      "card_tag": "5D",
-      "stem": "Which functional group is present in an aldehyde but not in a ketone?",
-      "options": [
-        "A carbonyl carbon",
-        "A carbonyl carbon bonded to at least one hydrogen",
-        "A hydroxyl group",
-        "An amino group"
-      ],
-      "correct_index": 1,
-      "explanation": "Both contain a carbonyl (C=O), but in an aldehyde the carbonyl carbon is bonded to at least one hydrogen, whereas in a ketone it is bonded to two carbon atoms.",
-      "provenance": 1
-    },
-    {
-      "topic": "biochemistry",
-      "card_tag": "5D",
-      "stem": "The bond formed between two amino acids in a protein is best described as a(n):",
-      "options": [
-        "Glycosidic bond",
-        "Phosphodiester bond",
-        "Peptide (amide) bond",
-        "Ester bond"
-      ],
-      "correct_index": 2,
-      "explanation": "Amino acids join through a peptide bond, an amide linkage formed by condensation of one amino acid's carboxyl group with another's amino group.",
-      "provenance": 1
-    },
-    {
-      "topic": "biochemistry",
-      "card_tag": "5D",
-      "stem": "Two molecules are nonsuperimposable mirror images of each other. They are best classified as:",
-      "options": [
-        "Enantiomers",
-        "Constitutional isomers",
-        "Diastereomers",
-        "Conformational isomers"
-      ],
-      "correct_index": 0,
-      "explanation": "Nonsuperimposable mirror images that differ in configuration at every stereocenter are enantiomers.",
-      "provenance": 1
-    },
-    {
-      "topic": "biochemistry",
-      "card_tag": "5D",
-      "stem": "Which of the following best explains why unsaturated fatty acids tend to be liquid at room temperature?",
-      "options": [
-        "They have higher molar mass than saturated fats",
-        "Their C=C double bonds create kinks that prevent tight packing",
-        "They contain more hydrogen atoms per carbon",
-        "They form stronger hydrogen bonds"
-      ],
-      "correct_index": 1,
-      "explanation": "Cis double bonds introduce bends in the hydrocarbon chain, so the molecules pack less efficiently, weakening dispersion forces and lowering the melting point.",
-      "provenance": 1
-    },
-    {
-      "topic": "general_chemistry",
-      "card_tag": "5E",
-      "stem": "A reaction has delta H = -100 kJ/mol and delta S = -0.200 kJ/(mol K). At what temperature does delta G equal zero?",
-      "options": [
-        "200 K",
-        "500 K",
-        "1000 K",
-        "50 K"
-      ],
-      "correct_index": 1,
-      "explanation": "Setting delta G = delta H - T delta S = 0 gives T = delta H / delta S = (-100) / (-0.200) = 500 K.",
-      "provenance": 1
-    },
-    {
-      "topic": "general_chemistry",
-      "card_tag": "5E",
-      "stem": "For the exothermic equilibrium N2(g) + 3 H2(g) reversible 2 NH3(g), which change shifts the equilibrium toward more NH3?",
-      "options": [
-        "Increasing the temperature",
-        "Removing N2",
-        "Increasing the total pressure by decreasing volume",
-        "Adding a catalyst"
-      ],
-      "correct_index": 2,
-      "explanation": "Increasing pressure by reducing volume shifts equilibrium toward the side with fewer gas moles (2 mol NH3 vs 4 mol reactants), favoring NH3. A catalyst does not shift equilibrium.",
-      "provenance": 1
-    },
-    {
-      "topic": "general_chemistry",
-      "card_tag": "5E",
-      "stem": "Which statement about a catalyst is correct?",
-      "options": [
-        "It shifts the equilibrium toward products",
-        "It makes delta G more negative",
-        "It lowers the activation energy without being consumed",
-        "It increases the equilibrium constant"
-      ],
-      "correct_index": 2,
-      "explanation": "A catalyst speeds up a reaction by lowering the activation energy and is regenerated; it does not change delta G, K, or the equilibrium position.",
-      "provenance": 1
-    },
-    {
-      "topic": "general_chemistry",
-      "card_tag": "5E",
-      "stem": "A reaction is endothermic (delta H positive) and has delta S positive. Under which condition is it spontaneous?",
-      "options": [
-        "At all temperatures",
-        "At no temperature",
-        "Only at sufficiently low temperature",
-        "Only at sufficiently high temperature"
-      ],
-      "correct_index": 3,
-      "explanation": "With positive delta H and positive delta S, delta G = delta H - T delta S becomes negative only when T is large enough for the T delta S term to exceed delta H.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "6A",
-      "stem": "A researcher finds that a person can just detect a 2-gram increase when holding a 100-gram weight, but needs a 4-gram increase to notice a change when holding a 200-gram weight. This pattern best illustrates:",
-      "options": [
-        "Absolute threshold",
-        "Weber's law",
-        "Sensory adaptation",
-        "Signal detection bias"
-      ],
-      "correct_index": 1,
-      "explanation": "The just-noticeable difference is a constant proportion (2 percent) of the original stimulus rather than a fixed amount, which is the defining feature of Weber's law.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "6A",
-      "stem": "Which concept best explains why a tired night-shift radar operator who expects an attack reports seeing a blip that was not actually present?",
-      "options": [
-        "Transduction",
-        "Absolute threshold",
-        "Response bias in signal detection theory",
-        "Weber's law"
-      ],
-      "correct_index": 2,
-      "explanation": "Signal detection theory holds that nonsensory factors like expectation and fatigue shift the observer's decision criterion, increasing false alarms independent of actual sensitivity.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "6A",
-      "stem": "When a person enters a bakery and initially smells fresh bread strongly but stops noticing the odor after several minutes, this change is due to:",
-      "options": [
-        "Sensory adaptation",
-        "A rise in the absolute threshold set at birth",
-        "Failure of transduction",
-        "Violation of Weber's law"
-      ],
-      "correct_index": 0,
-      "explanation": "Sensory adaptation is the decreased responsiveness of sensory receptors to a continuous, unchanging stimulus over time.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "6A",
-      "stem": "The conversion of sound-wave pressure changes into neural impulses by hair cells of the inner ear is an example of:",
-      "options": [
-        "Sensory adaptation",
-        "Signal detection",
-        "Perceptual constancy",
-        "Transduction"
-      ],
-      "correct_index": 3,
-      "explanation": "Transduction is the process by which sensory receptors convert physical stimulus energy into electrochemical neural signals; hair cells perform this for sound.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "6B",
-      "stem": "A student who just learned Spanish struggles to recall French vocabulary learned last year. This memory failure is an example of:",
-      "options": [
-        "Retroactive interference",
-        "Proactive interference",
-        "Encoding failure",
-        "Source amnesia"
-      ],
-      "correct_index": 0,
-      "explanation": "Newly learned Spanish is disrupting the recall of the older French material, which defines retroactive interference (new interferes with old).",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "6B",
-      "stem": "A person estimates that shark attacks are extremely common because several were featured in recent news reports. This judgment error reflects:",
-      "options": [
-        "The representativeness heuristic",
-        "Confirmation bias",
-        "The availability heuristic",
-        "Belief perseverance"
-      ],
-      "correct_index": 2,
-      "explanation": "Judging frequency by how easily vivid instances are recalled is the availability heuristic.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "6B",
-      "stem": "An older adult performs as well as ever on a vocabulary and general-knowledge test but slower on a novel logic puzzle. This pattern is best explained by:",
-      "options": [
-        "A decline in crystallized intelligence with preserved fluid intelligence",
-        "Loss of sensory memory",
-        "Preserved crystallized intelligence with declining fluid intelligence",
-        "Functional fixedness"
-      ],
-      "correct_index": 2,
-      "explanation": "Crystallized intelligence (accumulated knowledge) is typically stable or increases with age, whereas fluid intelligence (novel reasoning speed) tends to decline.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "6B",
-      "stem": "When reading messy handwriting, a person uses the surrounding words and grammar to identify an otherwise ambiguous letter. This reliance on context and prior knowledge is:",
-      "options": [
-        "Bottom-up processing",
-        "Sensory adaptation",
-        "Top-down processing",
-        "Transduction"
-      ],
-      "correct_index": 2,
-      "explanation": "Using context, expectations, and prior knowledge to interpret sensory input is top-down processing.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "6C",
-      "stem": "A theory of emotion asserts that seeing a bear causes you to tremble and race your heart first, and only then do you interpret those bodily changes as fear. This describes the:",
-      "options": [
-        "Cannon-Bard theory",
-        "Schachter-Singer two-factor theory",
-        "James-Lange theory",
-        "Yerkes-Dodson law"
-      ],
-      "correct_index": 2,
-      "explanation": "The James-Lange theory holds that the physiological response precedes and generates the conscious emotional experience.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "6C",
-      "stem": "A person feels physiologically aroused after drinking coffee, and interpreting the setting as tense, labels the feeling as anxiety. This interpretation-plus-arousal account best matches:",
-      "options": [
-        "The two-factor (Schachter-Singer) theory",
-        "The James-Lange theory",
-        "The Cannon-Bard theory",
-        "The general adaptation syndrome"
-      ],
-      "correct_index": 0,
-      "explanation": "The two-factor theory requires both physiological arousal and a cognitive label based on context to produce a specific emotion.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "6C",
-      "stem": "During a prolonged, months-long stressful period, a person who initially coped well begins to experience exhaustion, illness, and depleted energy. According to Selye, this final phase is the stage of:",
-      "options": [
-        "Alarm",
-        "Resistance",
-        "Appraisal",
-        "Exhaustion"
-      ],
-      "correct_index": 3,
-      "explanation": "In the general adaptation syndrome, the exhaustion stage follows alarm and resistance when the body's resources are depleted, increasing vulnerability to illness.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "6C",
-      "stem": "According to the Yerkes-Dodson law, performance on a very difficult exam is likely to be best when arousal is:",
-      "options": [
-        "At a relatively low to moderate level",
-        "As high as possible",
-        "Completely absent",
-        "Identical to that optimal for a simple task"
-      ],
-      "correct_index": 0,
-      "explanation": "The Yerkes-Dodson law states that optimal arousal is lower for difficult tasks, so moderate rather than very high arousal maximizes performance on hard tasks.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "7A",
-      "stem": "A child stops whining once a parent gives in and buys candy; the parent's behavior of buying candy increases because the whining stops. For the parent, buying candy is being strengthened by:",
-      "options": [
-        "Positive punishment",
-        "Negative reinforcement",
-        "Positive reinforcement",
-        "Extinction"
-      ],
-      "correct_index": 1,
-      "explanation": "Buying candy removes an aversive stimulus (the whining) and thereby increases the parent's behavior, which defines negative reinforcement.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "7A",
-      "stem": "A gambler keeps pulling a slot machine lever because payouts come after an unpredictable number of pulls. This reinforcement schedule is:",
-      "options": [
-        "Fixed-ratio",
-        "Fixed-interval",
-        "Variable-interval",
-        "Variable-ratio"
-      ],
-      "correct_index": 3,
-      "explanation": "Reinforcement delivered after an unpredictable number of responses is a variable-ratio schedule, which produces high, persistent responding.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "7A",
-      "stem": "A child who once drew for pure enjoyment begins drawing only when paid, and loses interest when the payments stop. This best illustrates:",
-      "options": [
-        "The overjustification effect",
-        "Negative reinforcement",
-        "Spontaneous recovery",
-        "Stimulus generalization"
-      ],
-      "correct_index": 0,
-      "explanation": "When an external reward reduces preexisting intrinsic motivation, the overjustification effect has occurred.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "7A",
-      "stem": "According to Maslow's hierarchy of needs, which need must generally be met before a person pursues esteem and self-actualization?",
-      "options": [
-        "Self-transcendence",
-        "Cognitive mastery",
-        "Physiological and safety needs",
-        "Aesthetic appreciation"
-      ],
-      "correct_index": 2,
-      "explanation": "Maslow proposed that lower-level physiological and safety needs are generally satisfied before higher needs like esteem and self-actualization are pursued.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "7B",
-      "stem": "A participant reports an obviously incorrect line length in order to match the unanimous but wrong judgments of the group around them. This behavior best demonstrates:",
-      "options": [
-        "Obedience to authority",
-        "Normative conformity",
-        "Social loafing",
-        "The bystander effect"
-      ],
-      "correct_index": 1,
-      "explanation": "Going along with a group's clearly incorrect judgment to fit in reflects normative conformity, as shown in Asch's experiments.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "7B",
-      "stem": "An observer assumes a driver who cut them off is inherently rude, ignoring that the driver may be rushing to an emergency. This reflects the:",
-      "options": [
-        "Fundamental attribution error",
-        "Self-serving bias",
-        "Just-world hypothesis",
-        "Halo effect"
-      ],
-      "correct_index": 0,
-      "explanation": "Overattributing another person's behavior to internal disposition while discounting situational causes is the fundamental attribution error.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "7B",
-      "stem": "Members of a tight-knit advisory group suppress their private doubts and reach a poor consensus decision to avoid conflict. This is an example of:",
-      "options": [
-        "Social facilitation",
-        "Deindividuation",
-        "Groupthink",
-        "Stereotype threat"
-      ],
-      "correct_index": 2,
-      "explanation": "Groupthink occurs when a cohesive group prioritizes consensus and harmony over critical evaluation, producing flawed decisions.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "7B",
-      "stem": "Each member of a large group project exerts less effort than they would if working alone and individually accountable. This phenomenon is:",
-      "options": [
-        "Social facilitation",
-        "Social loafing",
-        "Conformity",
-        "Group polarization"
-      ],
-      "correct_index": 1,
-      "explanation": "Reduced individual effort when responsibility is diffused across a group is social loafing.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "7C",
-      "stem": "A well-informed, motivated consumer is persuaded to buy a laptop after carefully evaluating detailed evidence about its processor speed and battery life. According to the elaboration likelihood model, this reflects the:",
-      "options": [
-        "Peripheral route",
-        "Central route",
-        "Foot-in-the-door technique",
-        "Door-in-the-face technique"
-      ],
-      "correct_index": 1,
-      "explanation": "Persuasion driven by effortful scrutiny of argument quality by a motivated, able audience is the central route, which yields lasting attitude change.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "7C",
-      "stem": "After choosing to write an essay favoring a policy they personally oppose, and being paid only a small amount, participants come to report more favorable attitudes toward that policy. This shift is best explained by:",
-      "options": [
-        "The peripheral route to persuasion",
-        "Observational learning",
-        "Cognitive dissonance",
-        "Social loafing"
-      ],
-      "correct_index": 2,
-      "explanation": "With insufficient external justification, the conflict between behavior and attitude creates dissonance, which is reduced by changing the attitude to match the behavior.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "7C",
-      "stem": "A volunteer first asks a homeowner to sign a small petition, then later asks them to display a large yard sign, gaining agreement more often than with a direct large request. This strategy is the:",
-      "options": [
-        "Door-in-the-face technique",
-        "Central route to persuasion",
-        "Foot-in-the-door technique",
-        "Reciprocity norm"
-      ],
-      "correct_index": 2,
-      "explanation": "Securing compliance with a small request first to make a later large request more likely is the foot-in-the-door technique.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "7C",
-      "stem": "A consumer buys a product mainly because the advertisement features an attractive celebrity, without evaluating any product information. This persuasion relies on the:",
-      "options": [
-        "Peripheral route",
-        "Central route",
-        "Cognitive component of attitude",
-        "Overjustification effect"
-      ],
-      "correct_index": 0,
-      "explanation": "Being swayed by superficial cues such as an attractive spokesperson rather than argument quality reflects the peripheral route of the elaboration likelihood model.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "8A",
-      "stem": "A sociologist argues that a teenager's self-image forms largely from imagining how peers evaluate her appearance and behavior. This idea is most closely associated with which concept?",
-      "options": [
-        "Mead's generalized other",
-        "Erikson's identity diffusion",
-        "Cooley's looking-glass self",
-        "Bandura's self-efficacy"
-      ],
-      "correct_index": 2,
-      "explanation": "Cooley's looking-glass self describes forming self-image based on how we imagine others perceive and judge us.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "8A",
-      "stem": "In Mead's theory of the self, the internalized attitudes and expectations of society as a whole are referred to as:",
-      "options": [
-        "the I",
-        "the generalized other",
-        "the looking-glass self",
-        "role confusion"
-      ],
-      "correct_index": 1,
-      "explanation": "Mead used the term generalized other to describe the internalized sense of the total expectations of society, which informs the 'me'.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "8A",
-      "stem": "According to Erikson, the primary psychosocial conflict of adolescence is:",
-      "options": [
-        "trust vs. mistrust",
-        "industry vs. inferiority",
-        "intimacy vs. isolation",
-        "identity vs. role confusion"
-      ],
-      "correct_index": 3,
-      "explanation": "Erikson placed identity vs. role confusion in adolescence, when individuals work to establish a coherent sense of self.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "8A",
-      "stem": "A student believes she is generally capable of doing well on chemistry exams as long as she studies. This belief that she can succeed at a specific task best illustrates:",
-      "options": [
-        "self-efficacy",
-        "self-esteem",
-        "self-concept",
-        "an external locus of control"
-      ],
-      "correct_index": 0,
-      "explanation": "Self-efficacy, from Bandura, is the belief in one's capability to accomplish a particular task or perform in a specific situation.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "8B",
-      "stem": "A driver cuts you off and you immediately conclude he is a rude, aggressive person, ignoring that he may be rushing to an emergency. This reasoning best illustrates:",
-      "options": [
-        "the self-serving bias",
-        "the fundamental attribution error",
-        "the just-world hypothesis",
-        "in-group favoritism"
-      ],
-      "correct_index": 1,
-      "explanation": "The fundamental attribution error is overattributing others' behavior to disposition while underweighting situational causes.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "8B",
-      "stem": "After acing an exam a student credits her intelligence, but after failing one she blames the unfair test. This pattern is an example of:",
-      "options": [
-        "the actor-observer bias",
-        "the fundamental attribution error",
-        "the self-serving bias",
-        "stereotype threat"
-      ],
-      "correct_index": 2,
-      "explanation": "The self-serving bias attributes successes to internal factors and failures to external ones to protect self-esteem.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "8B",
-      "stem": "Refusing to hire qualified applicants because of their ethnicity is best classified as:",
-      "options": [
-        "a stereotype",
-        "prejudice",
-        "discrimination",
-        "an attribution"
-      ],
-      "correct_index": 2,
-      "explanation": "Discrimination is unequal behavior or treatment directed at members of a group; the stereotype is the belief and prejudice is the attitude.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "8B",
-      "stem": "A person who values health but smokes feels psychological discomfort and then convinces herself that smoking helps her relax. This reduction of tension between conflicting cognitions illustrates:",
-      "options": [
-        "cognitive dissonance",
-        "the mere-exposure effect",
-        "the fundamental attribution error",
-        "stereotype threat"
-      ],
-      "correct_index": 0,
-      "explanation": "Cognitive dissonance is the discomfort from holding conflicting attitudes or behaviors, which people reduce by changing beliefs or rationalizing.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "8C",
-      "stem": "In Milgram's classic experiment, participants delivered what they believed were dangerous shocks because an experimenter instructed them to continue. This behavior best demonstrates:",
-      "options": [
-        "conformity",
-        "obedience",
-        "compliance",
-        "groupthink"
-      ],
-      "correct_index": 1,
-      "explanation": "Obedience is behavior change in response to a direct order from an authority figure, which Milgram's study famously examined.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "8C",
-      "stem": "A person collapses on a crowded subway platform, but no one helps because each onlooker assumes someone else will act. This best illustrates:",
-      "options": [
-        "social loafing",
-        "the bystander effect due to diffusion of responsibility",
-        "deindividuation",
-        "social facilitation"
-      ],
-      "correct_index": 1,
-      "explanation": "The bystander effect, driven by diffusion of responsibility, makes any single person less likely to help when many others are present.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "8C",
-      "stem": "In a group project, one member exerts noticeably less effort than he would if working alone. This reduction of individual effort in a group is called:",
-      "options": [
-        "social facilitation",
-        "groupthink",
-        "social loafing",
-        "conformity"
-      ],
-      "correct_index": 2,
-      "explanation": "Social loafing is the tendency to put in less effort when working in a group than when working individually.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "8C",
-      "stem": "According to Goffman's dramaturgical perspective, the behavior people display when they know they are being observed by an audience occurs in the:",
-      "options": [
-        "back stage",
-        "looking-glass self",
-        "generalized other",
-        "front stage"
-      ],
-      "correct_index": 3,
-      "explanation": "In Goffman's framework, front stage is where individuals perform for an audience, managing impressions; back stage is where they relax out of view.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "9A",
-      "stem": "A sociologist studies how a handshake or a particular gesture conveys meaning during face-to-face interactions between two people. This micro-level focus is most characteristic of:",
-      "options": [
-        "structural functionalism",
-        "conflict theory",
-        "symbolic interactionism",
-        "social Darwinism"
-      ],
-      "correct_index": 2,
-      "explanation": "Symbolic interactionism is a micro-level perspective concerned with meaning constructed through symbols in everyday interaction.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "9A",
-      "stem": "The manifest function of a university is to educate students. If attending also allows a student to meet a future spouse, that outcome would be considered a:",
-      "options": [
-        "dysfunction",
-        "latent function",
-        "manifest function",
-        "role strain"
-      ],
-      "correct_index": 1,
-      "explanation": "A latent function is an unintended, unrecognized consequence of a social institution, in contrast to its manifest (intended) function.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "9A",
-      "stem": "Which theoretical perspective would most likely analyze how a society's economic system enables a wealthy class to maintain power over the working class?",
-      "options": [
-        "conflict theory",
-        "symbolic interactionism",
-        "structural functionalism",
-        "dramaturgy"
-      ],
-      "correct_index": 0,
-      "explanation": "Conflict theory, drawing on Marx, focuses on inequality and struggle over resources and power between groups.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "9A",
-      "stem": "Norms that are widely observed but carry little moral significance, such as customs about how to dress casually, are called:",
-      "options": [
-        "mores",
-        "taboos",
-        "laws",
-        "folkways"
-      ],
-      "correct_index": 3,
-      "explanation": "Folkways are everyday norms without strong moral weight; mores carry greater moral significance, and taboos are the most strongly held prohibitions.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "9B",
-      "stem": "A family leaves their home country primarily because of a severe drought and a lack of jobs. These influences are best described as:",
-      "options": [
-        "pull factors",
-        "push factors",
-        "latent functions",
-        "replacement migration"
-      ],
-      "correct_index": 1,
-      "explanation": "Push factors are conditions that drive people away from an area, such as environmental hardship and unemployment.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "9B",
-      "stem": "According to the demographic transition model, a country in the early industrializing stage typically experiences:",
-      "options": [
-        "high birth rates with rapidly falling death rates, producing rapid population growth",
-        "low birth rates and low death rates",
-        "high birth rates and high death rates with little net growth",
-        "sustained negative population growth"
-      ],
-      "correct_index": 0,
-      "explanation": "In the early transitional stage, improved conditions lower death rates while birth rates stay high, causing rapid population growth.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "9B",
-      "stem": "The total fertility rate generally considered necessary to maintain a stable population size in a developed country, absent migration, is approximately:",
-      "options": [
-        "1.0 child per woman",
-        "2.1 children per woman",
-        "3.5 children per woman",
-        "5.0 children per woman"
-      ],
-      "correct_index": 1,
-      "explanation": "Replacement-level fertility is about 2.1 children per woman, accounting for two parents plus mortality before reproductive age.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "9B",
-      "stem": "A country's population pyramid shows a large proportion of elderly individuals and relatively few children. This most directly indicates:",
-      "options": [
-        "a high total fertility rate",
-        "rapid exponential population growth",
-        "an aging population with a rising old-age dependency ratio",
-        "high infant mortality"
-      ],
-      "correct_index": 2,
-      "explanation": "A top-heavy age structure reflects an aging population, which increases the proportion of older dependents relative to workers.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "10A",
-      "stem": "In a stratification system where a person's social position is fixed at birth and marriage between strata is prohibited, mobility is essentially impossible. This describes a:",
-      "options": [
-        "class system",
-        "meritocracy",
-        "status inconsistency",
-        "caste system"
-      ],
-      "correct_index": 3,
-      "explanation": "A caste system is a closed system of stratification with ascribed status and virtually no opportunity for mobility.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "10A",
-      "stem": "Max Weber argued that social stratification is based on three distinct dimensions. These are:",
-      "options": [
-        "class, status, and party (power)",
-        "upper, middle, and lower classes",
-        "manifest, latent, and dysfunction",
-        "race, gender, and age"
-      ],
-      "correct_index": 0,
-      "explanation": "Weber expanded on Marx by identifying class (wealth), status (prestige), and party (power) as separate dimensions of stratification.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "10A",
-      "stem": "A woman raised in a working-class household earns a medical degree and becomes a physician, moving into the upper-middle class. Compared with her parents, she has experienced:",
-      "options": [
-        "intragenerational downward mobility",
-        "horizontal mobility",
-        "intergenerational upward mobility",
-        "status inconsistency"
-      ],
-      "correct_index": 2,
-      "explanation": "A change in social position relative to one's parents is intergenerational mobility, and rising in the hierarchy makes it upward.",
-      "provenance": 1
-    },
-    {
-      "topic": "psychology_sociology",
-      "card_tag": "10A",
-      "stem": "A family can afford food and shelter but cannot afford the goods and experiences considered normal in their wealthy society. This is best described as living in:",
-      "options": [
-        "absolute poverty",
-        "relative poverty",
-        "extreme poverty",
-        "the culture of poverty"
-      ],
-      "correct_index": 1,
-      "explanation": "Relative poverty describes falling well below the typical living standard of one's society, even when basic survival needs are met.",
-      "provenance": 1
-    }
-  ]
+    "questions": [
+        {
+            "topic": "biochemistry",
+            "card_tag": "1A",
+            "stem": "A peptide bond forms between which two functional groups of adjacent amino acids?",
+            "options": [
+                "The R group of one amino acid and the amino group of another",
+                "Two amino groups",
+                "The carboxyl group of one amino acid and the amino group of another",
+                "Two carboxyl groups"
+            ],
+            "correct_index": 2,
+            "explanation": "During a dehydration reaction, the carboxyl group of one amino acid bonds to the amino group of the next, releasing water and forming the peptide bond.",
+            "provenance": 1
+        },
+        {
+            "topic": "biochemistry",
+            "card_tag": "1A",
+            "stem": "Which interaction is primarily responsible for maintaining the alpha-helix secondary structure of a protein?",
+            "options": [
+                "Hydrogen bonds between backbone atoms",
+                "Disulfide bonds between cysteine residues",
+                "Peptide bonds between side chains",
+                "Ionic bonds between the N- and C-termini"
+            ],
+            "correct_index": 0,
+            "explanation": "Secondary structures such as the alpha helix are held together by hydrogen bonds between the carbonyl oxygen and the amide hydrogen of the polypeptide backbone.",
+            "provenance": 1
+        },
+        {
+            "topic": "biochemistry",
+            "card_tag": "1A",
+            "stem": "A globular protein folds in the aqueous cytoplasm. Which residues are most likely buried in its interior core?",
+            "options": [
+                "Charged residues such as aspartate and lysine",
+                "Polar residues such as serine and threonine",
+                "Residues that hydrogen bond with water",
+                "Nonpolar residues such as valine and leucine"
+            ],
+            "correct_index": 3,
+            "explanation": "Hydrophobic (nonpolar) side chains cluster in the protein interior away from water, while polar and charged residues face the aqueous exterior.",
+            "provenance": 1
+        },
+        {
+            "topic": "biochemistry",
+            "card_tag": "1A",
+            "stem": "Boiling an egg causes the egg white to solidify. Which statement best describes what happens to the proteins?",
+            "options": [
+                "Peptide bonds of the primary structure are hydrolyzed",
+                "The proteins denature, losing higher-order structure while the primary sequence stays intact",
+                "New covalent bonds form to create a stronger quaternary structure",
+                "The amino acid sequence is permanently rearranged"
+            ],
+            "correct_index": 1,
+            "explanation": "Heat denatures proteins by disrupting the noncovalent interactions that hold secondary, tertiary, and quaternary structure, but the covalent peptide bonds of the primary structure remain intact.",
+            "provenance": 1
+        },
+        {
+            "topic": "biochemistry",
+            "card_tag": "1B",
+            "stem": "During transcription, mRNA is built antiparallel and complementary to the template DNA strand. If the template reads 3'-TAC-5', what is the corresponding mRNA sequence?",
+            "options": [
+                "5'-UAC-3'",
+                "5'-AUG-3'",
+                "5'-ATG-3'",
+                "5'-TAC-3'"
+            ],
+            "correct_index": 1,
+            "explanation": "RNA is complementary and antiparallel to the template and uses uracil instead of thymine, so 3'-TAC-5' yields 5'-AUG-3'.",
+            "provenance": 1
+        },
+        {
+            "topic": "biochemistry",
+            "card_tag": "1B",
+            "stem": "Which enzyme synthesizes RNA from a DNA template during transcription?",
+            "options": [
+                "DNA polymerase",
+                "DNA ligase",
+                "Helicase",
+                "RNA polymerase"
+            ],
+            "correct_index": 3,
+            "explanation": "RNA polymerase reads the DNA template and synthesizes a complementary strand of RNA; the other enzymes function in replication or unwinding, not transcription.",
+            "provenance": 1
+        },
+        {
+            "topic": "biochemistry",
+            "card_tag": "1B",
+            "stem": "A mutation changes an mRNA codon from GAA to GAG, but the encoded amino acid (glutamate) is unchanged. This is best classified as a:",
+            "options": [
+                "Nonsense mutation",
+                "Frameshift mutation",
+                "Silent (synonymous) mutation",
+                "Missense mutation"
+            ],
+            "correct_index": 2,
+            "explanation": "Because the genetic code is degenerate, multiple codons can specify the same amino acid, so this base change produces no change in the protein and is silent.",
+            "provenance": 1
+        },
+        {
+            "topic": "biochemistry",
+            "card_tag": "1B",
+            "stem": "In eukaryotic cells, introns are removed and exons are joined by splicing. Where does this processing of pre-mRNA occur?",
+            "options": [
+                "In the nucleus",
+                "In the cytoplasm on ribosomes",
+                "In the mitochondrial matrix",
+                "On the rough endoplasmic reticulum"
+            ],
+            "correct_index": 0,
+            "explanation": "Eukaryotic pre-mRNA is capped, polyadenylated, and spliced within the nucleus before the mature mRNA is exported to the cytoplasm for translation.",
+            "provenance": 1
+        },
+        {
+            "topic": "biology",
+            "card_tag": "1C",
+            "stem": "A pea plant heterozygous for seed color (Yy, with yellow dominant to green) is self-crossed. What fraction of the offspring are expected to be green?",
+            "options": [
+                "0",
+                "1/2",
+                "3/4",
+                "1/4"
+            ],
+            "correct_index": 3,
+            "explanation": "A Yy x Yy cross gives a 1 YY : 2 Yy : 1 yy genotypic ratio, so 1/4 of offspring are homozygous recessive (yy) and show the green phenotype.",
+            "provenance": 1
+        },
+        {
+            "topic": "biology",
+            "card_tag": "1C",
+            "stem": "Which pair of events during meiosis I are the major sources of genetic variation among gametes?",
+            "options": [
+                "DNA replication and cytokinesis",
+                "Crossing over and independent assortment of homologous chromosomes",
+                "Binary fission and budding",
+                "Transcription and translation"
+            ],
+            "correct_index": 1,
+            "explanation": "Crossing over recombines alleles on homologous chromosomes, and independent assortment randomly distributes maternal and paternal chromosomes into gametes, both increasing diversity.",
+            "provenance": 1
+        },
+        {
+            "topic": "biology",
+            "card_tag": "1C",
+            "stem": "A human cell that has completed meiosis to form a gamete contains how many chromosomes?",
+            "options": [
+                "23 (haploid)",
+                "46 (diploid)",
+                "92",
+                "69"
+            ],
+            "correct_index": 0,
+            "explanation": "Meiosis halves the chromosome number, so a human gamete is haploid with 23 chromosomes, restoring 46 upon fertilization.",
+            "provenance": 1
+        },
+        {
+            "topic": "biology",
+            "card_tag": "1C",
+            "stem": "Genes located close together on the same chromosome tend to be inherited together, an exception to independent assortment. This is called:",
+            "options": [
+                "Segregation",
+                "Nondisjunction",
+                "Genetic linkage",
+                "Codominance"
+            ],
+            "correct_index": 2,
+            "explanation": "Linked genes are near each other on the same chromosome and are less likely to be separated by crossing over, so they are often inherited together.",
+            "provenance": 1
+        },
+        {
+            "topic": "biochemistry",
+            "card_tag": "1D",
+            "stem": "In eukaryotic cells, where does glycolysis take place?",
+            "options": [
+                "The mitochondrial matrix",
+                "The inner mitochondrial membrane",
+                "The cytoplasm (cytosol)",
+                "The nucleus"
+            ],
+            "correct_index": 2,
+            "explanation": "Glycolysis occurs in the cytoplasm and does not require oxygen or mitochondria; only later stages of aerobic respiration occur inside mitochondria.",
+            "provenance": 1
+        },
+        {
+            "topic": "biochemistry",
+            "card_tag": "1D",
+            "stem": "Which molecule serves as the final electron acceptor of the electron transport chain during aerobic respiration?",
+            "options": [
+                "Oxygen (O2)",
+                "Carbon dioxide (CO2)",
+                "NAD+",
+                "Pyruvate"
+            ],
+            "correct_index": 0,
+            "explanation": "Oxygen accepts electrons at the end of the electron transport chain and combines with protons to form water, allowing the chain to keep operating.",
+            "provenance": 1
+        },
+        {
+            "topic": "biochemistry",
+            "card_tag": "1D",
+            "stem": "A drug blocks ATP synthase in the inner mitochondrial membrane. What is the most direct consequence?",
+            "options": [
+                "Glycolysis in the cytoplasm immediately stops",
+                "Oxygen can no longer accept electrons",
+                "The proton gradient collapses instantly",
+                "The proton gradient builds up and ATP production by oxidative phosphorylation halts"
+            ],
+            "correct_index": 3,
+            "explanation": "Blocking ATP synthase prevents protons from flowing back into the matrix, so the gradient builds up and ATP synthesis by oxidative phosphorylation stops.",
+            "provenance": 1
+        },
+        {
+            "topic": "biochemistry",
+            "card_tag": "1D",
+            "stem": "During strenuous exercise when oxygen is limited, human muscle cells regenerate the NAD+ needed for glycolysis by:",
+            "options": [
+                "Running the citric acid cycle faster",
+                "Converting pyruvate to lactate via fermentation",
+                "Producing ethanol and carbon dioxide",
+                "Increasing oxidative phosphorylation"
+            ],
+            "correct_index": 1,
+            "explanation": "Human muscle performs lactic acid fermentation, reducing pyruvate to lactate to regenerate NAD+ so glycolysis can continue; alcoholic fermentation occurs in yeast, not humans.",
+            "provenance": 1
+        },
+        {
+            "topic": "biology",
+            "card_tag": "2A",
+            "stem": "A eukaryotic cell that secretes large quantities of protein hormone would be expected to contain an especially abundant amount of which organelle?",
+            "options": [
+                "Smooth endoplasmic reticulum",
+                "Rough endoplasmic reticulum",
+                "Peroxisome",
+                "Central vacuole"
+            ],
+            "correct_index": 1,
+            "explanation": "Ribosomes on the rough ER synthesize proteins that enter the endomembrane system for secretion, so secretory cells are rich in rough ER.",
+            "provenance": 1
+        },
+        {
+            "topic": "biology",
+            "card_tag": "2A",
+            "stem": "What is the primary role of cholesterol within a mammalian plasma membrane?",
+            "options": [
+                "It forms hydrophilic channels for ions",
+                "It supplies ATP for active transport",
+                "It buffers membrane fluidity across a range of temperatures",
+                "It anchors the cell to the extracellular matrix"
+            ],
+            "correct_index": 2,
+            "explanation": "Cholesterol inserts among phospholipids and stabilizes fluidity, keeping the membrane from becoming too rigid when cold or too fluid when warm.",
+            "provenance": 1
+        },
+        {
+            "topic": "biology",
+            "card_tag": "2A",
+            "stem": "A toxin that blocks the electron transport chain would most directly impair the function of which organelle?",
+            "options": [
+                "Golgi apparatus",
+                "Nucleus",
+                "Ribosome",
+                "Mitochondrion"
+            ],
+            "correct_index": 3,
+            "explanation": "The electron transport chain resides in the inner mitochondrial membrane, so blocking it halts oxidative phosphorylation and mitochondrial ATP production.",
+            "provenance": 1
+        },
+        {
+            "topic": "biology",
+            "card_tag": "2A",
+            "stem": "Which feature is found in eukaryotic cells but absent in prokaryotic cells?",
+            "options": [
+                "A membrane-bound nucleus",
+                "A plasma membrane",
+                "Ribosomes",
+                "Cytoplasm"
+            ],
+            "correct_index": 0,
+            "explanation": "Only eukaryotic cells enclose their DNA in a membrane-bound nucleus; the plasma membrane, ribosomes, and cytoplasm are common to both.",
+            "provenance": 1
+        },
+        {
+            "topic": "biology",
+            "card_tag": "2B",
+            "stem": "A bacterium gains an antibiotic-resistance gene after direct cell-to-cell contact through a pilus that transfers a plasmid. Which process is described?",
+            "options": [
+                "Transformation",
+                "Transduction",
+                "Conjugation",
+                "Binary fission"
+            ],
+            "correct_index": 2,
+            "explanation": "Conjugation transfers genetic material, often a plasmid, from one bacterium to another through a pilus-mediated contact.",
+            "provenance": 1
+        },
+        {
+            "topic": "biology",
+            "card_tag": "2B",
+            "stem": "During the lysogenic cycle of a bacteriophage, the viral genome most characteristically:",
+            "options": [
+                "Integrates into the host chromosome as a prophage",
+                "Immediately lyses the host cell",
+                "Is packaged into new virions and released",
+                "Is degraded by host restriction enzymes"
+            ],
+            "correct_index": 0,
+            "explanation": "In lysogeny the phage DNA integrates into the host genome as a prophage and is replicated along with the host DNA rather than causing immediate lysis.",
+            "provenance": 1
+        },
+        {
+            "topic": "biology",
+            "card_tag": "2B",
+            "stem": "Reverse transcriptase, the enzyme used by retroviruses, catalyzes the synthesis of:",
+            "options": [
+                "RNA from a DNA template",
+                "Protein from an RNA template",
+                "Protein from a DNA template",
+                "DNA from an RNA template"
+            ],
+            "correct_index": 3,
+            "explanation": "Reverse transcriptase makes complementary DNA from the viral RNA genome, reversing the usual DNA-to-RNA flow of information.",
+            "provenance": 1
+        },
+        {
+            "topic": "biology",
+            "card_tag": "2B",
+            "stem": "A Gram-negative bacterium differs from a Gram-positive bacterium primarily because it possesses:",
+            "options": [
+                "A much thicker peptidoglycan layer",
+                "An outer membrane containing lipopolysaccharide",
+                "No cell wall at all",
+                "No plasma membrane"
+            ],
+            "correct_index": 1,
+            "explanation": "Gram-negative bacteria have a thin peptidoglycan layer surrounded by an outer membrane rich in lipopolysaccharide, which is why they do not retain crystal violet.",
+            "provenance": 1
+        },
+        {
+            "topic": "biology",
+            "card_tag": "2C",
+            "stem": "DNA is replicated during which phase of the cell cycle?",
+            "options": [
+                "G1 phase",
+                "Mitosis",
+                "S phase",
+                "G2 phase"
+            ],
+            "correct_index": 2,
+            "explanation": "DNA synthesis occurs during the S (synthesis) phase of interphase, producing identical sister chromatids for each chromosome.",
+            "provenance": 1
+        },
+        {
+            "topic": "biology",
+            "card_tag": "2C",
+            "stem": "Which event defines anaphase of mitosis?",
+            "options": [
+                "Chromosomes align at the metaphase plate",
+                "Sister chromatids separate and move to opposite poles",
+                "The nuclear envelope reassembles",
+                "DNA is replicated"
+            ],
+            "correct_index": 1,
+            "explanation": "During anaphase the cohesion between sister chromatids breaks and the chromatids are pulled toward opposite spindle poles.",
+            "provenance": 1
+        },
+        {
+            "topic": "biology",
+            "card_tag": "2C",
+            "stem": "A stem cell that can differentiate into any cell type of the body but cannot form extraembryonic tissue such as placenta is best described as:",
+            "options": [
+                "Pluripotent",
+                "Totipotent",
+                "Multipotent",
+                "Unipotent"
+            ],
+            "correct_index": 0,
+            "explanation": "Pluripotent cells can generate all germ-layer cell types of the body but lack the ability to form extraembryonic tissues, unlike totipotent cells.",
+            "provenance": 1
+        },
+        {
+            "topic": "biology",
+            "card_tag": "2C",
+            "stem": "What is the primary purpose of the cell cycle checkpoints?",
+            "options": [
+                "To speed up DNA replication",
+                "To generate genetic variation among cells",
+                "To trigger apoptosis in every dividing cell",
+                "To ensure conditions and DNA integrity are correct before advancing"
+            ],
+            "correct_index": 3,
+            "explanation": "Checkpoints verify that requirements such as intact DNA and proper chromosome attachment are met before the cell proceeds, preventing propagation of errors.",
+            "provenance": 1
+        },
+        {
+            "topic": "biology",
+            "card_tag": "3A",
+            "stem": "The resting membrane potential of a typical neuron is closest to which value?",
+            "options": [
+                "+30 mV",
+                "0 mV",
+                "-30 mV",
+                "-70 mV"
+            ],
+            "correct_index": 3,
+            "explanation": "A typical neuron rests near -70 mV because the membrane is most permeable to K+ and the Na+/K+ ATPase maintains the ion gradients.",
+            "provenance": 1
+        },
+        {
+            "topic": "biology",
+            "card_tag": "3A",
+            "stem": "The rapid depolarizing (rising) phase of a neuronal action potential is produced mainly by:",
+            "options": [
+                "K+ efflux out of the cell",
+                "Cl- influx into the cell",
+                "Na+ influx into the cell",
+                "Ca2+ efflux out of the cell"
+            ],
+            "correct_index": 2,
+            "explanation": "Voltage-gated Na+ channels open at threshold, and the resulting Na+ influx drives the membrane toward positive potentials during depolarization.",
+            "provenance": 1
+        },
+        {
+            "topic": "biology",
+            "card_tag": "3A",
+            "stem": "Steroid hormones typically exert their effects by binding receptors located:",
+            "options": [
+                "Inside the cell, in the cytoplasm or nucleus",
+                "Only on the extracellular membrane surface",
+                "In the mitochondrial matrix exclusively",
+                "On the outer face of the Golgi apparatus"
+            ],
+            "correct_index": 0,
+            "explanation": "Because steroid hormones are lipid-soluble, they cross the membrane and bind intracellular receptors that regulate transcription.",
+            "provenance": 1
+        },
+        {
+            "topic": "biology",
+            "card_tag": "3A",
+            "stem": "Activation of the sympathetic nervous system would most likely produce which response?",
+            "options": [
+                "Increased salivation",
+                "Increased heart rate",
+                "Constriction of the pupils",
+                "Stimulation of digestive motility"
+            ],
+            "correct_index": 1,
+            "explanation": "The sympathetic fight-or-flight response raises heart rate; increased salivation, pupil constriction, and digestive stimulation are parasympathetic effects.",
+            "provenance": 1
+        },
+        {
+            "topic": "biology",
+            "card_tag": "3B",
+            "stem": "Oxygenated blood returns from the lungs to the heart through the:",
+            "options": [
+                "Pulmonary artery",
+                "Superior vena cava",
+                "Pulmonary veins",
+                "Coronary sinus"
+            ],
+            "correct_index": 2,
+            "explanation": "The pulmonary veins carry freshly oxygenated blood from the lungs into the left atrium; the pulmonary artery instead carries deoxygenated blood to the lungs.",
+            "provenance": 1
+        },
+        {
+            "topic": "biology",
+            "card_tag": "3B",
+            "stem": "In what form is the majority of carbon dioxide transported in the blood?",
+            "options": [
+                "As bicarbonate ions in plasma",
+                "Bound to hemoglobin as carbaminohemoglobin",
+                "Dissolved as CO2 gas in plasma",
+                "Converted to carbon monoxide"
+            ],
+            "correct_index": 0,
+            "explanation": "About two-thirds of CO2 is carried as bicarbonate, generated when carbonic anhydrase in red blood cells converts CO2 and water to carbonic acid that dissociates.",
+            "provenance": 1
+        },
+        {
+            "topic": "biology",
+            "card_tag": "3B",
+            "stem": "The functional filtering unit of the kidney is the:",
+            "options": [
+                "Alveolus",
+                "Villus",
+                "Sarcomere",
+                "Nephron"
+            ],
+            "correct_index": 3,
+            "explanation": "The nephron filters blood and processes the filtrate into urine; alveoli, villi, and sarcomeres are units of the lung, intestine, and muscle respectively.",
+            "provenance": 1
+        },
+        {
+            "topic": "biology",
+            "card_tag": "3B",
+            "stem": "During inhalation at rest, the diaphragm:",
+            "options": [
+                "Relaxes and domes upward",
+                "Contracts and moves downward",
+                "Plays no role in ventilation",
+                "Secretes pulmonary surfactant"
+            ],
+            "correct_index": 1,
+            "explanation": "Contraction flattens the diaphragm downward, increasing thoracic volume and lowering pressure so air enters the lungs.",
+            "provenance": 1
+        },
+        {
+            "topic": "physics",
+            "card_tag": "4A",
+            "stem": "A net force of 12 N acts on a 4 kg block resting on a frictionless surface. What is the block's acceleration?",
+            "options": [
+                "48 m/s²",
+                "0.33 m/s²",
+                "3 m/s²",
+                "16 m/s²"
+            ],
+            "correct_index": 2,
+            "explanation": "By Newton's second law a = F_net/m = 12 N / 4 kg = 3 m/s².",
+            "provenance": 1
+        },
+        {
+            "topic": "physics",
+            "card_tag": "4A",
+            "stem": "A person pushes a box a horizontal distance of 5 m by applying a constant 20 N force in the direction of motion. How much work is done on the box by this force?",
+            "options": [
+                "4 J",
+                "100 J",
+                "25 J",
+                "20 J"
+            ],
+            "correct_index": 1,
+            "explanation": "Work for a force parallel to displacement is W = Fd = 20 N × 5 m = 100 J.",
+            "provenance": 1
+        },
+        {
+            "topic": "physics",
+            "card_tag": "4A",
+            "stem": "A car travels along a straight road at constant velocity. What must be true of the net force on the car?",
+            "options": [
+                "The net force is zero",
+                "The net force is constant and nonzero",
+                "The net force points in the direction of motion",
+                "The net force increases with speed"
+            ],
+            "correct_index": 0,
+            "explanation": "Constant velocity means zero acceleration, so by Newton's second law the net force must be zero.",
+            "provenance": 1
+        },
+        {
+            "topic": "physics",
+            "card_tag": "4A",
+            "stem": "A 10 N force is applied perpendicular to a wrench at a distance of 0.5 m from the bolt (pivot). What is the magnitude of the torque about the bolt?",
+            "options": [
+                "20 N·m",
+                "0.05 N·m",
+                "10 N·m",
+                "5 N·m"
+            ],
+            "correct_index": 3,
+            "explanation": "With the force perpendicular, τ = rF = 0.5 m × 10 N = 5 N·m.",
+            "provenance": 1
+        },
+        {
+            "topic": "physics",
+            "card_tag": "4B",
+            "stem": "An incompressible fluid flows through a horizontal pipe. If the cross-sectional area of the pipe decreases to half its original value, what happens to the fluid's speed?",
+            "options": [
+                "It halves",
+                "It doubles",
+                "It stays the same",
+                "It quadruples"
+            ],
+            "correct_index": 1,
+            "explanation": "By continuity A₁v₁ = A₂v₂; halving the area doubles the speed.",
+            "provenance": 1
+        },
+        {
+            "topic": "physics",
+            "card_tag": "4B",
+            "stem": "As blood flows from a wide artery into a narrower constriction, its speed increases. According to Bernoulli's principle, how does the pressure in the constriction compare to that in the wider region?",
+            "options": [
+                "Higher",
+                "The same",
+                "Cannot be determined",
+                "Lower"
+            ],
+            "correct_index": 3,
+            "explanation": "Bernoulli's principle states that where flow speed is greater, pressure is lower, so the constriction has lower pressure.",
+            "provenance": 1
+        },
+        {
+            "topic": "physics",
+            "card_tag": "4B",
+            "stem": "The gauge pressure at the bottom of an open tank of water depends most directly on which of the following?",
+            "options": [
+                "The depth and the fluid density",
+                "The shape of the container",
+                "The surface area of the top of the fluid",
+                "The material the tank is made of"
+            ],
+            "correct_index": 0,
+            "explanation": "Hydrostatic pressure is P = ρgh, which depends only on fluid density, g, and depth, not on container shape or surface area.",
+            "provenance": 1
+        },
+        {
+            "topic": "physics",
+            "card_tag": "4B",
+            "stem": "If the radius of a blood vessel doubles while pressure difference, length, and viscosity stay constant, by approximately what factor does the flow rate change?",
+            "options": [
+                "2",
+                "4",
+                "16",
+                "8"
+            ],
+            "correct_index": 2,
+            "explanation": "By Poiseuille's law flow rate scales with r⁴, so doubling the radius increases flow by 2⁴ = 16.",
+            "provenance": 1
+        },
+        {
+            "topic": "physics",
+            "card_tag": "4C",
+            "stem": "A resistor of 4 Ω has a potential difference of 12 V across it. What current flows through the resistor?",
+            "options": [
+                "0.33 A",
+                "3 A",
+                "48 A",
+                "16 A"
+            ],
+            "correct_index": 1,
+            "explanation": "By Ohm's law I = V/R = 12 V / 4 Ω = 3 A.",
+            "provenance": 1
+        },
+        {
+            "topic": "physics",
+            "card_tag": "4C",
+            "stem": "Two identical 6 Ω resistors are connected in parallel. What is the equivalent resistance of the combination?",
+            "options": [
+                "12 Ω",
+                "6 Ω",
+                "3 Ω",
+                "1.5 Ω"
+            ],
+            "correct_index": 2,
+            "explanation": "For two equal resistors in parallel the equivalent resistance is half of one, so 6 Ω / 2 = 3 Ω.",
+            "provenance": 1
+        },
+        {
+            "topic": "physics",
+            "card_tag": "4C",
+            "stem": "In an electrochemical cell, at which electrode does oxidation occur?",
+            "options": [
+                "Cathode",
+                "Salt bridge",
+                "Electrolyte",
+                "Anode"
+            ],
+            "correct_index": 3,
+            "explanation": "Oxidation always occurs at the anode, while reduction occurs at the cathode.",
+            "provenance": 1
+        },
+        {
+            "topic": "physics",
+            "card_tag": "4C",
+            "stem": "An electrical device operates at 120 V and draws a current of 2 A. What is its power consumption?",
+            "options": [
+                "240 W",
+                "60 W",
+                "122 W",
+                "480 W"
+            ],
+            "correct_index": 0,
+            "explanation": "Electrical power is P = IV = 2 A × 120 V = 240 W.",
+            "provenance": 1
+        },
+        {
+            "topic": "physics",
+            "card_tag": "4D",
+            "stem": "A wave traveling through a medium has a frequency of 250 Hz and a wavelength of 2 m. What is its speed?",
+            "options": [
+                "250 m/s",
+                "500 m/s",
+                "125 m/s",
+                "1000 m/s"
+            ],
+            "correct_index": 1,
+            "explanation": "Wave speed is v = fλ = 250 Hz × 2 m = 500 m/s.",
+            "provenance": 1
+        },
+        {
+            "topic": "physics",
+            "card_tag": "4D",
+            "stem": "An ambulance with its siren on drives toward a stationary listener. Compared to the emitted sound, what does the listener perceive?",
+            "options": [
+                "A lower pitch",
+                "The same pitch",
+                "A higher pitch",
+                "No sound at all"
+            ],
+            "correct_index": 2,
+            "explanation": "As the source approaches, wavefronts are compressed, raising the observed frequency and thus the perceived pitch.",
+            "provenance": 1
+        },
+        {
+            "topic": "physics",
+            "card_tag": "4D",
+            "stem": "A ray of light passes from air into water, which has a higher index of refraction. How does the ray bend at the surface?",
+            "options": [
+                "Toward the normal",
+                "Away from the normal",
+                "It does not bend",
+                "It reflects entirely back into the air"
+            ],
+            "correct_index": 0,
+            "explanation": "Entering a higher-index, slower medium, the light bends toward the normal, as predicted by Snell's law.",
+            "provenance": 1
+        },
+        {
+            "topic": "physics",
+            "card_tag": "4D",
+            "stem": "If the intensity of a sound increases by a factor of 100, by how much does the sound intensity level increase?",
+            "options": [
+                "10 dB",
+                "2 dB",
+                "100 dB",
+                "20 dB"
+            ],
+            "correct_index": 3,
+            "explanation": "The change is 10 log(100) = 10 × 2 = 20 dB.",
+            "provenance": 1
+        },
+        {
+            "topic": "general_chemistry",
+            "card_tag": "4E",
+            "stem": "A radioactive sample starts with 80 g of an isotope whose half-life is 3 days. How much of the isotope remains after 9 days?",
+            "options": [
+                "40 g",
+                "10 g",
+                "20 g",
+                "5 g"
+            ],
+            "correct_index": 1,
+            "explanation": "Nine days is three half-lives, so 80 g halves three times: 80 to 40 to 20 to 10 g.",
+            "provenance": 1
+        },
+        {
+            "topic": "general_chemistry",
+            "card_tag": "4E",
+            "stem": "During alpha decay, what particle is emitted from the nucleus?",
+            "options": [
+                "A high-energy photon",
+                "An electron",
+                "A proton",
+                "A helium-4 nucleus"
+            ],
+            "correct_index": 3,
+            "explanation": "An alpha particle is a helium-4 nucleus (two protons and two neutrons), so the mass number drops by 4 and the atomic number by 2.",
+            "provenance": 1
+        },
+        {
+            "topic": "general_chemistry",
+            "card_tag": "4E",
+            "stem": "Moving across a period from left to right on the periodic table, how does atomic radius generally change?",
+            "options": [
+                "It decreases",
+                "It increases",
+                "It stays constant",
+                "It doubles"
+            ],
+            "correct_index": 0,
+            "explanation": "Increasing effective nuclear charge across a period pulls electrons closer to the nucleus, so atomic radius decreases.",
+            "provenance": 1
+        },
+        {
+            "topic": "general_chemistry",
+            "card_tag": "4E",
+            "stem": "Two atoms are isotopes of the same element. In what way do they necessarily differ?",
+            "options": [
+                "Number of protons",
+                "Number of electrons in the neutral atom",
+                "Number of neutrons",
+                "Atomic number"
+            ],
+            "correct_index": 2,
+            "explanation": "Isotopes have the same number of protons (same element) but different numbers of neutrons, giving them different mass numbers.",
+            "provenance": 1
+        },
+        {
+            "topic": "general_chemistry",
+            "card_tag": "5A",
+            "stem": "What is the pH of a 0.001 M aqueous solution of HCl at 25 degrees C?",
+            "options": [
+                "1",
+                "2",
+                "3",
+                "11"
+            ],
+            "correct_index": 2,
+            "explanation": "HCl is a strong acid that fully dissociates, so [H3O+] = 0.001 M = 1 x 10^-3, and pH = -log(1 x 10^-3) = 3.",
+            "provenance": 1
+        },
+        {
+            "topic": "general_chemistry",
+            "card_tag": "5A",
+            "stem": "A buffer is prepared with a weak acid (pKa = 4.74) such that the conjugate base concentration equals the weak acid concentration. What is the approximate pH?",
+            "options": [
+                "4.74",
+                "7.00",
+                "9.26",
+                "2.37"
+            ],
+            "correct_index": 0,
+            "explanation": "By Henderson-Hasselbalch, when [A-] = [HA] the log term is log(1) = 0, so pH = pKa = 4.74.",
+            "provenance": 1
+        },
+        {
+            "topic": "general_chemistry",
+            "card_tag": "5A",
+            "stem": "Which property of water is most directly responsible for its unusually high boiling point compared with other small molecules like CH4?",
+            "options": [
+                "Its high molar mass",
+                "Extensive hydrogen bonding between molecules",
+                "Its covalent O-H bonds being unusually weak",
+                "Its ability to ionize completely"
+            ],
+            "correct_index": 1,
+            "explanation": "Hydrogen bonding among water molecules requires substantial energy to overcome, raising the boiling point well above that of comparably sized nonpolar molecules.",
+            "provenance": 1
+        },
+        {
+            "topic": "general_chemistry",
+            "card_tag": "5A",
+            "stem": "What is the pH of a 0.01 M NaOH solution at 25 degrees C?",
+            "options": [
+                "7",
+                "2",
+                "14",
+                "12"
+            ],
+            "correct_index": 3,
+            "explanation": "NaOH is a strong base giving [OH-] = 0.01 M, so pOH = -log(0.01) = 2 and pH = 14 - 2 = 12.",
+            "provenance": 1
+        },
+        {
+            "topic": "general_chemistry",
+            "card_tag": "5B",
+            "stem": "Which molecule can act as a hydrogen bond donor?",
+            "options": [
+                "CH4",
+                "NH3",
+                "CF4",
+                "CO2"
+            ],
+            "correct_index": 1,
+            "explanation": "NH3 has H atoms bonded directly to nitrogen (a highly electronegative atom), so it can donate hydrogen bonds; the others lack H bonded to N, O, or F.",
+            "provenance": 1
+        },
+        {
+            "topic": "general_chemistry",
+            "card_tag": "5B",
+            "stem": "According to VSEPR theory, what is the molecular geometry of a molecule with a central atom having two bonding regions and two lone pairs, such as H2O?",
+            "options": [
+                "Linear",
+                "Trigonal planar",
+                "Bent",
+                "Tetrahedral"
+            ],
+            "correct_index": 2,
+            "explanation": "Water has four electron domains (tetrahedral electron geometry) but two are lone pairs, giving a bent molecular shape with an angle near 104.5 degrees.",
+            "provenance": 1
+        },
+        {
+            "topic": "general_chemistry",
+            "card_tag": "5B",
+            "stem": "Which of the following is nonpolar overall despite containing polar bonds?",
+            "options": [
+                "H2O",
+                "NH3",
+                "CO2",
+                "HCl"
+            ],
+            "correct_index": 2,
+            "explanation": "CO2 is linear and symmetric, so its two C=O bond dipoles point in opposite directions and cancel, giving zero net dipole.",
+            "provenance": 1
+        },
+        {
+            "topic": "general_chemistry",
+            "card_tag": "5B",
+            "stem": "Among the noble gases He, Ne, Ar, and Xe, which has the highest boiling point?",
+            "options": [
+                "Xe",
+                "Ar",
+                "Ne",
+                "He"
+            ],
+            "correct_index": 0,
+            "explanation": "Xenon has the most electrons and greatest polarizability, giving the strongest London dispersion forces and thus the highest boiling point of these noble gases.",
+            "provenance": 1
+        },
+        {
+            "topic": "general_chemistry",
+            "card_tag": "5C",
+            "stem": "A student wants to separate two miscible liquids with boiling points of 78 degrees C and 118 degrees C. Which technique is most appropriate?",
+            "options": [
+                "Filtration",
+                "Distillation",
+                "Gel electrophoresis",
+                "Recrystallization"
+            ],
+            "correct_index": 1,
+            "explanation": "The liquids differ in boiling point and are mixed together, so distillation, which separates by volatility, is the correct choice.",
+            "provenance": 1
+        },
+        {
+            "topic": "general_chemistry",
+            "card_tag": "5C",
+            "stem": "In gel electrophoresis, DNA fragments separate primarily according to which property?",
+            "options": [
+                "Boiling point",
+                "Molecular size",
+                "Optical rotation",
+                "Color"
+            ],
+            "correct_index": 1,
+            "explanation": "DNA is uniformly negatively charged, so under an electric field it separates by size, with smaller fragments moving farther through the gel.",
+            "provenance": 1
+        },
+        {
+            "topic": "general_chemistry",
+            "card_tag": "5C",
+            "stem": "In a thin-layer chromatography experiment, a compound travels 4.0 cm while the solvent front travels 8.0 cm. What is the Rf value?",
+            "options": [
+                "2.0",
+                "0.25",
+                "0.50",
+                "1.0"
+            ],
+            "correct_index": 2,
+            "explanation": "Rf = distance traveled by compound / distance traveled by solvent front = 4.0 / 8.0 = 0.50.",
+            "provenance": 1
+        },
+        {
+            "topic": "general_chemistry",
+            "card_tag": "5C",
+            "stem": "Liquid-liquid extraction relies most directly on differences in which property between two immiscible solvents?",
+            "options": [
+                "Solubility of the solute in each solvent",
+                "Boiling point of the solute",
+                "Molecular charge of the solute",
+                "Melting point of the solvents"
+            ],
+            "correct_index": 0,
+            "explanation": "Extraction works because a solute partitions between two immiscible solvents based on its relative solubility in each phase.",
+            "provenance": 1
+        },
+        {
+            "topic": "biochemistry",
+            "card_tag": "5D",
+            "stem": "Which functional group is present in an aldehyde but not in a ketone?",
+            "options": [
+                "A carbonyl carbon",
+                "A carbonyl carbon bonded to at least one hydrogen",
+                "A hydroxyl group",
+                "An amino group"
+            ],
+            "correct_index": 1,
+            "explanation": "Both contain a carbonyl (C=O), but in an aldehyde the carbonyl carbon is bonded to at least one hydrogen, whereas in a ketone it is bonded to two carbon atoms.",
+            "provenance": 1
+        },
+        {
+            "topic": "biochemistry",
+            "card_tag": "5D",
+            "stem": "The bond formed between two amino acids in a protein is best described as a(n):",
+            "options": [
+                "Glycosidic bond",
+                "Phosphodiester bond",
+                "Peptide (amide) bond",
+                "Ester bond"
+            ],
+            "correct_index": 2,
+            "explanation": "Amino acids join through a peptide bond, an amide linkage formed by condensation of one amino acid's carboxyl group with another's amino group.",
+            "provenance": 1
+        },
+        {
+            "topic": "biochemistry",
+            "card_tag": "5D",
+            "stem": "Two molecules are nonsuperimposable mirror images of each other. They are best classified as:",
+            "options": [
+                "Enantiomers",
+                "Constitutional isomers",
+                "Diastereomers",
+                "Conformational isomers"
+            ],
+            "correct_index": 0,
+            "explanation": "Nonsuperimposable mirror images that differ in configuration at every stereocenter are enantiomers.",
+            "provenance": 1
+        },
+        {
+            "topic": "biochemistry",
+            "card_tag": "5D",
+            "stem": "Which of the following best explains why unsaturated fatty acids tend to be liquid at room temperature?",
+            "options": [
+                "They have higher molar mass than saturated fats",
+                "Their C=C double bonds create kinks that prevent tight packing",
+                "They contain more hydrogen atoms per carbon",
+                "They form stronger hydrogen bonds"
+            ],
+            "correct_index": 1,
+            "explanation": "Cis double bonds introduce bends in the hydrocarbon chain, so the molecules pack less efficiently, weakening dispersion forces and lowering the melting point.",
+            "provenance": 1
+        },
+        {
+            "topic": "general_chemistry",
+            "card_tag": "5E",
+            "stem": "A reaction has delta H = -100 kJ/mol and delta S = -0.200 kJ/(mol K). At what temperature does delta G equal zero?",
+            "options": [
+                "200 K",
+                "500 K",
+                "1000 K",
+                "50 K"
+            ],
+            "correct_index": 1,
+            "explanation": "Setting delta G = delta H - T delta S = 0 gives T = delta H / delta S = (-100) / (-0.200) = 500 K.",
+            "provenance": 1
+        },
+        {
+            "topic": "general_chemistry",
+            "card_tag": "5E",
+            "stem": "For the exothermic equilibrium N2(g) + 3 H2(g) reversible 2 NH3(g), which change shifts the equilibrium toward more NH3?",
+            "options": [
+                "Increasing the temperature",
+                "Removing N2",
+                "Increasing the total pressure by decreasing volume",
+                "Adding a catalyst"
+            ],
+            "correct_index": 2,
+            "explanation": "Increasing pressure by reducing volume shifts equilibrium toward the side with fewer gas moles (2 mol NH3 vs 4 mol reactants), favoring NH3. A catalyst does not shift equilibrium.",
+            "provenance": 1
+        },
+        {
+            "topic": "general_chemistry",
+            "card_tag": "5E",
+            "stem": "Which statement about a catalyst is correct?",
+            "options": [
+                "It shifts the equilibrium toward products",
+                "It makes delta G more negative",
+                "It lowers the activation energy without being consumed",
+                "It increases the equilibrium constant"
+            ],
+            "correct_index": 2,
+            "explanation": "A catalyst speeds up a reaction by lowering the activation energy and is regenerated; it does not change delta G, K, or the equilibrium position.",
+            "provenance": 1
+        },
+        {
+            "topic": "general_chemistry",
+            "card_tag": "5E",
+            "stem": "A reaction is endothermic (delta H positive) and has delta S positive. Under which condition is it spontaneous?",
+            "options": [
+                "At all temperatures",
+                "At no temperature",
+                "Only at sufficiently low temperature",
+                "Only at sufficiently high temperature"
+            ],
+            "correct_index": 3,
+            "explanation": "With positive delta H and positive delta S, delta G = delta H - T delta S becomes negative only when T is large enough for the T delta S term to exceed delta H.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "6A",
+            "stem": "A researcher finds that a person can just detect a 2-gram increase when holding a 100-gram weight, but needs a 4-gram increase to notice a change when holding a 200-gram weight. This pattern best illustrates:",
+            "options": [
+                "Absolute threshold",
+                "Weber's law",
+                "Sensory adaptation",
+                "Signal detection bias"
+            ],
+            "correct_index": 1,
+            "explanation": "The just-noticeable difference is a constant proportion (2 percent) of the original stimulus rather than a fixed amount, which is the defining feature of Weber's law.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "6A",
+            "stem": "Which concept best explains why a tired night-shift radar operator who expects an attack reports seeing a blip that was not actually present?",
+            "options": [
+                "Transduction",
+                "Absolute threshold",
+                "Response bias in signal detection theory",
+                "Weber's law"
+            ],
+            "correct_index": 2,
+            "explanation": "Signal detection theory holds that nonsensory factors like expectation and fatigue shift the observer's decision criterion, increasing false alarms independent of actual sensitivity.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "6A",
+            "stem": "When a person enters a bakery and initially smells fresh bread strongly but stops noticing the odor after several minutes, this change is due to:",
+            "options": [
+                "Sensory adaptation",
+                "A rise in the absolute threshold set at birth",
+                "Failure of transduction",
+                "Violation of Weber's law"
+            ],
+            "correct_index": 0,
+            "explanation": "Sensory adaptation is the decreased responsiveness of sensory receptors to a continuous, unchanging stimulus over time.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "6A",
+            "stem": "The conversion of sound-wave pressure changes into neural impulses by hair cells of the inner ear is an example of:",
+            "options": [
+                "Sensory adaptation",
+                "Signal detection",
+                "Perceptual constancy",
+                "Transduction"
+            ],
+            "correct_index": 3,
+            "explanation": "Transduction is the process by which sensory receptors convert physical stimulus energy into electrochemical neural signals; hair cells perform this for sound.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "6B",
+            "stem": "A student who just learned Spanish struggles to recall French vocabulary learned last year. This memory failure is an example of:",
+            "options": [
+                "Retroactive interference",
+                "Proactive interference",
+                "Encoding failure",
+                "Source amnesia"
+            ],
+            "correct_index": 0,
+            "explanation": "Newly learned Spanish is disrupting the recall of the older French material, which defines retroactive interference (new interferes with old).",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "6B",
+            "stem": "A person estimates that shark attacks are extremely common because several were featured in recent news reports. This judgment error reflects:",
+            "options": [
+                "The representativeness heuristic",
+                "Confirmation bias",
+                "The availability heuristic",
+                "Belief perseverance"
+            ],
+            "correct_index": 2,
+            "explanation": "Judging frequency by how easily vivid instances are recalled is the availability heuristic.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "6B",
+            "stem": "An older adult performs as well as ever on a vocabulary and general-knowledge test but slower on a novel logic puzzle. This pattern is best explained by:",
+            "options": [
+                "A decline in crystallized intelligence with preserved fluid intelligence",
+                "Loss of sensory memory",
+                "Preserved crystallized intelligence with declining fluid intelligence",
+                "Functional fixedness"
+            ],
+            "correct_index": 2,
+            "explanation": "Crystallized intelligence (accumulated knowledge) is typically stable or increases with age, whereas fluid intelligence (novel reasoning speed) tends to decline.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "6B",
+            "stem": "When reading messy handwriting, a person uses the surrounding words and grammar to identify an otherwise ambiguous letter. This reliance on context and prior knowledge is:",
+            "options": [
+                "Bottom-up processing",
+                "Sensory adaptation",
+                "Top-down processing",
+                "Transduction"
+            ],
+            "correct_index": 2,
+            "explanation": "Using context, expectations, and prior knowledge to interpret sensory input is top-down processing.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "6C",
+            "stem": "A theory of emotion asserts that seeing a bear causes you to tremble and race your heart first, and only then do you interpret those bodily changes as fear. This describes the:",
+            "options": [
+                "Cannon-Bard theory",
+                "Schachter-Singer two-factor theory",
+                "James-Lange theory",
+                "Yerkes-Dodson law"
+            ],
+            "correct_index": 2,
+            "explanation": "The James-Lange theory holds that the physiological response precedes and generates the conscious emotional experience.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "6C",
+            "stem": "A person feels physiologically aroused after drinking coffee, and interpreting the setting as tense, labels the feeling as anxiety. This interpretation-plus-arousal account best matches:",
+            "options": [
+                "The two-factor (Schachter-Singer) theory",
+                "The James-Lange theory",
+                "The Cannon-Bard theory",
+                "The general adaptation syndrome"
+            ],
+            "correct_index": 0,
+            "explanation": "The two-factor theory requires both physiological arousal and a cognitive label based on context to produce a specific emotion.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "6C",
+            "stem": "During a prolonged, months-long stressful period, a person who initially coped well begins to experience exhaustion, illness, and depleted energy. According to Selye, this final phase is the stage of:",
+            "options": [
+                "Alarm",
+                "Resistance",
+                "Appraisal",
+                "Exhaustion"
+            ],
+            "correct_index": 3,
+            "explanation": "In the general adaptation syndrome, the exhaustion stage follows alarm and resistance when the body's resources are depleted, increasing vulnerability to illness.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "6C",
+            "stem": "According to the Yerkes-Dodson law, performance on a very difficult exam is likely to be best when arousal is:",
+            "options": [
+                "At a relatively low to moderate level",
+                "As high as possible",
+                "Completely absent",
+                "Identical to that optimal for a simple task"
+            ],
+            "correct_index": 0,
+            "explanation": "The Yerkes-Dodson law states that optimal arousal is lower for difficult tasks, so moderate rather than very high arousal maximizes performance on hard tasks.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "7A",
+            "stem": "A child stops whining once a parent gives in and buys candy; the parent's behavior of buying candy increases because the whining stops. For the parent, buying candy is being strengthened by:",
+            "options": [
+                "Positive punishment",
+                "Negative reinforcement",
+                "Positive reinforcement",
+                "Extinction"
+            ],
+            "correct_index": 1,
+            "explanation": "Buying candy removes an aversive stimulus (the whining) and thereby increases the parent's behavior, which defines negative reinforcement.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "7A",
+            "stem": "A gambler keeps pulling a slot machine lever because payouts come after an unpredictable number of pulls. This reinforcement schedule is:",
+            "options": [
+                "Fixed-ratio",
+                "Fixed-interval",
+                "Variable-interval",
+                "Variable-ratio"
+            ],
+            "correct_index": 3,
+            "explanation": "Reinforcement delivered after an unpredictable number of responses is a variable-ratio schedule, which produces high, persistent responding.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "7A",
+            "stem": "A child who once drew for pure enjoyment begins drawing only when paid, and loses interest when the payments stop. This best illustrates:",
+            "options": [
+                "The overjustification effect",
+                "Negative reinforcement",
+                "Spontaneous recovery",
+                "Stimulus generalization"
+            ],
+            "correct_index": 0,
+            "explanation": "When an external reward reduces preexisting intrinsic motivation, the overjustification effect has occurred.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "7A",
+            "stem": "According to Maslow's hierarchy of needs, which need must generally be met before a person pursues esteem and self-actualization?",
+            "options": [
+                "Self-transcendence",
+                "Cognitive mastery",
+                "Physiological and safety needs",
+                "Aesthetic appreciation"
+            ],
+            "correct_index": 2,
+            "explanation": "Maslow proposed that lower-level physiological and safety needs are generally satisfied before higher needs like esteem and self-actualization are pursued.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "7B",
+            "stem": "A participant reports an obviously incorrect line length in order to match the unanimous but wrong judgments of the group around them. This behavior best demonstrates:",
+            "options": [
+                "Obedience to authority",
+                "Normative conformity",
+                "Social loafing",
+                "The bystander effect"
+            ],
+            "correct_index": 1,
+            "explanation": "Going along with a group's clearly incorrect judgment to fit in reflects normative conformity, as shown in Asch's experiments.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "7B",
+            "stem": "An observer assumes a driver who cut them off is inherently rude, ignoring that the driver may be rushing to an emergency. This reflects the:",
+            "options": [
+                "Fundamental attribution error",
+                "Self-serving bias",
+                "Just-world hypothesis",
+                "Halo effect"
+            ],
+            "correct_index": 0,
+            "explanation": "Overattributing another person's behavior to internal disposition while discounting situational causes is the fundamental attribution error.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "7B",
+            "stem": "Members of a tight-knit advisory group suppress their private doubts and reach a poor consensus decision to avoid conflict. This is an example of:",
+            "options": [
+                "Social facilitation",
+                "Deindividuation",
+                "Groupthink",
+                "Stereotype threat"
+            ],
+            "correct_index": 2,
+            "explanation": "Groupthink occurs when a cohesive group prioritizes consensus and harmony over critical evaluation, producing flawed decisions.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "7B",
+            "stem": "Each member of a large group project exerts less effort than they would if working alone and individually accountable. This phenomenon is:",
+            "options": [
+                "Social facilitation",
+                "Social loafing",
+                "Conformity",
+                "Group polarization"
+            ],
+            "correct_index": 1,
+            "explanation": "Reduced individual effort when responsibility is diffused across a group is social loafing.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "7C",
+            "stem": "A well-informed, motivated consumer is persuaded to buy a laptop after carefully evaluating detailed evidence about its processor speed and battery life. According to the elaboration likelihood model, this reflects the:",
+            "options": [
+                "Peripheral route",
+                "Central route",
+                "Foot-in-the-door technique",
+                "Door-in-the-face technique"
+            ],
+            "correct_index": 1,
+            "explanation": "Persuasion driven by effortful scrutiny of argument quality by a motivated, able audience is the central route, which yields lasting attitude change.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "7C",
+            "stem": "After choosing to write an essay favoring a policy they personally oppose, and being paid only a small amount, participants come to report more favorable attitudes toward that policy. This shift is best explained by:",
+            "options": [
+                "The peripheral route to persuasion",
+                "Observational learning",
+                "Cognitive dissonance",
+                "Social loafing"
+            ],
+            "correct_index": 2,
+            "explanation": "With insufficient external justification, the conflict between behavior and attitude creates dissonance, which is reduced by changing the attitude to match the behavior.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "7C",
+            "stem": "A volunteer first asks a homeowner to sign a small petition, then later asks them to display a large yard sign, gaining agreement more often than with a direct large request. This strategy is the:",
+            "options": [
+                "Door-in-the-face technique",
+                "Central route to persuasion",
+                "Foot-in-the-door technique",
+                "Reciprocity norm"
+            ],
+            "correct_index": 2,
+            "explanation": "Securing compliance with a small request first to make a later large request more likely is the foot-in-the-door technique.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "7C",
+            "stem": "A consumer buys a product mainly because the advertisement features an attractive celebrity, without evaluating any product information. This persuasion relies on the:",
+            "options": [
+                "Peripheral route",
+                "Central route",
+                "Cognitive component of attitude",
+                "Overjustification effect"
+            ],
+            "correct_index": 0,
+            "explanation": "Being swayed by superficial cues such as an attractive spokesperson rather than argument quality reflects the peripheral route of the elaboration likelihood model.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "8A",
+            "stem": "A sociologist argues that a teenager's self-image forms largely from imagining how peers evaluate her appearance and behavior. This idea is most closely associated with which concept?",
+            "options": [
+                "Mead's generalized other",
+                "Erikson's identity diffusion",
+                "Cooley's looking-glass self",
+                "Bandura's self-efficacy"
+            ],
+            "correct_index": 2,
+            "explanation": "Cooley's looking-glass self describes forming self-image based on how we imagine others perceive and judge us.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "8A",
+            "stem": "In Mead's theory of the self, the internalized attitudes and expectations of society as a whole are referred to as:",
+            "options": [
+                "the I",
+                "the generalized other",
+                "the looking-glass self",
+                "role confusion"
+            ],
+            "correct_index": 1,
+            "explanation": "Mead used the term generalized other to describe the internalized sense of the total expectations of society, which informs the 'me'.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "8A",
+            "stem": "According to Erikson, the primary psychosocial conflict of adolescence is:",
+            "options": [
+                "trust vs. mistrust",
+                "industry vs. inferiority",
+                "intimacy vs. isolation",
+                "identity vs. role confusion"
+            ],
+            "correct_index": 3,
+            "explanation": "Erikson placed identity vs. role confusion in adolescence, when individuals work to establish a coherent sense of self.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "8A",
+            "stem": "A student believes she is generally capable of doing well on chemistry exams as long as she studies. This belief that she can succeed at a specific task best illustrates:",
+            "options": [
+                "self-efficacy",
+                "self-esteem",
+                "self-concept",
+                "an external locus of control"
+            ],
+            "correct_index": 0,
+            "explanation": "Self-efficacy, from Bandura, is the belief in one's capability to accomplish a particular task or perform in a specific situation.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "8B",
+            "stem": "A driver cuts you off and you immediately conclude he is a rude, aggressive person, ignoring that he may be rushing to an emergency. This reasoning best illustrates:",
+            "options": [
+                "the self-serving bias",
+                "the fundamental attribution error",
+                "the just-world hypothesis",
+                "in-group favoritism"
+            ],
+            "correct_index": 1,
+            "explanation": "The fundamental attribution error is overattributing others' behavior to disposition while underweighting situational causes.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "8B",
+            "stem": "After acing an exam a student credits her intelligence, but after failing one she blames the unfair test. This pattern is an example of:",
+            "options": [
+                "the actor-observer bias",
+                "the fundamental attribution error",
+                "the self-serving bias",
+                "stereotype threat"
+            ],
+            "correct_index": 2,
+            "explanation": "The self-serving bias attributes successes to internal factors and failures to external ones to protect self-esteem.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "8B",
+            "stem": "Refusing to hire qualified applicants because of their ethnicity is best classified as:",
+            "options": [
+                "a stereotype",
+                "prejudice",
+                "discrimination",
+                "an attribution"
+            ],
+            "correct_index": 2,
+            "explanation": "Discrimination is unequal behavior or treatment directed at members of a group; the stereotype is the belief and prejudice is the attitude.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "8B",
+            "stem": "A person who values health but smokes feels psychological discomfort and then convinces herself that smoking helps her relax. This reduction of tension between conflicting cognitions illustrates:",
+            "options": [
+                "cognitive dissonance",
+                "the mere-exposure effect",
+                "the fundamental attribution error",
+                "stereotype threat"
+            ],
+            "correct_index": 0,
+            "explanation": "Cognitive dissonance is the discomfort from holding conflicting attitudes or behaviors, which people reduce by changing beliefs or rationalizing.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "8C",
+            "stem": "In Milgram's classic experiment, participants delivered what they believed were dangerous shocks because an experimenter instructed them to continue. This behavior best demonstrates:",
+            "options": [
+                "conformity",
+                "obedience",
+                "compliance",
+                "groupthink"
+            ],
+            "correct_index": 1,
+            "explanation": "Obedience is behavior change in response to a direct order from an authority figure, which Milgram's study famously examined.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "8C",
+            "stem": "A person collapses on a crowded subway platform, but no one helps because each onlooker assumes someone else will act. This best illustrates:",
+            "options": [
+                "social loafing",
+                "the bystander effect due to diffusion of responsibility",
+                "deindividuation",
+                "social facilitation"
+            ],
+            "correct_index": 1,
+            "explanation": "The bystander effect, driven by diffusion of responsibility, makes any single person less likely to help when many others are present.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "8C",
+            "stem": "In a group project, one member exerts noticeably less effort than he would if working alone. This reduction of individual effort in a group is called:",
+            "options": [
+                "social facilitation",
+                "groupthink",
+                "social loafing",
+                "conformity"
+            ],
+            "correct_index": 2,
+            "explanation": "Social loafing is the tendency to put in less effort when working in a group than when working individually.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "8C",
+            "stem": "According to Goffman's dramaturgical perspective, the behavior people display when they know they are being observed by an audience occurs in the:",
+            "options": [
+                "back stage",
+                "looking-glass self",
+                "generalized other",
+                "front stage"
+            ],
+            "correct_index": 3,
+            "explanation": "In Goffman's framework, front stage is where individuals perform for an audience, managing impressions; back stage is where they relax out of view.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "9A",
+            "stem": "A sociologist studies how a handshake or a particular gesture conveys meaning during face-to-face interactions between two people. This micro-level focus is most characteristic of:",
+            "options": [
+                "structural functionalism",
+                "conflict theory",
+                "symbolic interactionism",
+                "social Darwinism"
+            ],
+            "correct_index": 2,
+            "explanation": "Symbolic interactionism is a micro-level perspective concerned with meaning constructed through symbols in everyday interaction.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "9A",
+            "stem": "The manifest function of a university is to educate students. If attending also allows a student to meet a future spouse, that outcome would be considered a:",
+            "options": [
+                "dysfunction",
+                "latent function",
+                "manifest function",
+                "role strain"
+            ],
+            "correct_index": 1,
+            "explanation": "A latent function is an unintended, unrecognized consequence of a social institution, in contrast to its manifest (intended) function.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "9A",
+            "stem": "Which theoretical perspective would most likely analyze how a society's economic system enables a wealthy class to maintain power over the working class?",
+            "options": [
+                "conflict theory",
+                "symbolic interactionism",
+                "structural functionalism",
+                "dramaturgy"
+            ],
+            "correct_index": 0,
+            "explanation": "Conflict theory, drawing on Marx, focuses on inequality and struggle over resources and power between groups.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "9A",
+            "stem": "Norms that are widely observed but carry little moral significance, such as customs about how to dress casually, are called:",
+            "options": [
+                "mores",
+                "taboos",
+                "laws",
+                "folkways"
+            ],
+            "correct_index": 3,
+            "explanation": "Folkways are everyday norms without strong moral weight; mores carry greater moral significance, and taboos are the most strongly held prohibitions.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "9B",
+            "stem": "A family leaves their home country primarily because of a severe drought and a lack of jobs. These influences are best described as:",
+            "options": [
+                "pull factors",
+                "push factors",
+                "latent functions",
+                "replacement migration"
+            ],
+            "correct_index": 1,
+            "explanation": "Push factors are conditions that drive people away from an area, such as environmental hardship and unemployment.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "9B",
+            "stem": "According to the demographic transition model, a country in the early industrializing stage typically experiences:",
+            "options": [
+                "high birth rates with rapidly falling death rates, producing rapid population growth",
+                "low birth rates and low death rates",
+                "high birth rates and high death rates with little net growth",
+                "sustained negative population growth"
+            ],
+            "correct_index": 0,
+            "explanation": "In the early transitional stage, improved conditions lower death rates while birth rates stay high, causing rapid population growth.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "9B",
+            "stem": "The total fertility rate generally considered necessary to maintain a stable population size in a developed country, absent migration, is approximately:",
+            "options": [
+                "1.0 child per woman",
+                "2.1 children per woman",
+                "3.5 children per woman",
+                "5.0 children per woman"
+            ],
+            "correct_index": 1,
+            "explanation": "Replacement-level fertility is about 2.1 children per woman, accounting for two parents plus mortality before reproductive age.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "9B",
+            "stem": "A country's population pyramid shows a large proportion of elderly individuals and relatively few children. This most directly indicates:",
+            "options": [
+                "a high total fertility rate",
+                "rapid exponential population growth",
+                "an aging population with a rising old-age dependency ratio",
+                "high infant mortality"
+            ],
+            "correct_index": 2,
+            "explanation": "A top-heavy age structure reflects an aging population, which increases the proportion of older dependents relative to workers.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "10A",
+            "stem": "In a stratification system where a person's social position is fixed at birth and marriage between strata is prohibited, mobility is essentially impossible. This describes a:",
+            "options": [
+                "class system",
+                "meritocracy",
+                "status inconsistency",
+                "caste system"
+            ],
+            "correct_index": 3,
+            "explanation": "A caste system is a closed system of stratification with ascribed status and virtually no opportunity for mobility.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "10A",
+            "stem": "Max Weber argued that social stratification is based on three distinct dimensions. These are:",
+            "options": [
+                "class, status, and party (power)",
+                "upper, middle, and lower classes",
+                "manifest, latent, and dysfunction",
+                "race, gender, and age"
+            ],
+            "correct_index": 0,
+            "explanation": "Weber expanded on Marx by identifying class (wealth), status (prestige), and party (power) as separate dimensions of stratification.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "10A",
+            "stem": "A woman raised in a working-class household earns a medical degree and becomes a physician, moving into the upper-middle class. Compared with her parents, she has experienced:",
+            "options": [
+                "intragenerational downward mobility",
+                "horizontal mobility",
+                "intergenerational upward mobility",
+                "status inconsistency"
+            ],
+            "correct_index": 2,
+            "explanation": "A change in social position relative to one's parents is intergenerational mobility, and rising in the hierarchy makes it upward.",
+            "provenance": 1
+        },
+        {
+            "topic": "psychology_sociology",
+            "card_tag": "10A",
+            "stem": "A family can afford food and shelter but cannot afford the goods and experiences considered normal in their wealthy society. This is best described as living in:",
+            "options": [
+                "absolute poverty",
+                "relative poverty",
+                "extreme poverty",
+                "the culture of poverty"
+            ],
+            "correct_index": 1,
+            "explanation": "Relative poverty describes falling well below the typical living standard of one's society, even when basic survival needs are met.",
+            "provenance": 1
+        }
+    ]
 }

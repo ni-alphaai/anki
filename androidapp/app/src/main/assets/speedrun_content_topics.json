@@ -1,159 +1,159 @@
 {
-  "topics": [
-    {
-      "topic": "1A",
-      "label": "Structure and function of proteins and their amino acids",
-      "weight": 3.0
-    },
-    {
-      "topic": "1B",
-      "label": "Transmission of genetic information from gene to protein",
-      "weight": 3.0
-    },
-    {
-      "topic": "1C",
-      "label": "Heritable information across generations and genetic diversity",
-      "weight": 3.0
-    },
-    {
-      "topic": "1D",
-      "label": "Bioenergetics and fuel-molecule metabolism",
-      "weight": 3.0
-    },
-    {
-      "topic": "2A",
-      "label": "Assemblies of molecules and cells within organisms",
-      "weight": 2.5
-    },
-    {
-      "topic": "2B",
-      "label": "Structure, growth, physiology, and genetics of prokaryotes and viruses",
-      "weight": 2.5
-    },
-    {
-      "topic": "2C",
-      "label": "Cell division, differentiation, and specialization",
-      "weight": 2.5
-    },
-    {
-      "topic": "3A",
-      "label": "Nervous and endocrine systems coordinating the body",
-      "weight": 2.5
-    },
-    {
-      "topic": "3B",
-      "label": "Structure and integrated function of the major organ systems",
-      "weight": 2.5
-    },
-    {
-      "topic": "4A",
-      "label": "Motion, forces, energy, and equilibrium in living systems",
-      "weight": 2.5
-    },
-    {
-      "topic": "4B",
-      "label": "Fluids: circulation of blood, gas movement, and gas exchange",
-      "weight": 2.5
-    },
-    {
-      "topic": "4C",
-      "label": "Electrochemistry and electrical circuits",
-      "weight": 2.5
-    },
-    {
-      "topic": "4D",
-      "label": "Interaction of light and sound with matter",
-      "weight": 2.5
-    },
-    {
-      "topic": "4E",
-      "label": "Atomic structure, nuclear decay, and atomic chemical behavior",
-      "weight": 2.5
-    },
-    {
-      "topic": "5A",
-      "label": "Unique nature of water and its solutions",
-      "weight": 2.5
-    },
-    {
-      "topic": "5B",
-      "label": "Nature of molecules and intermolecular interactions",
-      "weight": 2.5
-    },
-    {
-      "topic": "5C",
-      "label": "Separation and purification methods",
-      "weight": 2.5
-    },
-    {
-      "topic": "5D",
-      "label": "Structure, function, and reactivity of biological molecules",
-      "weight": 2.5
-    },
-    {
-      "topic": "5E",
-      "label": "Principles of chemical thermodynamics and kinetics",
-      "weight": 2.5
-    },
-    {
-      "topic": "6A",
-      "label": "Sensing the environment",
-      "weight": 1.5
-    },
-    {
-      "topic": "6B",
-      "label": "Making sense of the environment (perception and cognition)",
-      "weight": 1.5
-    },
-    {
-      "topic": "6C",
-      "label": "Responding to the world (emotion and stress)",
-      "weight": 1.5
-    },
-    {
-      "topic": "7A",
-      "label": "Individual influences on behavior",
-      "weight": 1.5
-    },
-    {
-      "topic": "7B",
-      "label": "Social processes that influence behavior",
-      "weight": 1.5
-    },
-    {
-      "topic": "7C",
-      "label": "Attitude and behavior change",
-      "weight": 1.5
-    },
-    {
-      "topic": "8A",
-      "label": "Self-identity",
-      "weight": 1.5
-    },
-    {
-      "topic": "8B",
-      "label": "Social thinking",
-      "weight": 1.5
-    },
-    {
-      "topic": "8C",
-      "label": "Social interactions",
-      "weight": 1.5
-    },
-    {
-      "topic": "9A",
-      "label": "Understanding social structure",
-      "weight": 1.0
-    },
-    {
-      "topic": "9B",
-      "label": "Demographic characteristics and processes",
-      "weight": 1.0
-    },
-    {
-      "topic": "10A",
-      "label": "Social inequality",
-      "weight": 1.0
-    }
-  ]
+    "topics": [
+        {
+            "topic": "1A",
+            "label": "Structure and function of proteins and their amino acids",
+            "weight": 3.0
+        },
+        {
+            "topic": "1B",
+            "label": "Transmission of genetic information from gene to protein",
+            "weight": 3.0
+        },
+        {
+            "topic": "1C",
+            "label": "Heritable information across generations and genetic diversity",
+            "weight": 3.0
+        },
+        {
+            "topic": "1D",
+            "label": "Bioenergetics and fuel-molecule metabolism",
+            "weight": 3.0
+        },
+        {
+            "topic": "2A",
+            "label": "Assemblies of molecules and cells within organisms",
+            "weight": 2.5
+        },
+        {
+            "topic": "2B",
+            "label": "Structure, growth, physiology, and genetics of prokaryotes and viruses",
+            "weight": 2.5
+        },
+        {
+            "topic": "2C",
+            "label": "Cell division, differentiation, and specialization",
+            "weight": 2.5
+        },
+        {
+            "topic": "3A",
+            "label": "Nervous and endocrine systems coordinating the body",
+            "weight": 2.5
+        },
+        {
+            "topic": "3B",
+            "label": "Structure and integrated function of the major organ systems",
+            "weight": 2.5
+        },
+        {
+            "topic": "4A",
+            "label": "Motion, forces, energy, and equilibrium in living systems",
+            "weight": 2.5
+        },
+        {
+            "topic": "4B",
+            "label": "Fluids: circulation of blood, gas movement, and gas exchange",
+            "weight": 2.5
+        },
+        {
+            "topic": "4C",
+            "label": "Electrochemistry and electrical circuits",
+            "weight": 2.5
+        },
+        {
+            "topic": "4D",
+            "label": "Interaction of light and sound with matter",
+            "weight": 2.5
+        },
+        {
+            "topic": "4E",
+            "label": "Atomic structure, nuclear decay, and atomic chemical behavior",
+            "weight": 2.5
+        },
+        {
+            "topic": "5A",
+            "label": "Unique nature of water and its solutions",
+            "weight": 2.5
+        },
+        {
+            "topic": "5B",
+            "label": "Nature of molecules and intermolecular interactions",
+            "weight": 2.5
+        },
+        {
+            "topic": "5C",
+            "label": "Separation and purification methods",
+            "weight": 2.5
+        },
+        {
+            "topic": "5D",
+            "label": "Structure, function, and reactivity of biological molecules",
+            "weight": 2.5
+        },
+        {
+            "topic": "5E",
+            "label": "Principles of chemical thermodynamics and kinetics",
+            "weight": 2.5
+        },
+        {
+            "topic": "6A",
+            "label": "Sensing the environment",
+            "weight": 1.5
+        },
+        {
+            "topic": "6B",
+            "label": "Making sense of the environment (perception and cognition)",
+            "weight": 1.5
+        },
+        {
+            "topic": "6C",
+            "label": "Responding to the world (emotion and stress)",
+            "weight": 1.5
+        },
+        {
+            "topic": "7A",
+            "label": "Individual influences on behavior",
+            "weight": 1.5
+        },
+        {
+            "topic": "7B",
+            "label": "Social processes that influence behavior",
+            "weight": 1.5
+        },
+        {
+            "topic": "7C",
+            "label": "Attitude and behavior change",
+            "weight": 1.5
+        },
+        {
+            "topic": "8A",
+            "label": "Self-identity",
+            "weight": 1.5
+        },
+        {
+            "topic": "8B",
+            "label": "Social thinking",
+            "weight": 1.5
+        },
+        {
+            "topic": "8C",
+            "label": "Social interactions",
+            "weight": 1.5
+        },
+        {
+            "topic": "9A",
+            "label": "Understanding social structure",
+            "weight": 1.0
+        },
+        {
+            "topic": "9B",
+            "label": "Demographic characteristics and processes",
+            "weight": 1.0
+        },
+        {
+            "topic": "10A",
+            "label": "Social inequality",
+            "weight": 1.0
+        }
+    ]
 }

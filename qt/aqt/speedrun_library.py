@@ -898,23 +898,39 @@ class ExamProfileDialog(QDialog):
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(*_DIALOG_MARGINS)
-        layout.setSpacing(12)
-        layout.addWidget(_mark(QLabel(heading), role="display"))
-        layout.addWidget(_mark(QLabel(subtitle), role="muted"))
+        layout.setSpacing(8)
+        heading_label = _mark(QLabel(heading), role="display")
+        layout.addWidget(heading_label)
+        subtitle_label = _mark(QLabel(subtitle), role="muted")
+        subtitle_label.setWordWrap(True)
+        layout.addWidget(subtitle_label)
 
-        layout.addWidget(_mark(QLabel("EXAM DATE"), role="eyebrow"))
+        # Group each field with its eyebrow: a wider gap opens above each section
+        # header, a tight gap sits between the header and its control, so the form
+        # reads as two labelled groups rather than an evenly-spaced control stack.
+        layout.addSpacing(10)
+        eyebrow_date = _mark(QLabel("EXAM DATE"), role="eyebrow")
+        layout.addWidget(eyebrow_date)
+        layout.addSpacing(2)
         self.date = QDateEdit()
         self.date.setCalendarPopup(True)
         self.date.setDisplayFormat("yyyy-MM-dd")
         self.date.setDate(QDate.currentDate().addDays(90))
         layout.addWidget(self.date)
 
-        layout.addWidget(_mark(QLabel("TARGET SCORE"), role="eyebrow"))
+        layout.addSpacing(12)
+        eyebrow_target = _mark(QLabel("TARGET SCORE"), role="eyebrow")
+        layout.addWidget(eyebrow_target)
+        layout.addSpacing(2)
         self._target = 508
         self._tier_buttons: list[tuple[QPushButton, int]] = []
         for label, score in _TIERS:
             btn = QPushButton(label)
             btn.setCheckable(True)
+            # A selectable option row (styled via QSS srRole="option" + :checked),
+            # not a primary CTA - so the selected tier does not look like a second
+            # "Start studying" button competing with the real CTA below.
+            _mark(btn, role="option")
             qconnect(btn.clicked, lambda _=False, s=score: self._select_tier(s))
             layout.addWidget(btn)
             self._tier_buttons.append((btn, score))
@@ -953,9 +969,10 @@ class ExamProfileDialog(QDialog):
         self._sync_tier_buttons()
 
     def _sync_tier_buttons(self) -> None:
+        # The selected look is driven by the button's :checked pseudo-state (see
+        # dialog_qss srRole="option"); repolish so the state repaints at once.
         for btn, score in self._tier_buttons:
             btn.setChecked(score == self._target)
-            _mark(btn, primary=(score == self._target))
             btn.style().unpolish(btn)
             btn.style().polish(btn)
 

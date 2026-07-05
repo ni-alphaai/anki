@@ -33,14 +33,80 @@ _HTML_RE = re.compile(r"<[^>]+>")
 
 # Common English + Anki-template words that carry no topical signal.
 _STOP = {
-    "the", "and", "for", "are", "was", "were", "with", "that", "this", "from",
-    "which", "into", "have", "has", "had", "not", "but", "its", "their", "them",
-    "these", "those", "than", "then", "when", "what", "why", "how", "who", "can",
-    "will", "would", "may", "might", "such", "also", "each", "both", "between",
-    "during", "because", "about", "over", "under", "more", "most", "some", "any",
-    "all", "one", "two", "type", "types", "form", "forms", "used", "use", "using",
-    "example", "examples", "following", "called", "known", "due", "within", "via",
-    "front", "back", "card", "cards", "question", "answer", "true", "false",
+    "the",
+    "and",
+    "for",
+    "are",
+    "was",
+    "were",
+    "with",
+    "that",
+    "this",
+    "from",
+    "which",
+    "into",
+    "have",
+    "has",
+    "had",
+    "not",
+    "but",
+    "its",
+    "their",
+    "them",
+    "these",
+    "those",
+    "than",
+    "then",
+    "when",
+    "what",
+    "why",
+    "how",
+    "who",
+    "can",
+    "will",
+    "would",
+    "may",
+    "might",
+    "such",
+    "also",
+    "each",
+    "both",
+    "between",
+    "during",
+    "because",
+    "about",
+    "over",
+    "under",
+    "more",
+    "most",
+    "some",
+    "any",
+    "all",
+    "one",
+    "two",
+    "type",
+    "types",
+    "form",
+    "forms",
+    "used",
+    "use",
+    "using",
+    "example",
+    "examples",
+    "following",
+    "called",
+    "known",
+    "due",
+    "within",
+    "via",
+    "front",
+    "back",
+    "card",
+    "cards",
+    "question",
+    "answer",
+    "true",
+    "false",
 }
 
 # A keyword hit below this idf-weighted score is treated as "unplaced".
@@ -87,7 +153,9 @@ def _model() -> dict[str, Any]:
     return _model_cache
 
 
-def classify_text(text: str, model: dict[str, Any] | None = None) -> tuple[str | None, float]:
+def classify_text(
+    text: str, model: dict[str, Any] | None = None
+) -> tuple[str | None, float]:
     """Best content-category id for a note's text and its idf-weighted score.
     Distinctive terms (rare across categories) dominate, so a couple of on-topic
     technical words outweigh many generic ones."""
@@ -158,7 +226,10 @@ def group_notes(mw: Any, use_ai: bool | None = None) -> dict[str, int]:
         topics = m["topics"]
         ai_map = (
             speedrun_ai.classify_categories(
-                [{"id": str(nid), "text": _plain(text)[:600]} for nid, text in residual],
+                [
+                    {"id": str(nid), "text": _plain(text)[:600]}
+                    for nid, text in residual
+                ],
                 [
                     {
                         "id": cid,
@@ -202,4 +273,6 @@ def group_and_report(mw: Any) -> None:
     else:
         extra = f" ({r['ai']} by AI)" if r["ai"] else ""
         left = f", {r['residual']} left unplaced" if r["residual"] else ""
-        tooltip(f"Grouped {r['tagged']} of {r['scanned']} cards into topics{extra}{left}.")
+        tooltip(
+            f"Grouped {r['tagged']} of {r['scanned']} cards into topics{extra}{left}."
+        )

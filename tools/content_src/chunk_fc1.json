@@ -1,66 +1,348 @@
 {
-  "1A": {
-    "cards": [
-      {"front": "What four groups are bonded to the central alpha carbon of a standard amino acid?", "back": "An amino group (-NH2), a carboxyl group (-COOH), a hydrogen atom, and a variable R group (side chain) that distinguishes the 20 amino acids.", "source": "OpenStax Biology 2e - Proteins", "license": "CC BY 4.0"},
-      {"front": "What type of bond links adjacent amino acids in a polypeptide, and how does it form?", "back": "A peptide bond, formed by a dehydration (condensation) reaction between the carboxyl group of one amino acid and the amino group of the next, releasing a water molecule.", "source": "OpenStax Biology 2e - Proteins", "license": "CC BY 4.0"},
-      {"front": "What interactions stabilize the secondary structure (alpha helices and beta pleated sheets) of a protein?", "back": "Hydrogen bonds between the backbone carbonyl oxygen and the backbone amide hydrogen atoms of the polypeptide chain.", "source": "OpenStax Biology 2e - Proteins", "license": "CC BY 4.0"},
-      {"front": "Distinguish tertiary from quaternary protein structure.", "back": "Tertiary structure is the overall three-dimensional folding of a single polypeptide, while quaternary structure is the assembly of two or more polypeptide subunits into one functional protein.", "source": "OpenStax Biology 2e - Proteins", "license": "CC BY 4.0"},
-      {"front": "Which amino acid can form covalent disulfide bridges that stabilize tertiary structure?", "back": "Cysteine; the -SH groups of two cysteine residues can be oxidized to form a covalent disulfide (S-S) bond.", "source": "OpenStax Biology 2e - Proteins", "license": "CC BY 4.0"},
-      {"front": "What is protein denaturation, and does it break peptide bonds?", "back": "Denaturation is the loss of a protein's higher-order structure and function due to heat, pH change, or chemicals; it disrupts noncovalent interactions but does not break the peptide bonds of the primary structure.", "source": "OpenStax Biology 2e - Proteins", "license": "CC BY 4.0"}
-    ],
-    "questions": [
-      {"stem": "A peptide bond forms between which two functional groups of adjacent amino acids?", "options": ["The R group of one amino acid and the amino group of another", "Two amino groups", "The carboxyl group of one amino acid and the amino group of another", "Two carboxyl groups"], "correct_index": 2, "explanation": "During a dehydration reaction, the carboxyl group of one amino acid bonds to the amino group of the next, releasing water and forming the peptide bond.", "source": "OpenStax Biology 2e - Proteins", "license": "CC BY 4.0"},
-      {"stem": "Which interaction is primarily responsible for maintaining the alpha-helix secondary structure of a protein?", "options": ["Hydrogen bonds between backbone atoms", "Disulfide bonds between cysteine residues", "Peptide bonds between side chains", "Ionic bonds between the N- and C-termini"], "correct_index": 0, "explanation": "Secondary structures such as the alpha helix are held together by hydrogen bonds between the carbonyl oxygen and the amide hydrogen of the polypeptide backbone.", "source": "OpenStax Biology 2e - Proteins", "license": "CC BY 4.0"},
-      {"stem": "A globular protein folds in the aqueous cytoplasm. Which residues are most likely buried in its interior core?", "options": ["Charged residues such as aspartate and lysine", "Polar residues such as serine and threonine", "Residues that hydrogen bond with water", "Nonpolar residues such as valine and leucine"], "correct_index": 3, "explanation": "Hydrophobic (nonpolar) side chains cluster in the protein interior away from water, while polar and charged residues face the aqueous exterior.", "source": "OpenStax Biology 2e - Proteins", "license": "CC BY 4.0"},
-      {"stem": "Boiling an egg causes the egg white to solidify. Which statement best describes what happens to the proteins?", "options": ["Peptide bonds of the primary structure are hydrolyzed", "The proteins denature, losing higher-order structure while the primary sequence stays intact", "New covalent bonds form to create a stronger quaternary structure", "The amino acid sequence is permanently rearranged"], "correct_index": 1, "explanation": "Heat denatures proteins by disrupting the noncovalent interactions that hold secondary, tertiary, and quaternary structure, but the covalent peptide bonds of the primary structure remain intact.", "source": "OpenStax Biology 2e - Proteins", "license": "CC BY 4.0"}
-    ]
-  },
-  "1B": {
-    "cards": [
-      {"front": "State the central dogma of molecular biology.", "back": "Genetic information flows from DNA to RNA by transcription and from RNA to protein by translation (DNA -> RNA -> protein).", "source": "OpenStax Biology 2e - Genes and Proteins", "license": "CC BY 4.0"},
-      {"front": "Why is one new strand synthesized discontinuously during DNA replication?", "back": "DNA polymerase adds nucleotides only in the 5' to 3' direction, so the lagging strand is built as short Okazaki fragments that are later joined by DNA ligase.", "source": "OpenStax Biology 2e - DNA Replication", "license": "CC BY 4.0"},
-      {"front": "What is a codon and how many nucleotides does it contain?", "back": "A codon is a sequence of three consecutive mRNA nucleotides that specifies one amino acid or a stop signal during translation.", "source": "OpenStax Biology 2e - Translation", "license": "CC BY 4.0"},
-      {"front": "What three main modifications does eukaryotic pre-mRNA undergo before export from the nucleus?", "back": "Addition of a 5' cap (7-methylguanosine), addition of a 3' poly-A tail, and splicing to remove introns and join exons.", "source": "OpenStax Biology 2e - Eukaryotic RNA Processing", "license": "CC BY 4.0"},
-      {"front": "What is the role of tRNA in translation?", "back": "Each tRNA carries a specific amino acid and pairs its anticodon with the complementary mRNA codon, delivering the correct amino acid to the ribosome.", "source": "OpenStax Biology 2e - Translation", "license": "CC BY 4.0"},
-      {"front": "What is the usual start codon for translation and which amino acid does it specify?", "back": "The start codon is AUG, which codes for methionine and establishes the reading frame for the ribosome.", "source": "OpenStax Biology 2e - The Genetic Code", "license": "CC BY 4.0"}
-    ],
-    "questions": [
-      {"stem": "During transcription, mRNA is built antiparallel and complementary to the template DNA strand. If the template reads 3'-TAC-5', what is the corresponding mRNA sequence?", "options": ["5'-UAC-3'", "5'-AUG-3'", "5'-ATG-3'", "5'-TAC-3'"], "correct_index": 1, "explanation": "RNA is complementary and antiparallel to the template and uses uracil instead of thymine, so 3'-TAC-5' yields 5'-AUG-3'.", "source": "OpenStax Biology 2e - Transcription", "license": "CC BY 4.0"},
-      {"stem": "Which enzyme synthesizes RNA from a DNA template during transcription?", "options": ["DNA polymerase", "DNA ligase", "Helicase", "RNA polymerase"], "correct_index": 3, "explanation": "RNA polymerase reads the DNA template and synthesizes a complementary strand of RNA; the other enzymes function in replication or unwinding, not transcription.", "source": "OpenStax Biology 2e - Transcription", "license": "CC BY 4.0"},
-      {"stem": "A mutation changes an mRNA codon from GAA to GAG, but the encoded amino acid (glutamate) is unchanged. This is best classified as a:", "options": ["Nonsense mutation", "Frameshift mutation", "Silent (synonymous) mutation", "Missense mutation"], "correct_index": 2, "explanation": "Because the genetic code is degenerate, multiple codons can specify the same amino acid, so this base change produces no change in the protein and is silent.", "source": "OpenStax Biology 2e - The Genetic Code", "license": "CC BY 4.0"},
-      {"stem": "In eukaryotic cells, introns are removed and exons are joined by splicing. Where does this processing of pre-mRNA occur?", "options": ["In the nucleus", "In the cytoplasm on ribosomes", "In the mitochondrial matrix", "On the rough endoplasmic reticulum"], "correct_index": 0, "explanation": "Eukaryotic pre-mRNA is capped, polyadenylated, and spliced within the nucleus before the mature mRNA is exported to the cytoplasm for translation.", "source": "OpenStax Biology 2e - Eukaryotic RNA Processing", "license": "CC BY 4.0"}
-    ]
-  },
-  "1C": {
-    "cards": [
-      {"front": "How do the daughter cells of meiosis differ from those of mitosis?", "back": "Meiosis produces four genetically distinct haploid cells (gametes) from one diploid cell, whereas mitosis produces two genetically identical diploid cells.", "source": "OpenStax Biology 2e - Meiosis", "license": "CC BY 4.0"},
-      {"front": "What is crossing over and when does it occur?", "back": "Crossing over is the reciprocal exchange of homologous segments between non-sister chromatids during prophase I of meiosis, increasing genetic diversity.", "source": "OpenStax Biology 2e - Meiosis", "license": "CC BY 4.0"},
-      {"front": "State Mendel's law of segregation.", "back": "The two alleles of a gene separate during gamete formation, so each gamete receives only one allele for each gene.", "source": "OpenStax Biology 2e - Mendel's Experiments", "license": "CC BY 4.0"},
-      {"front": "State Mendel's law of independent assortment.", "back": "Alleles of different genes assort independently during gamete formation, as long as the genes are on different chromosomes or far apart on the same chromosome.", "source": "OpenStax Biology 2e - Laws of Inheritance", "license": "CC BY 4.0"},
-      {"front": "Distinguish genotype from phenotype.", "back": "Genotype is the allele (genetic) makeup of an organism, whereas phenotype is the observable trait that results from the genotype interacting with the environment.", "source": "OpenStax Biology 2e - Characteristics and Traits", "license": "CC BY 4.0"},
-      {"front": "What phenotypic and genotypic ratios result from a monohybrid cross of two heterozygotes (Aa x Aa) with complete dominance?", "back": "The phenotypic ratio is 3 dominant to 1 recessive, and the genotypic ratio is 1 AA : 2 Aa : 1 aa.", "source": "OpenStax Biology 2e - Laws of Inheritance", "license": "CC BY 4.0"}
-    ],
-    "questions": [
-      {"stem": "A pea plant heterozygous for seed color (Yy, with yellow dominant to green) is self-crossed. What fraction of the offspring are expected to be green?", "options": ["0", "1/2", "3/4", "1/4"], "correct_index": 3, "explanation": "A Yy x Yy cross gives a 1 YY : 2 Yy : 1 yy genotypic ratio, so 1/4 of offspring are homozygous recessive (yy) and show the green phenotype.", "source": "OpenStax Biology 2e - Laws of Inheritance", "license": "CC BY 4.0"},
-      {"stem": "Which pair of events during meiosis I are the major sources of genetic variation among gametes?", "options": ["DNA replication and cytokinesis", "Crossing over and independent assortment of homologous chromosomes", "Binary fission and budding", "Transcription and translation"], "correct_index": 1, "explanation": "Crossing over recombines alleles on homologous chromosomes, and independent assortment randomly distributes maternal and paternal chromosomes into gametes, both increasing diversity.", "source": "OpenStax Biology 2e - Meiosis", "license": "CC BY 4.0"},
-      {"stem": "A human cell that has completed meiosis to form a gamete contains how many chromosomes?", "options": ["23 (haploid)", "46 (diploid)", "92", "69"], "correct_index": 0, "explanation": "Meiosis halves the chromosome number, so a human gamete is haploid with 23 chromosomes, restoring 46 upon fertilization.", "source": "OpenStax Biology 2e - Meiosis", "license": "CC BY 4.0"},
-      {"stem": "Genes located close together on the same chromosome tend to be inherited together, an exception to independent assortment. This is called:", "options": ["Segregation", "Nondisjunction", "Genetic linkage", "Codominance"], "correct_index": 2, "explanation": "Linked genes are near each other on the same chromosome and are less likely to be separated by crossing over, so they are often inherited together.", "source": "OpenStax Biology 2e - Linked Genes", "license": "CC BY 4.0"}
-    ]
-  },
-  "1D": {
-    "cards": [
-      {"front": "What are the net products of glycolysis per glucose molecule?", "back": "Two pyruvate, a net of 2 ATP (4 made minus 2 invested), and 2 NADH; glycolysis occurs in the cytoplasm and does not require oxygen.", "source": "OpenStax Biology 2e - Glycolysis", "license": "CC BY 4.0"},
-      {"front": "Where does the citric acid (Krebs) cycle occur in eukaryotes, and what molecule enters it?", "back": "It occurs in the mitochondrial matrix; acetyl-CoA (from pyruvate) enters by combining with oxaloacetate to form citrate.", "source": "OpenStax Biology 2e - Citric Acid Cycle", "license": "CC BY 4.0"},
-      {"front": "What is the final electron acceptor of the electron transport chain in aerobic respiration?", "back": "Molecular oxygen (O2), which accepts electrons and combines with protons to form water.", "source": "OpenStax Biology 2e - Oxidative Phosphorylation", "license": "CC BY 4.0"},
-      {"front": "How does chemiosmosis drive ATP synthesis?", "back": "The electron transport chain pumps protons across the inner mitochondrial membrane, and protons flowing back down this gradient through ATP synthase power the phosphorylation of ADP to ATP.", "source": "OpenStax Biology 2e - Oxidative Phosphorylation", "license": "CC BY 4.0"},
-      {"front": "About how many ATP are produced from the complete aerobic oxidation of one glucose?", "back": "Roughly 30 to 32 ATP by modern estimates (older textbooks cite about 36 to 38), summed across glycolysis, the citric acid cycle, and oxidative phosphorylation.", "source": "OpenStax Biology 2e - ATP Yield", "license": "CC BY 4.0"},
-      {"front": "What happens to pyruvate in human muscle cells under anaerobic conditions?", "back": "Pyruvate is reduced to lactate by lactate dehydrogenase during fermentation, regenerating NAD+ so that glycolysis can continue producing ATP.", "source": "OpenStax Biology 2e - Fermentation", "license": "CC BY 4.0"}
-    ],
-    "questions": [
-      {"stem": "In eukaryotic cells, where does glycolysis take place?", "options": ["The mitochondrial matrix", "The inner mitochondrial membrane", "The cytoplasm (cytosol)", "The nucleus"], "correct_index": 2, "explanation": "Glycolysis occurs in the cytoplasm and does not require oxygen or mitochondria; only later stages of aerobic respiration occur inside mitochondria.", "source": "OpenStax Biology 2e - Glycolysis", "license": "CC BY 4.0"},
-      {"stem": "Which molecule serves as the final electron acceptor of the electron transport chain during aerobic respiration?", "options": ["Oxygen (O2)", "Carbon dioxide (CO2)", "NAD+", "Pyruvate"], "correct_index": 0, "explanation": "Oxygen accepts electrons at the end of the electron transport chain and combines with protons to form water, allowing the chain to keep operating.", "source": "OpenStax Biology 2e - Oxidative Phosphorylation", "license": "CC BY 4.0"},
-      {"stem": "A drug blocks ATP synthase in the inner mitochondrial membrane. What is the most direct consequence?", "options": ["Glycolysis in the cytoplasm immediately stops", "Oxygen can no longer accept electrons", "The proton gradient collapses instantly", "The proton gradient builds up and ATP production by oxidative phosphorylation halts"], "correct_index": 3, "explanation": "Blocking ATP synthase prevents protons from flowing back into the matrix, so the gradient builds up and ATP synthesis by oxidative phosphorylation stops.", "source": "OpenStax Biology 2e - Oxidative Phosphorylation", "license": "CC BY 4.0"},
-      {"stem": "During strenuous exercise when oxygen is limited, human muscle cells regenerate the NAD+ needed for glycolysis by:", "options": ["Running the citric acid cycle faster", "Converting pyruvate to lactate via fermentation", "Producing ethanol and carbon dioxide", "Increasing oxidative phosphorylation"], "correct_index": 1, "explanation": "Human muscle performs lactic acid fermentation, reducing pyruvate to lactate to regenerate NAD+ so glycolysis can continue; alcoholic fermentation occurs in yeast, not humans.", "source": "OpenStax Biology 2e - Fermentation", "license": "CC BY 4.0"}
-    ]
-  }
+    "1A": {
+        "cards": [
+            {
+                "front": "What four groups are bonded to the central alpha carbon of a standard amino acid?",
+                "back": "An amino group (-NH2), a carboxyl group (-COOH), a hydrogen atom, and a variable R group (side chain) that distinguishes the 20 amino acids.",
+                "source": "OpenStax Biology 2e - Proteins",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What type of bond links adjacent amino acids in a polypeptide, and how does it form?",
+                "back": "A peptide bond, formed by a dehydration (condensation) reaction between the carboxyl group of one amino acid and the amino group of the next, releasing a water molecule.",
+                "source": "OpenStax Biology 2e - Proteins",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What interactions stabilize the secondary structure (alpha helices and beta pleated sheets) of a protein?",
+                "back": "Hydrogen bonds between the backbone carbonyl oxygen and the backbone amide hydrogen atoms of the polypeptide chain.",
+                "source": "OpenStax Biology 2e - Proteins",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "Distinguish tertiary from quaternary protein structure.",
+                "back": "Tertiary structure is the overall three-dimensional folding of a single polypeptide, while quaternary structure is the assembly of two or more polypeptide subunits into one functional protein.",
+                "source": "OpenStax Biology 2e - Proteins",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "Which amino acid can form covalent disulfide bridges that stabilize tertiary structure?",
+                "back": "Cysteine; the -SH groups of two cysteine residues can be oxidized to form a covalent disulfide (S-S) bond.",
+                "source": "OpenStax Biology 2e - Proteins",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What is protein denaturation, and does it break peptide bonds?",
+                "back": "Denaturation is the loss of a protein's higher-order structure and function due to heat, pH change, or chemicals; it disrupts noncovalent interactions but does not break the peptide bonds of the primary structure.",
+                "source": "OpenStax Biology 2e - Proteins",
+                "license": "CC BY 4.0"
+            }
+        ],
+        "questions": [
+            {
+                "stem": "A peptide bond forms between which two functional groups of adjacent amino acids?",
+                "options": [
+                    "The R group of one amino acid and the amino group of another",
+                    "Two amino groups",
+                    "The carboxyl group of one amino acid and the amino group of another",
+                    "Two carboxyl groups"
+                ],
+                "correct_index": 2,
+                "explanation": "During a dehydration reaction, the carboxyl group of one amino acid bonds to the amino group of the next, releasing water and forming the peptide bond.",
+                "source": "OpenStax Biology 2e - Proteins",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "Which interaction is primarily responsible for maintaining the alpha-helix secondary structure of a protein?",
+                "options": [
+                    "Hydrogen bonds between backbone atoms",
+                    "Disulfide bonds between cysteine residues",
+                    "Peptide bonds between side chains",
+                    "Ionic bonds between the N- and C-termini"
+                ],
+                "correct_index": 0,
+                "explanation": "Secondary structures such as the alpha helix are held together by hydrogen bonds between the carbonyl oxygen and the amide hydrogen of the polypeptide backbone.",
+                "source": "OpenStax Biology 2e - Proteins",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "A globular protein folds in the aqueous cytoplasm. Which residues are most likely buried in its interior core?",
+                "options": [
+                    "Charged residues such as aspartate and lysine",
+                    "Polar residues such as serine and threonine",
+                    "Residues that hydrogen bond with water",
+                    "Nonpolar residues such as valine and leucine"
+                ],
+                "correct_index": 3,
+                "explanation": "Hydrophobic (nonpolar) side chains cluster in the protein interior away from water, while polar and charged residues face the aqueous exterior.",
+                "source": "OpenStax Biology 2e - Proteins",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "Boiling an egg causes the egg white to solidify. Which statement best describes what happens to the proteins?",
+                "options": [
+                    "Peptide bonds of the primary structure are hydrolyzed",
+                    "The proteins denature, losing higher-order structure while the primary sequence stays intact",
+                    "New covalent bonds form to create a stronger quaternary structure",
+                    "The amino acid sequence is permanently rearranged"
+                ],
+                "correct_index": 1,
+                "explanation": "Heat denatures proteins by disrupting the noncovalent interactions that hold secondary, tertiary, and quaternary structure, but the covalent peptide bonds of the primary structure remain intact.",
+                "source": "OpenStax Biology 2e - Proteins",
+                "license": "CC BY 4.0"
+            }
+        ]
+    },
+    "1B": {
+        "cards": [
+            {
+                "front": "State the central dogma of molecular biology.",
+                "back": "Genetic information flows from DNA to RNA by transcription and from RNA to protein by translation (DNA -> RNA -> protein).",
+                "source": "OpenStax Biology 2e - Genes and Proteins",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "Why is one new strand synthesized discontinuously during DNA replication?",
+                "back": "DNA polymerase adds nucleotides only in the 5' to 3' direction, so the lagging strand is built as short Okazaki fragments that are later joined by DNA ligase.",
+                "source": "OpenStax Biology 2e - DNA Replication",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What is a codon and how many nucleotides does it contain?",
+                "back": "A codon is a sequence of three consecutive mRNA nucleotides that specifies one amino acid or a stop signal during translation.",
+                "source": "OpenStax Biology 2e - Translation",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What three main modifications does eukaryotic pre-mRNA undergo before export from the nucleus?",
+                "back": "Addition of a 5' cap (7-methylguanosine), addition of a 3' poly-A tail, and splicing to remove introns and join exons.",
+                "source": "OpenStax Biology 2e - Eukaryotic RNA Processing",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What is the role of tRNA in translation?",
+                "back": "Each tRNA carries a specific amino acid and pairs its anticodon with the complementary mRNA codon, delivering the correct amino acid to the ribosome.",
+                "source": "OpenStax Biology 2e - Translation",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What is the usual start codon for translation and which amino acid does it specify?",
+                "back": "The start codon is AUG, which codes for methionine and establishes the reading frame for the ribosome.",
+                "source": "OpenStax Biology 2e - The Genetic Code",
+                "license": "CC BY 4.0"
+            }
+        ],
+        "questions": [
+            {
+                "stem": "During transcription, mRNA is built antiparallel and complementary to the template DNA strand. If the template reads 3'-TAC-5', what is the corresponding mRNA sequence?",
+                "options": ["5'-UAC-3'", "5'-AUG-3'", "5'-ATG-3'", "5'-TAC-3'"],
+                "correct_index": 1,
+                "explanation": "RNA is complementary and antiparallel to the template and uses uracil instead of thymine, so 3'-TAC-5' yields 5'-AUG-3'.",
+                "source": "OpenStax Biology 2e - Transcription",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "Which enzyme synthesizes RNA from a DNA template during transcription?",
+                "options": ["DNA polymerase", "DNA ligase", "Helicase", "RNA polymerase"],
+                "correct_index": 3,
+                "explanation": "RNA polymerase reads the DNA template and synthesizes a complementary strand of RNA; the other enzymes function in replication or unwinding, not transcription.",
+                "source": "OpenStax Biology 2e - Transcription",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "A mutation changes an mRNA codon from GAA to GAG, but the encoded amino acid (glutamate) is unchanged. This is best classified as a:",
+                "options": [
+                    "Nonsense mutation",
+                    "Frameshift mutation",
+                    "Silent (synonymous) mutation",
+                    "Missense mutation"
+                ],
+                "correct_index": 2,
+                "explanation": "Because the genetic code is degenerate, multiple codons can specify the same amino acid, so this base change produces no change in the protein and is silent.",
+                "source": "OpenStax Biology 2e - The Genetic Code",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "In eukaryotic cells, introns are removed and exons are joined by splicing. Where does this processing of pre-mRNA occur?",
+                "options": [
+                    "In the nucleus",
+                    "In the cytoplasm on ribosomes",
+                    "In the mitochondrial matrix",
+                    "On the rough endoplasmic reticulum"
+                ],
+                "correct_index": 0,
+                "explanation": "Eukaryotic pre-mRNA is capped, polyadenylated, and spliced within the nucleus before the mature mRNA is exported to the cytoplasm for translation.",
+                "source": "OpenStax Biology 2e - Eukaryotic RNA Processing",
+                "license": "CC BY 4.0"
+            }
+        ]
+    },
+    "1C": {
+        "cards": [
+            {
+                "front": "How do the daughter cells of meiosis differ from those of mitosis?",
+                "back": "Meiosis produces four genetically distinct haploid cells (gametes) from one diploid cell, whereas mitosis produces two genetically identical diploid cells.",
+                "source": "OpenStax Biology 2e - Meiosis",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What is crossing over and when does it occur?",
+                "back": "Crossing over is the reciprocal exchange of homologous segments between non-sister chromatids during prophase I of meiosis, increasing genetic diversity.",
+                "source": "OpenStax Biology 2e - Meiosis",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "State Mendel's law of segregation.",
+                "back": "The two alleles of a gene separate during gamete formation, so each gamete receives only one allele for each gene.",
+                "source": "OpenStax Biology 2e - Mendel's Experiments",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "State Mendel's law of independent assortment.",
+                "back": "Alleles of different genes assort independently during gamete formation, as long as the genes are on different chromosomes or far apart on the same chromosome.",
+                "source": "OpenStax Biology 2e - Laws of Inheritance",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "Distinguish genotype from phenotype.",
+                "back": "Genotype is the allele (genetic) makeup of an organism, whereas phenotype is the observable trait that results from the genotype interacting with the environment.",
+                "source": "OpenStax Biology 2e - Characteristics and Traits",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What phenotypic and genotypic ratios result from a monohybrid cross of two heterozygotes (Aa x Aa) with complete dominance?",
+                "back": "The phenotypic ratio is 3 dominant to 1 recessive, and the genotypic ratio is 1 AA : 2 Aa : 1 aa.",
+                "source": "OpenStax Biology 2e - Laws of Inheritance",
+                "license": "CC BY 4.0"
+            }
+        ],
+        "questions": [
+            {
+                "stem": "A pea plant heterozygous for seed color (Yy, with yellow dominant to green) is self-crossed. What fraction of the offspring are expected to be green?",
+                "options": ["0", "1/2", "3/4", "1/4"],
+                "correct_index": 3,
+                "explanation": "A Yy x Yy cross gives a 1 YY : 2 Yy : 1 yy genotypic ratio, so 1/4 of offspring are homozygous recessive (yy) and show the green phenotype.",
+                "source": "OpenStax Biology 2e - Laws of Inheritance",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "Which pair of events during meiosis I are the major sources of genetic variation among gametes?",
+                "options": [
+                    "DNA replication and cytokinesis",
+                    "Crossing over and independent assortment of homologous chromosomes",
+                    "Binary fission and budding",
+                    "Transcription and translation"
+                ],
+                "correct_index": 1,
+                "explanation": "Crossing over recombines alleles on homologous chromosomes, and independent assortment randomly distributes maternal and paternal chromosomes into gametes, both increasing diversity.",
+                "source": "OpenStax Biology 2e - Meiosis",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "A human cell that has completed meiosis to form a gamete contains how many chromosomes?",
+                "options": ["23 (haploid)", "46 (diploid)", "92", "69"],
+                "correct_index": 0,
+                "explanation": "Meiosis halves the chromosome number, so a human gamete is haploid with 23 chromosomes, restoring 46 upon fertilization.",
+                "source": "OpenStax Biology 2e - Meiosis",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "Genes located close together on the same chromosome tend to be inherited together, an exception to independent assortment. This is called:",
+                "options": ["Segregation", "Nondisjunction", "Genetic linkage", "Codominance"],
+                "correct_index": 2,
+                "explanation": "Linked genes are near each other on the same chromosome and are less likely to be separated by crossing over, so they are often inherited together.",
+                "source": "OpenStax Biology 2e - Linked Genes",
+                "license": "CC BY 4.0"
+            }
+        ]
+    },
+    "1D": {
+        "cards": [
+            {
+                "front": "What are the net products of glycolysis per glucose molecule?",
+                "back": "Two pyruvate, a net of 2 ATP (4 made minus 2 invested), and 2 NADH; glycolysis occurs in the cytoplasm and does not require oxygen.",
+                "source": "OpenStax Biology 2e - Glycolysis",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "Where does the citric acid (Krebs) cycle occur in eukaryotes, and what molecule enters it?",
+                "back": "It occurs in the mitochondrial matrix; acetyl-CoA (from pyruvate) enters by combining with oxaloacetate to form citrate.",
+                "source": "OpenStax Biology 2e - Citric Acid Cycle",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What is the final electron acceptor of the electron transport chain in aerobic respiration?",
+                "back": "Molecular oxygen (O2), which accepts electrons and combines with protons to form water.",
+                "source": "OpenStax Biology 2e - Oxidative Phosphorylation",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "How does chemiosmosis drive ATP synthesis?",
+                "back": "The electron transport chain pumps protons across the inner mitochondrial membrane, and protons flowing back down this gradient through ATP synthase power the phosphorylation of ADP to ATP.",
+                "source": "OpenStax Biology 2e - Oxidative Phosphorylation",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "About how many ATP are produced from the complete aerobic oxidation of one glucose?",
+                "back": "Roughly 30 to 32 ATP by modern estimates (older textbooks cite about 36 to 38), summed across glycolysis, the citric acid cycle, and oxidative phosphorylation.",
+                "source": "OpenStax Biology 2e - ATP Yield",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What happens to pyruvate in human muscle cells under anaerobic conditions?",
+                "back": "Pyruvate is reduced to lactate by lactate dehydrogenase during fermentation, regenerating NAD+ so that glycolysis can continue producing ATP.",
+                "source": "OpenStax Biology 2e - Fermentation",
+                "license": "CC BY 4.0"
+            }
+        ],
+        "questions": [
+            {
+                "stem": "In eukaryotic cells, where does glycolysis take place?",
+                "options": [
+                    "The mitochondrial matrix",
+                    "The inner mitochondrial membrane",
+                    "The cytoplasm (cytosol)",
+                    "The nucleus"
+                ],
+                "correct_index": 2,
+                "explanation": "Glycolysis occurs in the cytoplasm and does not require oxygen or mitochondria; only later stages of aerobic respiration occur inside mitochondria.",
+                "source": "OpenStax Biology 2e - Glycolysis",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "Which molecule serves as the final electron acceptor of the electron transport chain during aerobic respiration?",
+                "options": ["Oxygen (O2)", "Carbon dioxide (CO2)", "NAD+", "Pyruvate"],
+                "correct_index": 0,
+                "explanation": "Oxygen accepts electrons at the end of the electron transport chain and combines with protons to form water, allowing the chain to keep operating.",
+                "source": "OpenStax Biology 2e - Oxidative Phosphorylation",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "A drug blocks ATP synthase in the inner mitochondrial membrane. What is the most direct consequence?",
+                "options": [
+                    "Glycolysis in the cytoplasm immediately stops",
+                    "Oxygen can no longer accept electrons",
+                    "The proton gradient collapses instantly",
+                    "The proton gradient builds up and ATP production by oxidative phosphorylation halts"
+                ],
+                "correct_index": 3,
+                "explanation": "Blocking ATP synthase prevents protons from flowing back into the matrix, so the gradient builds up and ATP synthesis by oxidative phosphorylation stops.",
+                "source": "OpenStax Biology 2e - Oxidative Phosphorylation",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "During strenuous exercise when oxygen is limited, human muscle cells regenerate the NAD+ needed for glycolysis by:",
+                "options": [
+                    "Running the citric acid cycle faster",
+                    "Converting pyruvate to lactate via fermentation",
+                    "Producing ethanol and carbon dioxide",
+                    "Increasing oxidative phosphorylation"
+                ],
+                "correct_index": 1,
+                "explanation": "Human muscle performs lactic acid fermentation, reducing pyruvate to lactate to regenerate NAD+ so glycolysis can continue; alcoholic fermentation occurs in yeast, not humans.",
+                "source": "OpenStax Biology 2e - Fermentation",
+                "license": "CC BY 4.0"
+            }
+        ]
+    }
 }

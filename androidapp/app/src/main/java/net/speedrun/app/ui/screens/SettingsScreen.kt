@@ -117,6 +117,19 @@ fun SettingsScreen(
                 },
             )
             RowDivider()
+            SettingsRow(
+                title = "Delayed feedback (experimental)",
+                subtitle = "If you're already proficient, bank correctness and reveal it later",
+                trailing = {
+                    AppSwitch(
+                        checked = AppSettings.delayedFeedbackExperiment,
+                        onCheckedChange = {
+                            AppSettings.setDelayedFeedbackExperiment(context, it)
+                        },
+                    )
+                },
+            )
+            RowDivider()
             SettingsRow(title = "Daily limits", value = "Per-deck preset")
         }
         GroupFootnote(

@@ -171,7 +171,9 @@ def build(check_only: bool, require_all: bool) -> int:
             errs.append(f"{cid}: not in the AAMC outline")
             continue
         # Drop any fully-blank placeholder entries a source chunk may carry.
-        raw_cards = [c for c in payload.get("cards", []) if c.get("front") or c.get("back")]
+        raw_cards = [
+            c for c in payload.get("cards", []) if c.get("front") or c.get("back")
+        ]
         raw_qs = [q for q in payload.get("questions", []) if q.get("stem")]
         topic = {
             "name": meta["name"],

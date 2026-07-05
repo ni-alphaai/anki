@@ -50,6 +50,25 @@ Targets are the product spec's per-action budgets. Each is compared against the 
 
 **Overall: all targets PASS** at 50,000 cards.
 
+## Cold start & memory (50,000 cards)
+
+Measured with `tools/speedrun_perf_probe.py`, which builds a 50k-card collection once, then spawns a **fresh process** that opens it and runs the first dashboard load (readiness + coverage + performance). These are **engine/backend floors** - they exclude Qt/Chromium (desktop) and Android/Compose (phone) GUI startup, which the app adds on top.
+
+| Metric                                          |    Measured (engine floor) |                Spec target |     Result      |
+| ----------------------------------------------- | -------------------------: | -------------------------: | :-------------: |
+| Cold open of a 50k collection + first dashboard | 0.17 s (subsequent 0.16 s) | desktop < 5 s, phone < 4 s |     ✅ PASS     |
+| Peak RSS, 50k cards (open + dashboard)          |                     ~70 MB |  "under a limit you state" | ✅ under 512 MB |
+
+- **Stated memory limit:** the Speedrun engine holds a 50,000-card collection plus a dashboard render for well under **512 MB** (measured ~70 MB engine floor). The full desktop app is larger because Qt + the Chromium web view are resident; the phone runs the identical engine via `librsandroid.so`, so its engine floor is comparable and the on-device total is dominated by the Android runtime.
+- **Cold start:** the engine contributes only ~0.17 s to app cold start at 50k cards, leaving ample headroom under the 5 s (desktop) / 4 s (phone) budgets for GUI startup.
+- **Phone note:** the on-device end-to-end cold start / memory total was not re-measured on hardware in this pass (no device attached); the shared-engine floor above is the portion that scales with deck size, and the Android runtime overhead is deck-size-independent.
+
+Reproduce:
+
+```bash
+PYTHONPATH=out/pylib:pylib out/pyenv/bin/python tools/speedrun_perf_probe.py 50000 3
+```
+
 ## Notes & honesty
 
 - These are **engine/backend** latencies (the protobuf RPC round-trip into Rust and back), not full UI frame times. A real screen adds rendering on top of these numbers.

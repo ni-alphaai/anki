@@ -328,3 +328,71 @@ def test_due_reasoning_and_feedback_report():
     due = col._backend.get_due_reasoning(limit=5)
     assert len(due) == 2
     assert all(q.topic == "biology" for q in due)
+
+
+def test_d7_withhold_is_client_reveal_only_not_a_data_change():
+    """D7 mechanism test: the delayed-feedback experiment withholds *only the
+    immediate client reveal* of correctness. The attempt is still recorded with
+    its true correctness and is still surfaced by get_feedback_report (the
+    delayed surface), so no learning data is lost or altered.
+
+    Honest framing: skill-gated feedback *timing* is NOT evidence-established
+    (see feedback.rs). This test asserts the mechanism (reveal-only), not any
+    learning-outcome benefit; establishing that would need a human A/B.
+    """
+
+    # The client's withhold gate (mirrors aqt.speedrun._should_withhold_feedback
+    # and the engine's should_withhold_correctness): only when the experiment is
+    # ON *and* the student is proficient (>= 0.8).
+    def would_withhold(performance: float, enabled: bool) -> bool:
+        return enabled and performance >= 0.8
+
+    assert would_withhold(0.9, enabled=True) is True  # proficient + on -> withheld
+    assert would_withhold(0.9, enabled=False) is False  # experiment off
+    assert would_withhold(0.5, enabled=True) is False  # novice always gets it
+
+    col = getEmptyCol()
+    did = col.decks.id("Biology")
+    model = col.models.by_name("Basic")
+    note = col.new_note(model)
+    note["Front"] = "a cell fact"
+    col.add_note(note, did)
+    card_id = note.cards()[0].id
+
+    # A proficient student answers reasoning questions; the client would WITHHOLD
+    # the immediate correctness reveal. The desktop records the attempt BEFORE it
+    # mutes the reveal, so we record exactly what it records: the true outcomes.
+    outcomes = [True, True, True, True, False]  # 80% -> proficient, one miss
+    for i, correct in enumerate(outcomes):
+        col._backend.record_attempt(
+            speedrun_pb2.RecordAttemptRequest(
+                card_id=card_id,
+                note_id=note.id,
+                session_id="d7",
+                answered_at_ms=1_700_000_000_000 + i,
+                question_type=1,
+                took_ms=12000,
+                correct=correct,
+                data="{}",
+            )
+        )
+
+    # 1) Every attempt persisted with its TRUE correctness, even the ones whose
+    #    correctness was withheld from the immediate client display.
+    attempts = col._backend.get_attempts_for_card(card_id=card_id)
+    assert len(attempts) == len(outcomes)
+    assert [a.correct for a in attempts] == outcomes
+
+    # 2) The delayed surface (feedback report) reveals the withheld correctness:
+    #    the miss is counted and the topic surfaces as weak. Nothing is lost.
+    report = col._backend.get_feedback_report()
+    assert report.total == len(outcomes)
+    assert report.correct == 4
+    assert report.reasoning_misses == 1
+    assert list(report.weak_topics) == ["biology"]
+
+    # 3) The recorded performance rate is the true 80% - the withhold decision is
+    #    downstream of (and cannot alter) this recorded evidence.
+    perf = col._backend.get_performance_report().performance_rate
+    assert abs(perf - 0.8) < 1e-6
+    assert would_withhold(perf, enabled=True) is True

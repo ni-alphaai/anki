@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import net.speedrun.app.Diagnosis
 import net.speedrun.app.EngineRepository
+import net.speedrun.app.Feedback
 import net.speedrun.app.Mcat
 import net.speedrun.app.PracticeBankSummaryUi
 import net.speedrun.app.QuestionItemUi
@@ -329,9 +330,18 @@ private fun PracticeRunner(
     var diagnosis by remember { mutableStateOf<Diagnosis?>(null) }
     var correctCount by remember { mutableIntStateOf(0) }
     var shownAt by remember { mutableStateOf(0L) }
+    // D7: decide once whether to withhold immediate correctness (experiment on
+    // AND the student already proficient). Mirrors the desktop dialog; the
+    // attempt is still recorded, only the reveal is deferred.
+    var withhold by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         questions = runCatching { loader() }.getOrDefault(emptyList())
+        if (net.speedrun.app.AppSettings.delayedFeedbackExperiment) {
+            val perf = runCatching { EngineRepository.performance().performanceRate }
+                .getOrDefault(0f)
+            withhold = Feedback.shouldWithhold(perf, enabled = true)
+        }
         shownAt = System.currentTimeMillis()
     }
 
@@ -367,15 +377,28 @@ private fun PracticeRunner(
                 }
             }
             index >= list.size -> {
-                val pctVal = if (list.isEmpty()) 0 else (correctCount * 100 / list.size)
-                CompletionState(
-                    headline = "$correctCount / ${list.size}",
-                    headlineColor = c.performance,
-                    title = "Practice complete ($pctVal%)",
-                    message = "These answers now feed your performance signal and calibration on the Progress tab.",
-                    primaryLabel = "Done",
-                    onPrimary = onFinish,
-                )
+                if (withhold) {
+                    // D7: defer the score to the delayed surface instead of
+                    // revealing it here.
+                    CompletionState(
+                        headline = "${list.size} banked",
+                        headlineColor = c.accent,
+                        title = "Answers banked",
+                        message = "Delayed feedback is on. Your results feed your performance signal — see how you did on the Progress tab.",
+                        primaryLabel = "Done",
+                        onPrimary = onFinish,
+                    )
+                } else {
+                    val pctVal = if (list.isEmpty()) 0 else (correctCount * 100 / list.size)
+                    CompletionState(
+                        headline = "$correctCount / ${list.size}",
+                        headlineColor = c.performance,
+                        title = "Practice complete ($pctVal%)",
+                        message = "These answers now feed your performance signal and calibration on the Progress tab.",
+                        primaryLabel = "Done",
+                        onPrimary = onFinish,
+                    )
+                }
             }
             else -> {
                 val q = list[index]
@@ -397,15 +420,22 @@ private fun PracticeRunner(
                             selected = selected == i,
                             answered = answered,
                             isCorrect = i == q.correctIndex,
+                            // D7: when withholding, don't reveal which option was
+                            // correct - just show the selection was recorded.
+                            reveal = !withhold,
                         ) { if (!answered) selected = i }
                         Spacer(Modifier.height(Space.s))
                     }
                     if (answered) {
                         Spacer(Modifier.height(Space.s))
-                        AnswerFeedback(q)
-                        diagnosis?.let {
-                            Spacer(Modifier.height(Space.s))
-                            DiagnosisView(it)
+                        if (withhold) {
+                            BankedFeedback()
+                        } else {
+                            AnswerFeedback(q)
+                            diagnosis?.let {
+                                Spacer(Modifier.height(Space.s))
+                                DiagnosisView(it)
+                            }
                         }
                     }
                     Spacer(Modifier.height(Space.l))
@@ -463,12 +493,16 @@ private fun OptionRow(
     selected: Boolean,
     answered: Boolean,
     isCorrect: Boolean,
+    // When false (D7 withhold), the answered state does not reveal correctness -
+    // it only shows which option the student picked.
+    reveal: Boolean = true,
     onClick: () -> Unit,
 ) {
     val c = Speedrun.colors
     val (bg, border) = when {
-        answered && isCorrect -> c.good.copy(alpha = 0.15f) to c.good
-        answered && selected && !isCorrect -> c.again.copy(alpha = 0.15f) to c.again
+        answered && reveal && isCorrect -> c.good.copy(alpha = 0.15f) to c.good
+        answered && reveal && selected && !isCorrect -> c.again.copy(alpha = 0.15f) to c.again
+        answered && !reveal && selected -> c.accent.copy(alpha = 0.12f) to c.accent
         !answered && selected -> c.accent.copy(alpha = 0.12f) to c.accent
         else -> c.surface to c.separator
     }
@@ -489,9 +523,28 @@ private fun OptionRow(
             modifier = Modifier.padding(end = Space.m),
         )
         Text(label, color = c.textPrimary, style = MaterialTheme.typography.bodyLg, modifier = Modifier.weight(1f))
-        if (answered && isCorrect) {
+        if (answered && reveal && isCorrect) {
             Icon(Icons.Filled.Check, contentDescription = "Correct", tint = c.good)
         }
+    }
+}
+
+@Composable
+private fun BankedFeedback() {
+    val c = Speedrun.colors
+    SpeedrunCard {
+        Text(
+            "Answer banked",
+            color = c.accent,
+            style = MaterialTheme.typography.body,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            "Delayed feedback is on. You'll find out whether you were right on the Progress tab, which nudges you to re-derive it.",
+            color = c.textSecondary,
+            style = MaterialTheme.typography.body,
+            modifier = Modifier.padding(top = Space.xs),
+        )
     }
 }
 

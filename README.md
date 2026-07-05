@@ -93,8 +93,11 @@ RELEASE=2 ./ninja installer        # or: ./tools/build-installer
 # output: out/installer/dist/anki-<version>-mac-<arch>.dmg
 ```
 
-The dev build is ad-hoc signed — on a clean machine, right-click → **Open** the
-first time.
+This bundles the Speedrun-built wheels (the modified `_rsbridge.so` engine and
+the `aqt/speedrun*` modules) into a drag-to-Applications `.dmg` (~216 MB). It has
+been verified to launch on a clean profile and provision the `sr_*` evidence
+tables (see `.ui-preview/sunday/desktop-clean-install.md`). The dev build is
+ad-hoc signed — on a clean machine, right-click → **Open** the first time.
 
 ---
 
@@ -134,14 +137,34 @@ On first launch the app opens-or-creates the collection. On an empty device it
 seeds the bundled **biology example deck**; otherwise import from the **Library**
 tab (popular decks, MMLU pack, biology e2e, or paste a link / pick a file).
 
-### Put an existing desktop deck on the phone
+### Sync desktop <-> phone (two-way)
+
+Two-way sync works over Anki's native sync protocol; the desktop hosts a bundled
+`anki-sync-server` and the phone pairs to it by scanning a QR code (server URL +
+user + token), with manual entry as a fallback.
+
+- Desktop: **Sync with phone** shows the pairing QR and hosts the local server.
+- Phone: **Sync** tab -> scan the QR once, then **Sync now**.
+- Offline review is local-first: reviews taken with no connection sync on
+  reconnect, with no lost or double-counted reviews.
+
+Verified live on a Galaxy S23 (phone review -> desktop `revlog` 3 -> 5; offline
+review -> reconnect -> `revlog` 5 -> 7). A reproducible headless harness covers
+the same path:
 
 ```bash
-tools/push_deck.sh --media [path/to/collection.anki2]   # one-way copy over USB
+./tools/speedrun_sync_check.sh    # two independent collections, two-way, no loss/dupe
 ```
 
-(Two-way sync is the next milestone; today the deck and engine are shared and
-reviews run natively on both.)
+For a one-way USB copy of an existing desktop deck (e.g. first-time seeding):
+
+```bash
+tools/push_deck.sh --media [path/to/collection.anki2]
+```
+
+Production note: the shipped sync path is proven device-to-device; a persistent,
+network-reachable `anki-sync-server` is what a real deployment adds on top (the
+fork's modified schema does not sync to AnkiWeb, so self-hosting is required).
 
 ---
 
@@ -207,6 +230,15 @@ PYTHONPATH=out/pylib:pylib out/pyenv/bin/pytest -q pylib/tests/test_speedrun.py
 ```
 
 ---
+
+## Submission docs
+
+- [docs/speedrun/architecture.md](docs/speedrun/architecture.md) — architecture overview (one engine, three signals, data flow, sync).
+- [docs/speedrun/rust-change.md](docs/speedrun/rust-change.md) — the graded Rust change: why it lives in Rust, tests, upstream files touched, merge cost.
+- [docs/speedrun/model-notes.md](docs/speedrun/model-notes.md) — the memory / performance / readiness models and their give-up rules.
+- [docs/speedrun/files-touched.md](docs/speedrun/files-touched.md) — annotated list of upstream files modified and Speedrun files added.
+- [docs/speedrun/ai-note.md](docs/speedrun/ai-note.md) — what AI was built, why, and what was deliberately skipped.
+- [project_brainlift.md](project_brainlift.md) — the research/thesis brainlift.
 
 ## Credits
 

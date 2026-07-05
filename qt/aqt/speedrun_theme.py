@@ -75,6 +75,10 @@ _LIGHT: dict[str, str] = {
     "danger": "#EF4444",
     "on_signal": "#141413",
     "field": "#FFFFFF",
+    # Precomputed clay tints for Qt QSS (Qt Style Sheets have no color-mix()):
+    # a soft selected/highlight peach and a fainter hover wash over white.
+    "sel_tint": "#F4E2DB",
+    "hover_tint": "#FBF4F1",
     "shadow_sm": "0 1px 2px rgba(60,50,30,.05)",
     "shadow": "0 1px 2px rgba(60,50,30,.04), 0 8px 24px rgba(60,50,30,.07)",
     "shadow_lg": "0 12px 32px rgba(60,50,30,.12)",
@@ -98,6 +102,9 @@ _DARK: dict[str, str] = {
     "danger": "#FF6B6B",
     "on_signal": "#141413",
     "field": "#232220",
+    # Precomputed clay tints for Qt QSS over the dark field (no color-mix()).
+    "sel_tint": "#47352D",
+    "hover_tint": "#2E2823",
     "shadow_sm": "0 1px 2px rgba(0,0,0,.3)",
     "shadow": "0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.45)",
     "shadow_lg": "0 14px 40px rgba(0,0,0,.5)",
@@ -360,13 +367,6 @@ def page_style() -> str:
     return f"<style>{_TOKENS}{_COMPONENTS}</style>"
 
 
-# Backwards-compatible alias. Builders no longer embed this (the page injects it
-# once); kept so any external caller still resolves.
-def component_style() -> str:
-    """Deprecated alias of :func:`page_style` (kept for compatibility)."""
-    return page_style()
-
-
 def screen_reskin() -> str:
     """Deck-browser / overview reskin body. Tokens are already on the page via
     :func:`page_style`, so this carries no token block (avoids duplication)."""
@@ -421,19 +421,6 @@ button[data-ease="4"] { border-color: color-mix(in srgb, var(--sr-accent) 55%, t
   border: none !important; background: var(--sr-accent) !important; color: #fff !important;
   padding: 8px 22px !important; cursor: pointer; }
 """
-
-
-def reskin_style(kind: str) -> str:
-    """Back-compat entry point: 'toolbar' -> toolbar reskin, else screen reskin
-    (with tokens, for callers that inject it standalone)."""
-    if kind == "toolbar":
-        return toolbar_reskin()
-    return f"<style>{_tokens_css()}{_RESKIN}</style>"
-
-
-def answer_buttons_css() -> str:
-    """Token-coloured answer buttons for the reviewer bottom bar (standalone)."""
-    return bottombar_reskin()
 
 
 # Per-failure-mode presentation for the in-reviewer diagnosis cue (spec:
@@ -602,6 +589,19 @@ def dialog_qss(night: bool = False) -> str:
     QComboBox:focus, QSpinBox:focus, QDateEdit:focus, QPlainTextEdit:focus {{
         border-color: {p["accent"]};
     }}
+    /* Date field: taller, comfortably padded, with a soft (not solid-clay)
+       section highlight so the focused segment reads as gentle, and a clean
+       borderless drop-down instead of a cramped default arrow well. */
+    QDateEdit {{
+        padding: 11px 14px; font-size: 14px; min-height: 22px;
+        selection-background-color: {p["sel_tint"]};
+        selection-color: {p["ink"]};
+    }}
+    QDateEdit:hover {{ border-color: {p["accent"]}; }}
+    QDateEdit::drop-down {{
+        subcontrol-origin: padding; subcontrol-position: center right;
+        width: 30px; border: none; margin-right: 2px;
+    }}
     QPushButton {{
         background: {p["surface"]}; border: 1px solid {p["hairline"]};
         border-radius: {_RADII["input"]}; padding: 8px 16px;
@@ -613,6 +613,21 @@ def dialog_qss(night: bool = False) -> str:
         border-radius: {_RADII["pill"]}; padding: 9px 20px;
     }}
     QPushButton[srPrimary="1"]:hover {{ background: color-mix(in srgb, #000 10%, {p["accent"]}); }}
+    /* Selectable option row (target-score tiers): consistent card radius, a real
+       hover, and a clear selected state (clay border + peach tint + bold) that is
+       distinct from the single solid-clay primary CTA, keeping the CTA dominant. */
+    QPushButton[srRole="option"] {{
+        text-align: center; padding: 13px 16px; font-size: 14px;
+        border-radius: {_RADII["input"]}; border: 1px solid {p["hairline"]};
+        background: {p["field"]}; color: {p["ink"]};
+    }}
+    QPushButton[srRole="option"]:hover {{
+        border-color: {p["accent"]}; background: {p["hover_tint"]};
+    }}
+    QPushButton[srRole="option"]:checked {{
+        border: 1px solid {p["accent"]}; font-weight: 600; color: {p["ink"]};
+        background: {p["sel_tint"]};
+    }}
     QProgressBar {{ border: none; background: {p["hairline"]}; border-radius: 3px;
         max-height: 4px; }}
     QProgressBar::chunk {{ background: {p["accent"]}; border-radius: 3px; }}
@@ -665,10 +680,6 @@ def global_qss(night: bool = False) -> str:
 
 def _pct(x: float) -> int:
     return int(round(max(0.0, min(1.0, x)) * 100))
-
-
-def _bar(frac: float, color: str) -> str:
-    return f'<div class="sr-bar"><i style="width:{_pct(frac)}%;background:{color}"></i></div>'
 
 
 def _bridge(data: dict) -> str:
@@ -742,24 +753,6 @@ def _bridge(data: dict) -> str:
 
 
 # --- banner (deck home) -----------------------------------------------------
-
-
-def banner_html(data: dict) -> str:
-    if data.get("sufficient"):
-        lead = f'<div class="sr-lead">{data["readiness"]}</div>'
-        meta = (
-            f'<div class="sr-meta"><b>Projected MCAT readiness</b>'
-            f"<div>Likely {data['low']}&ndash;{data['high']} &middot; "
-            f"memory {_pct(data['memory'])}% &middot; performance {_pct(data['performance'])}%</div></div>"
-        )
-    else:
-        lead = '<div class="sr-lead sr-muted">No score yet</div>'
-        meta = (
-            f'<div class="sr-meta"><b>Readiness withheld &mdash; not enough evidence</b>'
-            f"<div>{escape(data.get('reason', ''))}</div></div>"
-        )
-    cov = f'<span class="sr-chip">{_pct(data["coverage"])}% covered</span>'
-    return f'<div class="sr-banner">{lead}{meta}{cov}</div>'
 
 
 # --- signature readiness instrument (panel/dashboard/finished) --------------
@@ -950,9 +943,7 @@ def _exam_row(data: dict) -> str:
         )
         if exam.get("readiness_sufficient") and not exam.get("on_track"):
             detail += f" &middot; need ~{exam.get('per_week', 0):.1f} pts/week"
-        button = (
-            '<button class="sr-btn" onclick="pycmd(\'speedrun:exam\')">Edit target</button>'
-        )
+        button = '<button class="sr-btn" onclick="pycmd(\'speedrun:exam\')">Edit target</button>'
     else:
         status = "No exam date set"
         detail = "Set your test date and target score to anchor the study plan."
@@ -1065,7 +1056,7 @@ def _pct_or_dash(v: float | None) -> str:
 def _topic_row(t: dict) -> str:
     kind = _TOPIC_KIND_CLASS.get(t.get("kind", "muted"), "sr-k-muted")
     return (
-        f"<button class=\"sr-trow\" onclick=\"pycmd('speedrun:topic:{escape(str(t['id']))}')\">"
+        f'<button class="sr-trow" onclick="pycmd(\'speedrun:topic:{escape(str(t["id"]))}\')">'
         '<span class="sr-trow-main">'
         f'<span class="sr-trow-name">{escape(str(t.get("name", "")))}</span>'
         f'<span class="sr-trow-status {kind}">{escape(str(t.get("status", "")))}</span>'
@@ -1111,11 +1102,11 @@ def _section_card(sec: dict) -> str:
     n = len(sec.get("topics", []))
     foot = (
         '<div class="sr-tsec-foot">'
-        f'<span>{n} topic{"s" if n != 1 else ""}</span>'
+        f"<span>{n} topic{'s' if n != 1 else ''}</span>"
         '<span class="sr-trow-chev">›</span></div>'
     )
     return (
-        f"<button class=\"sr-tsec sr-tsec-btn\" onclick=\"pycmd('speedrun:section:{escape(str(sec.get('key', '')))}')\">"
+        f'<button class="sr-tsec sr-tsec-btn" onclick="pycmd(\'speedrun:section:{escape(str(sec.get("key", "")))}\')">'
         f"{head}{foot}</button>"
     )
 
@@ -1160,7 +1151,7 @@ def section_detail_body(sec: dict) -> str:
         )
     return (
         '<div class="sr-topics">'
-        "<button class=\"sr-pr-back\" onclick=\"pycmd('speedrun:decks')\">‹ All sections</button>"
+        '<button class="sr-pr-back" onclick="pycmd(\'speedrun:decks\')">‹ All sections</button>'
         f'<div><h2 class="sr-topics-title">{escape(str(sec.get("short", "")))}</h2>'
         f'<div class="sr-topics-sub">{escape(str(sec.get("full", "")))}</div></div>'
         f'<div class="sr-tsec">{_section_metrics(sec)}{rows}</div>'
@@ -1195,7 +1186,7 @@ def decks_topic_body(dash: dict, ungrouped: int = 0) -> str:
         '<div class="sr-topics-sub">Your cards, organized by AAMC content area — '
         "tap a topic to study or check its recall.</div></div>"
         f"{banner}{sections}"
-        "<button class=\"sr-btn\" style=\"margin-top:4px\" onclick=\"pycmd('speedrun:decks:all')\">"
+        '<button class="sr-btn" style="margin-top:4px" onclick="pycmd(\'speedrun:decks:all\')">'
         "All decks (New / Learn / Due)</button></div>"
     )
 
@@ -1209,9 +1200,9 @@ def _deck_row(d: dict) -> str:
         return f'<span class="sr-deck-c sr-{kind}{nz}">{n}</span>'
 
     return (
-        f"<button class=\"sr-deck-row\" onclick=\"pycmd('speedrun:deck:{int(d['id'])}')\">"
+        f'<button class="sr-deck-row" onclick="pycmd(\'speedrun:deck:{int(d["id"])}\')">'
         f'<span class="sr-deck-name" style="padding-left:{indent}px">{escape(str(d.get("name", "")))}</span>'
-        f'{cell("new", new)}{cell("learn", learn)}{cell("due", due)}'
+        f"{cell('new', new)}{cell('learn', learn)}{cell('due', due)}"
         "</button>"
     )
 
@@ -1224,7 +1215,7 @@ def deck_list_body(data: dict) -> str:
     if rows:
         body = (
             '<div class="sr-deck-head"><span>Deck</span><span>New</span>'
-            '<span>Learn</span><span>Due</span></div>'
+            "<span>Learn</span><span>Due</span></div>"
             + "".join(_deck_row(d) for d in rows)
         )
     else:
@@ -1234,10 +1225,10 @@ def deck_list_body(data: dict) -> str:
         )
     actions = (
         '<div class="sr-deck-actions">'
-        "<button class=\"sr-btn sr-primary\" onclick=\"pycmd('speedrun:deck:create')\">Create deck</button>"
-        "<button class=\"sr-btn\" onclick=\"pycmd('speedrun:deck:import')\">Import file</button>"
-        "<button class=\"sr-btn\" onclick=\"pycmd('speedrun:lib:content')\">Import MCAT decks</button>"
-        "<button class=\"sr-btn\" onclick=\"pycmd('speedrun:deck:shared')\">Get shared</button>"
+        '<button class="sr-btn sr-primary" onclick="pycmd(\'speedrun:deck:create\')">Create deck</button>'
+        '<button class="sr-btn" onclick="pycmd(\'speedrun:deck:import\')">Import file</button>'
+        '<button class="sr-btn" onclick="pycmd(\'speedrun:lib:content\')">Import MCAT decks</button>'
+        '<button class="sr-btn" onclick="pycmd(\'speedrun:deck:shared\')">Get shared</button>'
         "</div>"
     )
     return (
@@ -1264,9 +1255,7 @@ def topic_detail_body(t: dict) -> str:
     section = str(t.get("section") or "")
     weight = t.get("weight")
     eyebrow = " · ".join(
-        x
-        for x in [section.upper(), (f"WEIGHT {weight:g}" if weight else "")]
-        if x
+        x for x in [section.upper(), (f"WEIGHT {weight:g}" if weight else "")] if x
     )
 
     if t.get("review"):
@@ -1291,18 +1280,18 @@ def topic_detail_body(t: dict) -> str:
     # its exam-style questions (application). Review is the primary CTA when the
     # topic has cards; otherwise practice leads.
     review_btn = (
-        f"<button class=\"sr-btn sr-primary\" onclick=\"pycmd('speedrun:topic:review:{tid}')\">"
+        f'<button class="sr-btn sr-primary" onclick="pycmd(\'speedrun:topic:review:{tid}\')">'
         "Review memory cards</button>"
         if has_cards
         else ""
     )
     practice_cls = "sr-btn" if has_cards else "sr-btn sr-primary"
     practice_btn = (
-        f"<button class=\"{practice_cls}\" onclick=\"pycmd('speedrun:topic:practice:{tid}')\">"
+        f'<button class="{practice_cls}" onclick="pycmd(\'speedrun:topic:practice:{tid}\')">'
         "Practice questions</button>"
     )
     browse_btn = (
-        f"<button class=\"sr-btn\" onclick=\"pycmd('speedrun:topic:study:{tid}')\">Browse cards</button>"
+        f'<button class="sr-btn" onclick="pycmd(\'speedrun:topic:study:{tid}\')">Browse cards</button>'
         if has_cards
         else ""
     )
@@ -1311,7 +1300,7 @@ def topic_detail_body(t: dict) -> str:
     back_label = "‹ " + (section or "All topics")
     return (
         '<div class="sr-tdetail">'
-        f"<button class=\"sr-pr-back\" onclick=\"pycmd('{back_cmd}')\">{escape(back_label)}</button>"
+        f'<button class="sr-pr-back" onclick="pycmd(\'{back_cmd}\')">{escape(back_label)}</button>'
         f'<p class="sr-eyebrow">{escape(eyebrow)}</p>'
         f'<h1 class="sr-dash-title">{escape(str(t.get("name", "")))}</h1>'
         '<div class="sr-tstats">'
@@ -1779,7 +1768,7 @@ def sidebar_html(
             parts.append('<div class="sr-sb-div"></div>')
         parts.extend(
             f'<div class="sr-sb-item{" active" if key == active else ""}" role="button" '
-            f"tabindex=\"0\" onclick=\"pycmd('speedrun:nav:{key}')\">"
+            f'tabindex="0" onclick="pycmd(\'speedrun:nav:{key}\')">'
             f"{icon}<span>{item_label}</span></div>"
             for key, item_label, icon in group
         )
@@ -1884,12 +1873,12 @@ def sync_pair_body(data: dict) -> str:
         inner = (
             '<div class="sr-card" style="margin-bottom:14px;padding:16px 18px">'
             '<div class="sr-eyebrow">USB sync (recommended)</div>'
-            "<ol class=\"sr-steps\">"
+            '<ol class="sr-steps">'
             "<li>Plug the phone into this Mac with a USB cable.</li>"
             "<li>On the phone, enable <b>USB debugging</b> and tap Allow.</li>"
             "<li>In Speedrun on the phone, tap <b>Sync via USB</b> and scan "
             "the QR below (or enter the USB server URL).</li></ol>"
-            f"<p class=\"sr-sync-status\">{usb_badge}"
+            f'<p class="sr-sync-status">{usb_badge}'
             + (f" - {usb_status}" if usb_status else "")
             + "</p>"
             f'<div class="sr-creds">Phone server URL: <b>{usb_url}</b><br>'
@@ -2074,13 +2063,18 @@ def _sync_section(sync: dict) -> str:
         "no AnkiWeb account. Reviews then flow both ways.</p></div>"
     )
     status_html = f'<div class="sr-sync-status">{status}</div>' if status else ""
+    # The row must be a CHILD of the card, not share its element: .sr-lib-row's
+    # `padding:12px 0` would otherwise override .sr-card's `padding:18px 20px`
+    # and collapse the card's horizontal gutter (title flush to the edge, button
+    # overflowing the right border). The status reads as a full-width footer line
+    # below the row.
     body = (
-        '<div class="sr-card sr-lib-row"><div class="sr-lib-meta">'
+        '<div class="sr-card"><div class="sr-lib-row"><div class="sr-lib-meta">'
         '<div class="sr-set-title">Sync with phone</div>'
         '<div class="sr-set-desc">Open the pairing screen to show the QR and '
-        f"sync.</div>{status_html}</div>"
+        "sync.</div></div>"
         '<button class="sr-btn sr-primary" onclick="pycmd(\'speedrun:nav:sync\')">'
-        "Open sync</button></div>"
+        f"Open sync</button></div>{status_html}</div>"
     )
     return header + body
 
@@ -2349,9 +2343,9 @@ def diagnostic_intro_body(count: int) -> str:
         "Readiness stays provisional until it has enough evidence — this is a "
         "starting read, not a final score.</div></div></div>"
         '<div class="sr-pq-foot" style="gap:10px">'
-        "<button class=\"sr-btn sr-primary\" onclick=\"pycmd('speedrun:diag:start')\">"
+        '<button class="sr-btn sr-primary" onclick="pycmd(\'speedrun:diag:start\')">'
         "Start placement quiz</button>"
-        "<button class=\"sr-btn\" onclick=\"pycmd('speedrun:diag:skip')\">"
+        '<button class="sr-btn" onclick="pycmd(\'speedrun:diag:skip\')">'
         "Skip for now</button></div>"
     )
     return f'<div class="sr-panel sr-dash">{header}{body}</div>'
@@ -2371,8 +2365,8 @@ def diagnostic_report_body(data: dict) -> str:
     ov = (
         '<div class="sr-card"><p class="sr-eyebrow">Overall</p>'
         f'<div class="sr-t">{int(overall.get("correct", 0))} / '
-        f'{int(overall.get("total", 0))} correct '
-        f'({int(overall.get("pct", 0))}%)</div></div>'
+        f"{int(overall.get('total', 0))} correct "
+        f"({int(overall.get('pct', 0))}%)</div></div>"
     )
     rows = ""
     for sec in data.get("sections", []):
@@ -2380,8 +2374,8 @@ def diagnostic_report_body(data: dict) -> str:
         rows += (
             '<div style="margin:14px 0">'
             '<div style="display:flex;justify-content:space-between;font-weight:600">'
-            f'<span>{escape(str(sec.get("short", "")))}</span>'
-            f'<span>{int(sec.get("correct", 0))}/{int(sec.get("total", 0))} '
+            f"<span>{escape(str(sec.get('short', '')))}</span>"
+            f"<span>{int(sec.get('correct', 0))}/{int(sec.get('total', 0))} "
             f"· {pct}%</span></div>"
             '<div style="height:8px;border-radius:6px;background:var(--sr-elevated);'
             'margin-top:6px;overflow:hidden">'
@@ -2394,7 +2388,7 @@ def diagnostic_report_body(data: dict) -> str:
         read = (
             f'<div class="sr-t">Initial readiness: {int(r.get("scaled", 0))}</div>'
             f'<div class="sr-d">Likely range {int(r.get("low", 0))}–'
-            f'{int(r.get("high", 0))} on the MCAT scale.</div>'
+            f"{int(r.get('high', 0))} on the MCAT scale.</div>"
         )
     else:
         read = (
@@ -2405,12 +2399,14 @@ def diagnostic_report_body(data: dict) -> str:
     readiness = f'<div class="sr-card"><p class="sr-eyebrow">Readiness</p>{read}</div>'
     foot = (
         '<div class="sr-pq-foot" style="gap:10px">'
-        "<button class=\"sr-btn sr-primary\" onclick=\"pycmd('speedrun:dashboard')\">"
+        '<button class="sr-btn sr-primary" onclick="pycmd(\'speedrun:dashboard\')">'
         "Go to dashboard</button>"
-        "<button class=\"sr-btn\" onclick=\"pycmd('speedrun:diag:start')\">"
+        '<button class="sr-btn" onclick="pycmd(\'speedrun:diag:start\')">'
         "Retake</button></div>"
     )
-    return f'<div class="sr-panel sr-dash">{header}{ov}{sections}{readiness}{foot}</div>'
+    return (
+        f'<div class="sr-panel sr-dash">{header}{ov}{sections}{readiness}{foot}</div>'
+    )
 
 
 # --- Progress screen (charts) -----------------------------------------------
@@ -2449,7 +2445,7 @@ def _reliability_svg(bins: list[dict]) -> str:
         dots += (
             f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r:.1f}" fill="var(--sr-accent)" '
             f'fill-opacity="0.85"><title>predicted {px:.0%}, actual {py:.0%}, '
-            f'n={int(b.get("count", 0))}</title></circle>'
+            f"n={int(b.get('count', 0))}</title></circle>"
         )
     diag = (
         f'<line x1="{pad}" y1="{h - pad}" x2="{w - pad}" y2="{pad}" '
@@ -2507,7 +2503,7 @@ def _progress_calibration(cal: dict | None) -> str:
     return (
         f'<div class="sr-card">{head}'
         '<div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;margin-top:10px">'
-        f'<div>{_reliability_svg(cal["bins"])}</div>'
+        f"<div>{_reliability_svg(cal['bins'])}</div>"
         f'<div style="flex:1;min-width:170px">{stats}{caption}</div></div></div>'
     )
 
@@ -2565,11 +2561,13 @@ def _progress_coverage(d: dict) -> str:
     weighted = _pct(d.get("weighted", 0.0))
     cells = "".join(
         f'<span title="{escape(str(t.get("label", "")))}" style="width:15px;height:15px;'
-        f'border-radius:3px;background:'
+        f"border-radius:3px;background:"
         f'{"var(--sr-perf)" if t.get("covered") else "var(--sr-hairline)"}"></span>'
         for t in topics
     )
-    grid = f'<div style="display:flex;flex-wrap:wrap;gap:5px;margin:12px 0">{cells}</div>'
+    grid = (
+        f'<div style="display:flex;flex-wrap:wrap;gap:5px;margin:12px 0">{cells}</div>'
+    )
     legend = (
         '<div style="display:flex;gap:18px;font-size:12px;color:var(--sr-secondary)">'
         '<span><span style="display:inline-block;width:11px;height:11px;border-radius:3px;'
@@ -2583,7 +2581,9 @@ def _progress_coverage(d: dict) -> str:
         f'<span class="sr-readout" style="font-size:24px">{covered}/{total}</span> '
         f'<span style="color:var(--sr-secondary)">topics · {weighted}% weighted</span></div>'
     )
-    weak = [escape(str(t)) for t in ((d.get("feedback") or {}).get("weak_topics") or [])[:8]]
+    weak = [
+        escape(str(t)) for t in ((d.get("feedback") or {}).get("weak_topics") or [])[:8]
+    ]
     weak_html = ""
     if weak:
         chips = "".join(
@@ -2611,9 +2611,18 @@ def progress_body(d: dict) -> str:
     )
     signals = (
         '<div style="display:flex;gap:14px;margin-bottom:14px">'
-        + _progress_signal_tile("Memory", d.get("memory", 0.0), d.get("memory_ok", True), "var(--sr-memory)")
-        + _progress_signal_tile("Performance", d.get("performance", 0.0), d.get("perf_ok", True), "var(--sr-perf)")
-        + _progress_signal_tile("Coverage", d.get("coverage", 0.0), True, "var(--sr-coverage)")
+        + _progress_signal_tile(
+            "Memory", d.get("memory", 0.0), d.get("memory_ok", True), "var(--sr-memory)"
+        )
+        + _progress_signal_tile(
+            "Performance",
+            d.get("performance", 0.0),
+            d.get("perf_ok", True),
+            "var(--sr-perf)",
+        )
+        + _progress_signal_tile(
+            "Coverage", d.get("coverage", 0.0), True, "var(--sr-coverage)"
+        )
         + "</div>"
     )
     calib = _progress_calibration(d.get("calibration"))

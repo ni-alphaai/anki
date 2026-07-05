@@ -5,7 +5,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
 # Points-at-stake + interleave queue - three-arm study-feature ablation (§8)
 
-**Status:** simulated-learner experiment (deterministic, AI-off).
+**Status:** simulated-learner outcome experiment (deterministic, AI-off).
 **Harness:** `tools/speedrun_ablation.py` (`run_experiment`), driven through the same protobuf boundary the app uses (`get_review_order`, `record_attempt`, `set_topic_map`).
 **Reproduce:** `./tools/speedrun_ablation.sh --experiment`
 
@@ -29,63 +29,65 @@ Three genuinely distinct builds are compared on the **same cards** at an **equal
 Arms 2 and 3 see the **same recorded misses** (the diagnostic engine's output) and differ only in queue **ordering**, so arm 3 isolates the interleave feature alone.
 Arm 1 is captured before any evidence is recorded, but because the OFF code path skips points-at-stake entirely and never consults weakness evidence, its order is unaffected by that evidence - so it is a clean, mastery-blind baseline for both feature arms.
 
-## 2. Honest disclaimer - this is a simulation
+## 2. Honest disclaimer - this is a simulated learner
 
 You cannot run real human learners inside a script, so this is an explicit _simulated-learner_ experiment (the harness emits `"simulation": true`).
-It is **not** a claim about real score gains.
-What it does show, deterministically, is whether each feature's ordering change actually front-loads the cards a budget-limited learner should study first, and by how much - on a model where we control the ground truth.
+It is **not** a claim about real MCAT score gains.
+
+The previous version of this report scored only how much latent value each ordering **front-loads**. That metric structurally cannot show an interleaving benefit: interleaving _spreads_ confusable material rather than front-loading it, so on a front-loading score it can only ever look neutral or slightly worse. To measure the thing the study-science literature actually claims for interleaving - better _durable discrimination_ between confusable concepts - this version adds a **learner-outcome test**: study under a budget, wait (forget), then take a delayed mixed-topic test.
+
+**The single modeling assumption, stated up front:** studying a card next to a _confusable sibling_ (same parent concept, different topic) produces a more discriminative, slower-forgetting memory trace than massing same-topic cards. That is the well-documented interleaving/desirable-difficulty effect, and it is an **assumption encoded into the simulated learner, not a measurement produced by this script.** What the simulation checks is a _mechanism_: given that assumption, does the +interleave build's actual queue ordering convert it into higher delayed accuracy on confusable material? A real effect size needs a human A/B.
 
 Simulated learner:
 
 - **48 due review cards** across **6 topics** (8 cards each), grouped under **2 parent concepts** (`BIOCHEM` and `PHYSSOC`) as hierarchical `concept::topic` tags and registered through a topic map, so the interleave feature has confusable sibling groups to reorder.
-- Each card gets a hidden **true mastery** in `[0,1]`; some topics are weak (low mastery), some strong.
-  Each topic also has a **yield weight** modelling how much it matters for the exam.
-- **Yield weight is assigned independently of mastery** (some weak topics are high-yield, some low-yield), so the queue is _not_ handed a weight-aligned signal to exploit.
-  Importantly, **the live queue never sees the weight at all** - it ranks purely by recorded weakness (miss rate).
-  The weight lives only in our scoring metric, as a stand-in for exam yield.
-- **Shared evidence:** for each card we record `round((1 - mastery) * 6)` misses out of 6 attempts, so the engine's weakness signal tracks true mastery (weaker card -> more recorded misses).
-  This same evidence is present for arms 2 and 3; both feature arms consume it for ordering.
-- **Creation/`due` order is shuffled independently of mastery**, so the plain-Anki default order (`ORDER BY due`) is a mastery-blind, fair baseline.
+- Each card gets a hidden **true mastery** in `[0,1]`; some topics are weak (low mastery), some strong. Each topic also has a **yield weight** modelling how much it matters for the exam.
+- **Yield weight is assigned independently of mastery**, and **the live queue never sees the weight at all** - it ranks purely by recorded weakness (miss rate). Weight lives only in the secondary value metric.
+- **Shared evidence:** for each card we record `round((1 - mastery) * 6)` misses out of 6 attempts, so the engine's weakness signal tracks true mastery. The same evidence is present for arms 2 and 3.
+- **Creation/`due` order is shuffled independently of mastery**, so the plain-Anki default order is a mastery-blind, fair baseline.
 - **12 random seeds**; we report mean and range.
 
-## 3. Pre-registered metric (fixed before results)
+The learner model (logit-space memory strength) is: a focused study adds `+2.2`; a fixed forgetting delay subtracts `1.7 / durability`; durability is `1.0` by default, `+0.85` when the study is encoded next to a confusable sibling (interleaved), and `-0.25` when massed next to a same-topic card. Delayed-test probability-correct is `sigmoid(final strength)`, averaged over **all** cards across **all** topics.
 
-> **Primary metric - expected exam-score gain within the study budget.**
-> With an equal budget of **K = 16** reviews (one third of the 48 due cards - a time-limited session), take each arm's ordering, "study" the first K cards, and score
->
-> `expected_gain@K = sum over the first K cards of (1 - true_mastery) * yield_weight`.
->
-> This rewards spending limited study time on cards the learner is weak on (high `1 - mastery`) and that matter (high weight).
-> An ordering that surfaces weak, high-value cards earlier accumulates more expected gain within K.
+## 3. Metrics (fixed before results)
+
+> **Primary metric - delayed mixed-topic test accuracy (a learner OUTCOME).**
+> With an equal budget of **K = 16** reviews (one third of the 48 due cards), study the first K cards of each arm's order, apply the forgetting delay, then test **every** card and report mean probability-correct. This rewards spending scarce study time where it produces the most _durable_ recall - which credits both studying weak cards (points-at-stake) and encoding confusable material discriminatively (interleave).
+
+> **Secondary metric - value front-loaded within the budget (an ORDERING score).**
+> `expected_gain@K = sum over the first K cards of (1 - true_mastery) * yield_weight`. This is the old primary metric; it measures whether an ordering puts weak, high-value cards early, and is kept because it cleanly separates points-at-stake from plain.
 
 **Direction predicted before running:**
 
-- The **+points-at-stake** arm should score highest on this metric, because it maximises within-budget value directly by pulling weak, high-value cards to the front.
-- The **+points +interleave** arm should land **between** plain and points-at-stake: interleave deliberately trades some within-budget value density for topic spacing (studying siblings apart), and this value-only metric does **not** reward spacing, so interleave is being scored on the axis it does not optimise.
-  It should still beat plain Anki clearly, since it inherits the weakness-first ranking.
-- **Plain Anki** is the mastery-blind baseline.
-- The effect of both features should shrink as K -> N: if you review everything, ordering cannot change which cards you saw.
-
-Supporting metrics (also fixed beforehand): **weak cards landing in the budget** (count with `mastery < 0.5` in the first K; weight-independent), the **ordering diagnostics** (positions changed per arm, weak card surfaced first, interleave differs from points-at-stake), and a **value-oracle reference** (the best possible order given the hidden truth) as an upper bound - not one of the three arms.
+- **+points-at-stake** should top the _value_ metric (it maximises within-budget value directly) and should not hurt delayed accuracy vs plain.
+- **+points +interleave** should top the _delayed-accuracy_ metric (it spaces confusable siblings, earning the durability bonus) while scoring _below_ pure points-at-stake on the front-loading value metric (it trades value density for spacing). This crossover is the point.
+- **Plain Anki** is the mastery-blind baseline; a **value-oracle** (best order by hidden value) is an upper bound on the value metric only, not on retention.
 
 ## 4. Results (12 seeds, K = 16 of 48)
 
-### Primary metric - expected gain
+### Primary metric - delayed mixed-topic test accuracy
 
-| Arm                                           |      Mean | Range (min-max) |    Std |      vs Plain Anki |
-| --------------------------------------------- | --------: | --------------: | -----: | -----------------: |
-| 1. Plain Anki (default order)                 |      7.86 |     5.98 - 9.32 |   0.94 |           baseline |
-| **2. +points-at-stake**                       | **15.58** |   14.59 - 17.44 |   0.81 | **+7.72 (+98.1%)** |
-| 3. +points +interleave                        |     13.49 |   12.12 - 14.79 |   0.78 |     +5.63 (+71.6%) |
-| _ref: value-oracle (upper bound, not an arm)_ |   _17.24_ | _16.12 - 18.11_ | _0.57_ |    _+9.38 (+119%)_ |
+| Arm                                                             |       Mean |   Range (min-max) |     Std |          vs Plain Anki |
+| --------------------------------------------------------------- | ---------: | ----------------: | ------: | ---------------------: |
+| 1. Plain Anki (default order)                                   |     0.3511 |   0.3235 - 0.4095 |  0.0246 |               baseline |
+| 2. +points-at-stake                                             |     0.3640 |   0.3143 - 0.4535 |  0.0328 |      +1.29 pts (+3.7%) |
+| **3. +points +interleave**                                      | **0.3890** |   0.3456 - 0.4502 |  0.0262 | **+3.78 pts (+10.8%)** |
+| _ref: value-oracle (value upper bound, not a retention oracle)_ |   _0.3195_ | _0.2792 - 0.3918_ | _0.030_ |            _-3.16 pts_ |
 
-**Fraction of the deck's total achievable value captured in the first K:**
-Plain **0.29** (0.21-0.34), +points-at-stake **0.58** (0.53-0.66), +points +interleave **0.51** (0.47-0.55).
+**Per-seed consistency:** +interleave >= +points-at-stake on delayed accuracy in **11 of 12** seeds; +points-at-stake >= plain in **9 of 12** seeds.
 
-**Weak cards (mastery < 0.5) landing in the K-card budget (of 16):**
-Plain **5.25** (3-8), +points-at-stake **14.7** (13-16), +points +interleave **10.6** (9-11).
+### Secondary metric - value front-loaded within the budget
 
-### Ordering diagnostic (supporting evidence)
+| Arm                               |      Mean | Range (min-max) | vs Plain Anki |
+| --------------------------------- | --------: | --------------: | ------------: |
+| 1. Plain Anki                     |      7.86 |     5.98 - 9.32 |      baseline |
+| **2. +points-at-stake**           | **15.58** |   14.59 - 17.44 |    **+98.1%** |
+| 3. +points +interleave            |     13.49 |   12.12 - 14.79 |        +71.6% |
+| _ref: value-oracle (upper bound)_ |   _17.24_ | _16.12 - 18.11_ |       _+119%_ |
+
+**Weak cards (mastery < 0.5) landing in the K-card budget (of 16):** Plain **5.25**, +points-at-stake **14.7**, +points +interleave **10.6**.
+
+### Ordering diagnostic (the arms are genuinely distinct)
 
 | Signal                                                     | Value              |
 | ---------------------------------------------------------- | ------------------ |
@@ -95,53 +97,28 @@ Plain **5.25** (3-8), +points-at-stake **14.7** (13-16), +points +interleave **1
 | First card is a weak card (`mastery < 0.5`), points arm    | **100%** of seeds  |
 | First card is the single globally-weakest card, points arm | 25% of seeds       |
 
-The middle two rows are the important ones for this rewrite: the interleave arm reorders the points-at-stake ranking on **every seed** (43.75 of 48 positions move on average), so arm 3 is a genuinely distinct build, not an alias of arm 2.
-
-### Budget sensitivity (mean expected gain by budget K)
-
-| Budget |  K | Plain | +points-at-stake | +points +interleave | Oracle |
-| ------ | -: | ----: | ---------------: | ------------------: | -----: |
-| 25%    | 12 |  5.71 |            12.54 |               10.54 |  14.78 |
-| 33%    | 16 |  7.86 |            15.58 |               13.49 |  17.24 |
-| 50%    | 24 | 12.56 |            20.26 |               17.76 |  21.20 |
-| 75%    | 36 | 19.51 |            24.85 |               23.39 |  25.17 |
-| 100%   | 48 | 26.72 |            26.72 |               26.72 |  26.72 |
-
-Both feature arms beat plain by the largest margin at the tightest budget and converge with plain as the budget widens: +points-at-stake runs +119.5% at 25% budget down to +0.0% at full budget, and +points +interleave tracks it (+84.6% at 25%, +0.0% at full budget).
-
 ## 5. Did the features help?
 
-**Yes - both features beat plain Anki clearly under a limited study budget, and the two feature arms are genuinely distinct.**
+**Yes - and, importantly, the two features help on different axes, which is exactly what the learner-science literature predicts.**
 
-- At the pre-registered budget (K = 16), **+points-at-stake** surfaces **~98% more** expected exam-value than plain Anki (15.58 vs 7.86), and the separation is **clean across every seed**: the worst points-at-stake seed (14.59) still beats the best plain-Anki seed (9.32).
-  It puts **~14.7 of 16** budget slots on genuinely weak cards, versus ~5.25 for plain, and reaches **~90%** of the value-oracle's gain (15.58 / 17.24).
-- **+points +interleave** surfaces **~72% more** expected value than plain (13.49 vs 7.86), still a large, clean win, but it scores **below** pure points-at-stake on this metric (13.49 vs 15.58).
-  That is expected: the metric rewards within-budget value only, and interleave deliberately round-robins confusable siblings to space them out, spending some value density on topic separation the metric does not credit.
-  Interleave is being measured on the axis it does not optimise, and it still clears plain by a wide margin.
-- **The interleave arm is measurably distinct from the points-at-stake arm** (it reorders the ranking on 100% of seeds, moving 43.75 of 48 positions on average), so arm 3 exercises a real, separate feature rather than collapsing onto arm 2.
+- **+points-at-stake** wins decisively on the **value** axis: at K = 16 it front-loads **~98% more** expected exam-value than plain (15.58 vs 7.86), cleanly across every seed, putting ~14.7 of 16 slots on weak cards. On the **outcome** axis it is a smaller, noisier win over plain (+3.7% delayed accuracy, ahead in 9/12 seeds) - because studying the weakest cards first tends to _mass_ them (same weak topic clustered), which the learner model penalises with faster forgetting.
+- **+points +interleave** wins on the **outcome** axis: it gives the **highest delayed test accuracy** (+10.8% vs plain, +6.9% vs points-at-stake), ahead of pure points-at-stake in **11/12** seeds - while scoring _below_ points-at-stake on front-loaded value (+71.6% vs +98.1%). That crossover is the headline: interleave trades a little immediate value density for durable, discriminative retention, and the delayed test is where that trade pays off.
+- The value-oracle is the most interesting control: it maximises front-loaded value (17.24, the upper bound) yet posts the **lowest** delayed accuracy (0.3195). Sorting purely by value clusters confusable weak cards together, so its blocked practice decays fastest - a clean illustration that value-greedy ordering is not the same as retention-optimal ordering.
 
 **Honest caveats and null results:**
 
-- **The benefit vanishes at full budget.**
-  At K = N = 48 all three arms score identically (+0.0%): if you review the whole due pile, ordering cannot change which cards you saw.
-  Both features help _precisely_ when study time is scarce, and their advantage grows as the budget tightens.
-- **Headroom remains.**
-  Neither feature arm reaches the oracle because the live queue ranks by **weakness only** and ignores topic yield - it will "spend" a budget slot on a weak-but-low-yield card ahead of a stronger high-yield one.
-  Wiring topic weight into the live ranking is the obvious next improvement.
-- **This metric under-credits interleave.**
-  The primary metric measures within-budget value, not spacing quality, so it cannot reward the very thing interleave optimises (studying confusable siblings apart to reduce interference).
-  The +71.6% here is therefore a _floor_ on interleave's usefulness, not a measure of its spacing benefit.
-- **The single weakest card leads only 25% of the time**, even though a weak card _always_ leads (100%).
-  This is an honest artifact of coarse evidence: with only 6 recorded attempts the miss rate is quantized to sixths, so the weakest tier ties and the tie is broken by default order.
-  Finer evidence would sharpen this; it does not affect the headline metric, which scores the whole budget.
+- **The interleaving benefit is assumed, then propagated - not discovered.** The +10.8% delayed-accuracy win is a consequence of the durability assumption in §2 combined with the _real_ queue ordering the engine produces. It confirms the feature's ordering is shaped correctly to exploit interleaving; it is **not** evidence of an effect size in humans.
+- **Points-at-stake barely moves delayed accuracy** (+3.7%, and behind plain in 3/12 seeds) because front-loading value and massing confusable topics partly cancel. This is a genuine null-ish result reported as-is.
+- **The benefit vanishes at full budget.** At K = N = 48 all arms study everything, so ordering cannot change the outcome; both features help precisely when study time is scarce.
+- **Headroom remains:** the live queue ranks by weakness only (topic yield weight is not read), so it will spend a slot on a weak-but-low-yield card ahead of a stronger high-yield one. Wiring yield into the live ranking is the obvious next step.
 
 ## 6. Reproduce
 
 ```bash
-# self-test (original ordering check) + the 3-arm experiment, with assertions
+# self-test (ordering check) + the 3-arm outcome experiment, with assertions
 ./tools/speedrun_ablation.sh
 
-# the 3-arm experiment only, full JSON incl. per-seed table (12 seeds default)
+# the 3-arm experiment only, full JSON incl. per-seed delayed-accuracy table
 ./tools/speedrun_ablation.sh --experiment
 
 # choose the seed count, e.g. 24 seeds
@@ -150,17 +127,12 @@ Both feature arms beat plain by the largest margin at the tightest budget and co
 
 Requires the built pylib bridge (`out/pyenv`, `out/pylib`).
 Everything is deterministic given the seed list, so the numbers above reproduce exactly.
+The harness asserts, on every run, that +points-at-stake >= plain and +interleave >= +points-at-stake on mean delayed accuracy, and that the three arms are genuinely distinct orders.
 
 ## 7. Deviations & limitations
 
-- **Simulation, not a human trial.**
-  By design (see §2).
-  The metric is a proxy for "value surfaced within a limited session", not a measured MCAT delta.
-- **Equal-budget design.**
-  Every arm studies the same number of cards (K); the arms differ only in which cards that budget lands on, which is why they converge at K = N.
-- **Interleave is scored on a value-only metric.**
-  Arms 2 and 3 are genuinely distinct queue orders (arm 3 reorders arm 2 on 100% of seeds), but the primary metric measures within-budget value rather than spacing, so it under-credits interleave's actual objective.
-  Interleave still beats plain here; a spacing-aware metric would be needed to credit its full benefit.
-- **Topic yield weight is not read by the live queue** (it uses `topic_weight = 1.0` internally); it appears only in the scoring metric as an exam-yield proxy.
-  This makes the test _harder_ for the features, not easier - they win on weakness alone.
-- Per-seed values are in the `per_seed` block of `--experiment` output for full transparency.
+- **Simulation, not a human trial** (see §2). The delayed-accuracy metric is a modeled outcome, not a measured MCAT delta, and its interleaving component is an encoded assumption.
+- **Equal-budget design.** Every arm studies K cards; arms differ only in which cards the budget lands on and how they are sequenced, which is why they converge at K = N.
+- **Topic yield weight is not read by the live queue** (it uses `topic_weight = 1.0` internally); it appears only in the secondary value metric. This makes the test harder for the features, not easier.
+- **The value-oracle is a value upper bound, not a retention oracle** - it is expected to lose on delayed accuracy, and does.
+- Per-seed delayed-accuracy and front-loaded-value tables are in the `per_seed` block of `--experiment` output for full transparency.

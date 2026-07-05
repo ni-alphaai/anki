@@ -103,12 +103,14 @@ class TestNextActionRouting:
     """``speedrun._next_action`` maps a collected ``data`` dict to the single
     recommended step (title/detail/cmd/cta). Pure routing, no Qt/backend."""
 
-    def test_abstain_memory_has_no_command(self) -> None:
+    def test_abstain_memory_routes_to_decks(self) -> None:
+        # With nothing due, a memory-blocked abstain routes to a real next step
+        # (browse decks / add cards) rather than an inert note.
         na = speedrun._next_action(
             {"sufficient": False, "blocking": "memory", "cov_total": 10}
         )
-        assert na["title"] == "Study more cards"
-        assert na["cmd"] is None
+        assert na["title"] == "Add cards to review"
+        assert na["cmd"] == "speedrun:decks"
 
     def test_abstain_performance_routes_to_practice(self) -> None:
         na = speedrun._next_action(
@@ -166,39 +168,6 @@ class TestMergeQuestions:
     def test_empty_primary_uses_extra(self) -> None:
         merged = speedrun._merge_questions([], [{"card_id": 9, "stem": "z"}], 5)
         assert merged == [{"card_id": 9, "stem": "z"}]
-
-
-# --- D2: feedback-report formatting (pure) ----------------------------------
-
-
-class TestFeedbackLines:
-    """``speedrun._feedback_lines`` renders the D2 report dict for display."""
-
-    def test_empty_report(self) -> None:
-        assert speedrun._feedback_lines({"total": 0}) == [
-            "No exam-style attempts recorded yet."
-        ]
-
-    def test_counts_and_weak_topics(self) -> None:
-        lines = speedrun._feedback_lines(
-            {
-                "total": 4,
-                "correct": 2,
-                "memory": 1,
-                "reasoning": 1,
-                "passage": 0,
-                "test_taking": 0,
-                "weak_topics": ["biology", "physics"],
-            }
-        )
-        assert lines[0] == "Answered 4 exam-style question(s), 2 correct."
-        assert any("Memory: 1" in ln and "Reasoning: 1" in ln for ln in lines)
-        assert lines[-1] == "Weakest topics: biology, physics."
-
-    def test_omits_empty_sections(self) -> None:
-        lines = speedrun._feedback_lines({"total": 1, "correct": 1, "weak_topics": []})
-        # all-correct, no weak topics: only the summary line
-        assert lines == ["Answered 1 exam-style question(s), 1 correct."]
 
 
 # --- D7: withhold-by-proficiency decision (pure) ----------------------------

@@ -704,9 +704,10 @@ impl SqliteStorage {
 
     /// Per topic, the raw counts behind the three signals, attributed by the
     /// topic tag on a card's note: (topic, label, weight, notes tagged,
-    /// review cards, mature review cards, exam-style attempts, correct exam-style
-    /// attempts). Performance is attributed via the attempt's card (its note's
-    /// tags), since content-linked questions carry a card of their topic.
+    /// review cards, mature review cards, exam-style attempts, correct
+    /// exam-style attempts). Performance is attributed via the attempt's
+    /// card (its note's tags), since content-linked questions carry a card
+    /// of their topic.
     #[allow(clippy::type_complexity)]
     pub(crate) fn sr_topic_signals(
         &self,

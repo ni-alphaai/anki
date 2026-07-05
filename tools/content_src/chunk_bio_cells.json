@@ -1,82 +1,432 @@
 {
-  "2A": {
-    "cards": [
-      {"front": "What is the primary function of the rough endoplasmic reticulum?", "back": "It is studded with ribosomes and synthesizes and modifies proteins destined for secretion, the plasma membrane, or the endomembrane system.", "source": "OpenStax Biology 2e - Cell structure", "license": "CC BY 4.0"},
-      {"front": "Describe the fluid mosaic model of the plasma membrane.", "back": "A phospholipid bilayer with embedded and peripheral proteins, cholesterol, and carbohydrates whose components move laterally, giving the membrane fluidity and selective permeability.", "source": "OpenStax Biology 2e - Cell structure", "license": "CC BY 4.0"},
-      {"front": "Which organelle is the main site of aerobic ATP production?", "back": "The mitochondrion, which carries out the citric acid cycle and oxidative phosphorylation to generate most cellular ATP.", "source": "OpenStax Biology 2e - Cell structure", "license": "CC BY 4.0"},
-      {"front": "What structural features distinguish eukaryotic from prokaryotic cells?", "back": "Eukaryotic cells have a membrane-bound nucleus and membrane-bound organelles, while prokaryotic cells lack both and keep their DNA in a nucleoid region.", "source": "OpenStax Biology 2e - Cell structure", "license": "CC BY 4.0"},
-      {"front": "What is the role of the Golgi apparatus?", "back": "It modifies, sorts, and packages proteins and lipids received from the ER into vesicles for secretion or delivery to other organelles.", "source": "OpenStax Biology 2e - Cell structure", "license": "CC BY 4.0"},
-      {"front": "How do lysosomes contribute to cell function?", "back": "They contain hydrolytic enzymes active at acidic pH that digest macromolecules, worn-out organelles, and material taken in by the cell.", "source": "OpenStax Biology 2e - Cell structure", "license": "CC BY 4.0"}
-    ],
-    "questions": [
-      {"stem": "A eukaryotic cell that secretes large quantities of protein hormone would be expected to contain an especially abundant amount of which organelle?", "options": ["Smooth endoplasmic reticulum", "Rough endoplasmic reticulum", "Peroxisome", "Central vacuole"], "correct_index": 1, "explanation": "Ribosomes on the rough ER synthesize proteins that enter the endomembrane system for secretion, so secretory cells are rich in rough ER.", "source": "OpenStax Biology 2e - Cell structure", "license": "CC BY 4.0"},
-      {"stem": "What is the primary role of cholesterol within a mammalian plasma membrane?", "options": ["It forms hydrophilic channels for ions", "It supplies ATP for active transport", "It buffers membrane fluidity across a range of temperatures", "It anchors the cell to the extracellular matrix"], "correct_index": 2, "explanation": "Cholesterol inserts among phospholipids and stabilizes fluidity, keeping the membrane from becoming too rigid when cold or too fluid when warm.", "source": "OpenStax Biology 2e - Cell structure", "license": "CC BY 4.0"},
-      {"stem": "A toxin that blocks the electron transport chain would most directly impair the function of which organelle?", "options": ["Golgi apparatus", "Nucleus", "Ribosome", "Mitochondrion"], "correct_index": 3, "explanation": "The electron transport chain resides in the inner mitochondrial membrane, so blocking it halts oxidative phosphorylation and mitochondrial ATP production.", "source": "OpenStax Biology 2e - Cell structure", "license": "CC BY 4.0"},
-      {"stem": "Which feature is found in eukaryotic cells but absent in prokaryotic cells?", "options": ["A membrane-bound nucleus", "A plasma membrane", "Ribosomes", "Cytoplasm"], "correct_index": 0, "explanation": "Only eukaryotic cells enclose their DNA in a membrane-bound nucleus; the plasma membrane, ribosomes, and cytoplasm are common to both.", "source": "OpenStax Biology 2e - Cell structure", "license": "CC BY 4.0"}
-    ]
-  },
-  "2B": {
-    "cards": [
-      {"front": "What is a bacteriophage?", "back": "A virus that infects bacteria, typically attaching to the cell and injecting its nucleic acid while the protein capsid remains outside.", "source": "OpenStax Microbiology - Viruses", "license": "CC BY 4.0"},
-      {"front": "How do the lytic and lysogenic cycles of a phage differ?", "back": "In the lytic cycle the phage replicates and lyses the host quickly; in the lysogenic cycle the phage genome integrates as a prophage and replicates passively with the host.", "source": "OpenStax Microbiology - Viruses", "license": "CC BY 4.0"},
-      {"front": "What are the three mechanisms of horizontal gene transfer in bacteria?", "back": "Transformation (uptake of free DNA from the environment), transduction (transfer of DNA via a bacteriophage), and conjugation (transfer via a pilus or plasmid).", "source": "OpenStax Biology 2e - Prokaryotes", "license": "CC BY 4.0"},
-      {"front": "How does the Gram stain distinguish bacteria?", "back": "Gram-positive cells have a thick peptidoglycan wall that retains crystal violet and appear purple; Gram-negative cells have a thin wall plus an outer membrane and stain pink with safranin.", "source": "OpenStax Microbiology - Prokaryotes", "license": "CC BY 4.0"},
-      {"front": "What is a retrovirus?", "back": "An RNA virus that uses reverse transcriptase to make DNA from its RNA genome, which then integrates into the host chromosome; HIV is a well-known example.", "source": "OpenStax Microbiology - Viruses", "license": "CC BY 4.0"},
-      {"front": "How do bacteria typically reproduce?", "back": "By binary fission, an asexual process in which the cell replicates its DNA and divides into two genetically identical daughter cells without a mitotic spindle.", "source": "OpenStax Biology 2e - Prokaryotes", "license": "CC BY 4.0"}
-    ],
-    "questions": [
-      {"stem": "A bacterium gains an antibiotic-resistance gene after direct cell-to-cell contact through a pilus that transfers a plasmid. Which process is described?", "options": ["Transformation", "Transduction", "Conjugation", "Binary fission"], "correct_index": 2, "explanation": "Conjugation transfers genetic material, often a plasmid, from one bacterium to another through a pilus-mediated contact.", "source": "OpenStax Biology 2e - Prokaryotes", "license": "CC BY 4.0"},
-      {"stem": "During the lysogenic cycle of a bacteriophage, the viral genome most characteristically:", "options": ["Integrates into the host chromosome as a prophage", "Immediately lyses the host cell", "Is packaged into new virions and released", "Is degraded by host restriction enzymes"], "correct_index": 0, "explanation": "In lysogeny the phage DNA integrates into the host genome as a prophage and is replicated along with the host DNA rather than causing immediate lysis.", "source": "OpenStax Microbiology - Viruses", "license": "CC BY 4.0"},
-      {"stem": "Reverse transcriptase, the enzyme used by retroviruses, catalyzes the synthesis of:", "options": ["RNA from a DNA template", "Protein from an RNA template", "Protein from a DNA template", "DNA from an RNA template"], "correct_index": 3, "explanation": "Reverse transcriptase makes complementary DNA from the viral RNA genome, reversing the usual DNA-to-RNA flow of information.", "source": "OpenStax Microbiology - Viruses", "license": "CC BY 4.0"},
-      {"stem": "A Gram-negative bacterium differs from a Gram-positive bacterium primarily because it possesses:", "options": ["A much thicker peptidoglycan layer", "An outer membrane containing lipopolysaccharide", "No cell wall at all", "No plasma membrane"], "correct_index": 1, "explanation": "Gram-negative bacteria have a thin peptidoglycan layer surrounded by an outer membrane rich in lipopolysaccharide, which is why they do not retain crystal violet.", "source": "OpenStax Microbiology - Prokaryotes", "license": "CC BY 4.0"}
-    ]
-  },
-  "2C": {
-    "cards": [
-      {"front": "What are the three subphases of interphase?", "back": "G1 (cell growth and normal function), S (DNA replication), and G2 (further growth and preparation for mitosis).", "source": "OpenStax Biology 2e - Cell cycle", "license": "CC BY 4.0"},
-      {"front": "What occurs during metaphase of mitosis?", "back": "The duplicated chromosomes align single file along the metaphase plate at the cell equator, each attached to spindle fibers at its kinetochore.", "source": "OpenStax Biology 2e - Mitosis", "license": "CC BY 4.0"},
-      {"front": "What does the G1/S checkpoint monitor?", "back": "It checks cell size, nutrient and energy reserves, growth signals, and DNA integrity before the cell commits to DNA replication.", "source": "OpenStax Biology 2e - Cell cycle control", "license": "CC BY 4.0"},
-      {"front": "How do totipotent and pluripotent stem cells differ?", "back": "Totipotent cells can give rise to all cell types including extraembryonic (placental) tissue, whereas pluripotent cells can form all body cell types but not extraembryonic tissue.", "source": "OpenStax Biology 2e - Stem cells", "license": "CC BY 4.0"},
-      {"front": "What is cellular differentiation?", "back": "The process by which a less specialized cell becomes a specialized cell type through selective gene expression, without changing its DNA sequence.", "source": "OpenStax Biology 2e - Differentiation", "license": "CC BY 4.0"},
-      {"front": "How does mitosis differ from meiosis in outcome?", "back": "Mitosis produces two genetically identical diploid cells, while meiosis produces four genetically distinct haploid cells for sexual reproduction.", "source": "OpenStax Biology 2e - Cell division", "license": "CC BY 4.0"}
-    ],
-    "questions": [
-      {"stem": "DNA is replicated during which phase of the cell cycle?", "options": ["G1 phase", "Mitosis", "S phase", "G2 phase"], "correct_index": 2, "explanation": "DNA synthesis occurs during the S (synthesis) phase of interphase, producing identical sister chromatids for each chromosome.", "source": "OpenStax Biology 2e - Cell cycle", "license": "CC BY 4.0"},
-      {"stem": "Which event defines anaphase of mitosis?", "options": ["Chromosomes align at the metaphase plate", "Sister chromatids separate and move to opposite poles", "The nuclear envelope reassembles", "DNA is replicated"], "correct_index": 1, "explanation": "During anaphase the cohesion between sister chromatids breaks and the chromatids are pulled toward opposite spindle poles.", "source": "OpenStax Biology 2e - Mitosis", "license": "CC BY 4.0"},
-      {"stem": "A stem cell that can differentiate into any cell type of the body but cannot form extraembryonic tissue such as placenta is best described as:", "options": ["Pluripotent", "Totipotent", "Multipotent", "Unipotent"], "correct_index": 0, "explanation": "Pluripotent cells can generate all germ-layer cell types of the body but lack the ability to form extraembryonic tissues, unlike totipotent cells.", "source": "OpenStax Biology 2e - Stem cells", "license": "CC BY 4.0"},
-      {"stem": "What is the primary purpose of the cell cycle checkpoints?", "options": ["To speed up DNA replication", "To generate genetic variation among cells", "To trigger apoptosis in every dividing cell", "To ensure conditions and DNA integrity are correct before advancing"], "correct_index": 3, "explanation": "Checkpoints verify that requirements such as intact DNA and proper chromosome attachment are met before the cell proceeds, preventing propagation of errors.", "source": "OpenStax Biology 2e - Cell cycle control", "license": "CC BY 4.0"}
-    ]
-  },
-  "3A": {
-    "cards": [
-      {"front": "What maintains the resting membrane potential of a neuron?", "back": "The Na+/K+ ATPase pumps Na+ out and K+ in, and with the membrane most permeable to K+ the interior settles near -70 mV.", "source": "OpenStax Anatomy and Physiology 2e - Nervous tissue", "license": "CC BY 4.0"},
-      {"front": "What triggers neurotransmitter release at a chemical synapse?", "back": "Arrival of the action potential opens voltage-gated Ca2+ channels; Ca2+ influx causes synaptic vesicles to fuse with the membrane and release neurotransmitter.", "source": "OpenStax Anatomy and Physiology 2e - Synapse", "license": "CC BY 4.0"},
-      {"front": "Contrast the sympathetic and parasympathetic divisions of the autonomic nervous system.", "back": "The sympathetic division drives fight-or-flight responses such as increased heart rate, while the parasympathetic division promotes rest-and-digest activity.", "source": "OpenStax Anatomy and Physiology 2e - Autonomic nervous system", "license": "CC BY 4.0"},
-      {"front": "How do steroid hormones act on target cells?", "back": "Being lipid-soluble, they diffuse across the plasma membrane and bind intracellular receptors that act as transcription factors to alter gene expression.", "source": "OpenStax Anatomy and Physiology 2e - Endocrine system", "license": "CC BY 4.0"},
-      {"front": "What is the role of the hypothalamus in the endocrine system?", "back": "It links the nervous and endocrine systems, secreting releasing and inhibiting hormones that regulate the anterior pituitary and producing ADH and oxytocin.", "source": "OpenStax Anatomy and Physiology 2e - Endocrine system", "license": "CC BY 4.0"},
-      {"front": "What is saltatory conduction?", "back": "The rapid propagation of an action potential that appears to jump between the nodes of Ranvier along a myelinated axon, increasing conduction speed.", "source": "OpenStax Anatomy and Physiology 2e - Nervous tissue", "license": "CC BY 4.0"}
-    ],
-    "questions": [
-      {"stem": "The resting membrane potential of a typical neuron is closest to which value?", "options": ["+30 mV", "0 mV", "-30 mV", "-70 mV"], "correct_index": 3, "explanation": "A typical neuron rests near -70 mV because the membrane is most permeable to K+ and the Na+/K+ ATPase maintains the ion gradients.", "source": "OpenStax Anatomy and Physiology 2e - Nervous tissue", "license": "CC BY 4.0"},
-      {"stem": "The rapid depolarizing (rising) phase of a neuronal action potential is produced mainly by:", "options": ["K+ efflux out of the cell", "Cl- influx into the cell", "Na+ influx into the cell", "Ca2+ efflux out of the cell"], "correct_index": 2, "explanation": "Voltage-gated Na+ channels open at threshold, and the resulting Na+ influx drives the membrane toward positive potentials during depolarization.", "source": "OpenStax Anatomy and Physiology 2e - Nervous tissue", "license": "CC BY 4.0"},
-      {"stem": "Steroid hormones typically exert their effects by binding receptors located:", "options": ["Inside the cell, in the cytoplasm or nucleus", "Only on the extracellular membrane surface", "In the mitochondrial matrix exclusively", "On the outer face of the Golgi apparatus"], "correct_index": 0, "explanation": "Because steroid hormones are lipid-soluble, they cross the membrane and bind intracellular receptors that regulate transcription.", "source": "OpenStax Anatomy and Physiology 2e - Endocrine system", "license": "CC BY 4.0"},
-      {"stem": "Activation of the sympathetic nervous system would most likely produce which response?", "options": ["Increased salivation", "Increased heart rate", "Constriction of the pupils", "Stimulation of digestive motility"], "correct_index": 1, "explanation": "The sympathetic fight-or-flight response raises heart rate; increased salivation, pupil constriction, and digestive stimulation are parasympathetic effects.", "source": "OpenStax Anatomy and Physiology 2e - Autonomic nervous system", "license": "CC BY 4.0"}
-    ]
-  },
-  "3B": {
-    "cards": [
-      {"front": "Trace the path of blood through the heart beginning at the venae cavae.", "back": "Venae cavae to right atrium to right ventricle to pulmonary arteries to lungs to pulmonary veins to left atrium to left ventricle to aorta.", "source": "OpenStax Anatomy and Physiology 2e - Cardiovascular system", "license": "CC BY 4.0"},
-      {"front": "Where does most nutrient absorption occur in the digestive tract?", "back": "In the small intestine, whose villi and microvilli enormously increase surface area for absorbing digested nutrients.", "source": "OpenStax Anatomy and Physiology 2e - Digestive system", "license": "CC BY 4.0"},
-      {"front": "What is the functional unit of the kidney and what does it do?", "back": "The nephron, which forms urine through filtration of blood at the glomerulus followed by tubular reabsorption and secretion.", "source": "OpenStax Anatomy and Physiology 2e - Urinary system", "license": "CC BY 4.0"},
-      {"front": "How is oxygen transported in the blood?", "back": "Most oxygen binds reversibly to hemoglobin in red blood cells, with only a small fraction dissolved directly in the plasma.", "source": "OpenStax Anatomy and Physiology 2e - Respiratory system", "license": "CC BY 4.0"},
-      {"front": "What drives inhalation during quiet breathing?", "back": "Contraction of the diaphragm and external intercostals expands the thoracic cavity, lowering intrapulmonary pressure so air flows into the lungs.", "source": "OpenStax Anatomy and Physiology 2e - Respiratory system", "license": "CC BY 4.0"},
-      {"front": "How is most carbon dioxide carried in the blood?", "back": "Mainly as bicarbonate ions formed in red blood cells by carbonic anhydrase, with smaller amounts bound to hemoglobin and dissolved in plasma.", "source": "OpenStax Anatomy and Physiology 2e - Respiratory system", "license": "CC BY 4.0"}
-    ],
-    "questions": [
-      {"stem": "Oxygenated blood returns from the lungs to the heart through the:", "options": ["Pulmonary artery", "Superior vena cava", "Pulmonary veins", "Coronary sinus"], "correct_index": 2, "explanation": "The pulmonary veins carry freshly oxygenated blood from the lungs into the left atrium; the pulmonary artery instead carries deoxygenated blood to the lungs.", "source": "OpenStax Anatomy and Physiology 2e - Cardiovascular system", "license": "CC BY 4.0"},
-      {"stem": "In what form is the majority of carbon dioxide transported in the blood?", "options": ["As bicarbonate ions in plasma", "Bound to hemoglobin as carbaminohemoglobin", "Dissolved as CO2 gas in plasma", "Converted to carbon monoxide"], "correct_index": 0, "explanation": "About two-thirds of CO2 is carried as bicarbonate, generated when carbonic anhydrase in red blood cells converts CO2 and water to carbonic acid that dissociates.", "source": "OpenStax Anatomy and Physiology 2e - Respiratory system", "license": "CC BY 4.0"},
-      {"stem": "The functional filtering unit of the kidney is the:", "options": ["Alveolus", "Villus", "Sarcomere", "Nephron"], "correct_index": 3, "explanation": "The nephron filters blood and processes the filtrate into urine; alveoli, villi, and sarcomeres are units of the lung, intestine, and muscle respectively.", "source": "OpenStax Anatomy and Physiology 2e - Urinary system", "license": "CC BY 4.0"},
-      {"stem": "During inhalation at rest, the diaphragm:", "options": ["Relaxes and domes upward", "Contracts and moves downward", "Plays no role in ventilation", "Secretes pulmonary surfactant"], "correct_index": 1, "explanation": "Contraction flattens the diaphragm downward, increasing thoracic volume and lowering pressure so air enters the lungs.", "source": "OpenStax Anatomy and Physiology 2e - Respiratory system", "license": "CC BY 4.0"}
-    ]
-  }
+    "2A": {
+        "cards": [
+            {
+                "front": "What is the primary function of the rough endoplasmic reticulum?",
+                "back": "It is studded with ribosomes and synthesizes and modifies proteins destined for secretion, the plasma membrane, or the endomembrane system.",
+                "source": "OpenStax Biology 2e - Cell structure",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "Describe the fluid mosaic model of the plasma membrane.",
+                "back": "A phospholipid bilayer with embedded and peripheral proteins, cholesterol, and carbohydrates whose components move laterally, giving the membrane fluidity and selective permeability.",
+                "source": "OpenStax Biology 2e - Cell structure",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "Which organelle is the main site of aerobic ATP production?",
+                "back": "The mitochondrion, which carries out the citric acid cycle and oxidative phosphorylation to generate most cellular ATP.",
+                "source": "OpenStax Biology 2e - Cell structure",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What structural features distinguish eukaryotic from prokaryotic cells?",
+                "back": "Eukaryotic cells have a membrane-bound nucleus and membrane-bound organelles, while prokaryotic cells lack both and keep their DNA in a nucleoid region.",
+                "source": "OpenStax Biology 2e - Cell structure",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What is the role of the Golgi apparatus?",
+                "back": "It modifies, sorts, and packages proteins and lipids received from the ER into vesicles for secretion or delivery to other organelles.",
+                "source": "OpenStax Biology 2e - Cell structure",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "How do lysosomes contribute to cell function?",
+                "back": "They contain hydrolytic enzymes active at acidic pH that digest macromolecules, worn-out organelles, and material taken in by the cell.",
+                "source": "OpenStax Biology 2e - Cell structure",
+                "license": "CC BY 4.0"
+            }
+        ],
+        "questions": [
+            {
+                "stem": "A eukaryotic cell that secretes large quantities of protein hormone would be expected to contain an especially abundant amount of which organelle?",
+                "options": [
+                    "Smooth endoplasmic reticulum",
+                    "Rough endoplasmic reticulum",
+                    "Peroxisome",
+                    "Central vacuole"
+                ],
+                "correct_index": 1,
+                "explanation": "Ribosomes on the rough ER synthesize proteins that enter the endomembrane system for secretion, so secretory cells are rich in rough ER.",
+                "source": "OpenStax Biology 2e - Cell structure",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "What is the primary role of cholesterol within a mammalian plasma membrane?",
+                "options": [
+                    "It forms hydrophilic channels for ions",
+                    "It supplies ATP for active transport",
+                    "It buffers membrane fluidity across a range of temperatures",
+                    "It anchors the cell to the extracellular matrix"
+                ],
+                "correct_index": 2,
+                "explanation": "Cholesterol inserts among phospholipids and stabilizes fluidity, keeping the membrane from becoming too rigid when cold or too fluid when warm.",
+                "source": "OpenStax Biology 2e - Cell structure",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "A toxin that blocks the electron transport chain would most directly impair the function of which organelle?",
+                "options": ["Golgi apparatus", "Nucleus", "Ribosome", "Mitochondrion"],
+                "correct_index": 3,
+                "explanation": "The electron transport chain resides in the inner mitochondrial membrane, so blocking it halts oxidative phosphorylation and mitochondrial ATP production.",
+                "source": "OpenStax Biology 2e - Cell structure",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "Which feature is found in eukaryotic cells but absent in prokaryotic cells?",
+                "options": ["A membrane-bound nucleus", "A plasma membrane", "Ribosomes", "Cytoplasm"],
+                "correct_index": 0,
+                "explanation": "Only eukaryotic cells enclose their DNA in a membrane-bound nucleus; the plasma membrane, ribosomes, and cytoplasm are common to both.",
+                "source": "OpenStax Biology 2e - Cell structure",
+                "license": "CC BY 4.0"
+            }
+        ]
+    },
+    "2B": {
+        "cards": [
+            {
+                "front": "What is a bacteriophage?",
+                "back": "A virus that infects bacteria, typically attaching to the cell and injecting its nucleic acid while the protein capsid remains outside.",
+                "source": "OpenStax Microbiology - Viruses",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "How do the lytic and lysogenic cycles of a phage differ?",
+                "back": "In the lytic cycle the phage replicates and lyses the host quickly; in the lysogenic cycle the phage genome integrates as a prophage and replicates passively with the host.",
+                "source": "OpenStax Microbiology - Viruses",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What are the three mechanisms of horizontal gene transfer in bacteria?",
+                "back": "Transformation (uptake of free DNA from the environment), transduction (transfer of DNA via a bacteriophage), and conjugation (transfer via a pilus or plasmid).",
+                "source": "OpenStax Biology 2e - Prokaryotes",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "How does the Gram stain distinguish bacteria?",
+                "back": "Gram-positive cells have a thick peptidoglycan wall that retains crystal violet and appear purple; Gram-negative cells have a thin wall plus an outer membrane and stain pink with safranin.",
+                "source": "OpenStax Microbiology - Prokaryotes",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What is a retrovirus?",
+                "back": "An RNA virus that uses reverse transcriptase to make DNA from its RNA genome, which then integrates into the host chromosome; HIV is a well-known example.",
+                "source": "OpenStax Microbiology - Viruses",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "How do bacteria typically reproduce?",
+                "back": "By binary fission, an asexual process in which the cell replicates its DNA and divides into two genetically identical daughter cells without a mitotic spindle.",
+                "source": "OpenStax Biology 2e - Prokaryotes",
+                "license": "CC BY 4.0"
+            }
+        ],
+        "questions": [
+            {
+                "stem": "A bacterium gains an antibiotic-resistance gene after direct cell-to-cell contact through a pilus that transfers a plasmid. Which process is described?",
+                "options": ["Transformation", "Transduction", "Conjugation", "Binary fission"],
+                "correct_index": 2,
+                "explanation": "Conjugation transfers genetic material, often a plasmid, from one bacterium to another through a pilus-mediated contact.",
+                "source": "OpenStax Biology 2e - Prokaryotes",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "During the lysogenic cycle of a bacteriophage, the viral genome most characteristically:",
+                "options": [
+                    "Integrates into the host chromosome as a prophage",
+                    "Immediately lyses the host cell",
+                    "Is packaged into new virions and released",
+                    "Is degraded by host restriction enzymes"
+                ],
+                "correct_index": 0,
+                "explanation": "In lysogeny the phage DNA integrates into the host genome as a prophage and is replicated along with the host DNA rather than causing immediate lysis.",
+                "source": "OpenStax Microbiology - Viruses",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "Reverse transcriptase, the enzyme used by retroviruses, catalyzes the synthesis of:",
+                "options": [
+                    "RNA from a DNA template",
+                    "Protein from an RNA template",
+                    "Protein from a DNA template",
+                    "DNA from an RNA template"
+                ],
+                "correct_index": 3,
+                "explanation": "Reverse transcriptase makes complementary DNA from the viral RNA genome, reversing the usual DNA-to-RNA flow of information.",
+                "source": "OpenStax Microbiology - Viruses",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "A Gram-negative bacterium differs from a Gram-positive bacterium primarily because it possesses:",
+                "options": [
+                    "A much thicker peptidoglycan layer",
+                    "An outer membrane containing lipopolysaccharide",
+                    "No cell wall at all",
+                    "No plasma membrane"
+                ],
+                "correct_index": 1,
+                "explanation": "Gram-negative bacteria have a thin peptidoglycan layer surrounded by an outer membrane rich in lipopolysaccharide, which is why they do not retain crystal violet.",
+                "source": "OpenStax Microbiology - Prokaryotes",
+                "license": "CC BY 4.0"
+            }
+        ]
+    },
+    "2C": {
+        "cards": [
+            {
+                "front": "What are the three subphases of interphase?",
+                "back": "G1 (cell growth and normal function), S (DNA replication), and G2 (further growth and preparation for mitosis).",
+                "source": "OpenStax Biology 2e - Cell cycle",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What occurs during metaphase of mitosis?",
+                "back": "The duplicated chromosomes align single file along the metaphase plate at the cell equator, each attached to spindle fibers at its kinetochore.",
+                "source": "OpenStax Biology 2e - Mitosis",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What does the G1/S checkpoint monitor?",
+                "back": "It checks cell size, nutrient and energy reserves, growth signals, and DNA integrity before the cell commits to DNA replication.",
+                "source": "OpenStax Biology 2e - Cell cycle control",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "How do totipotent and pluripotent stem cells differ?",
+                "back": "Totipotent cells can give rise to all cell types including extraembryonic (placental) tissue, whereas pluripotent cells can form all body cell types but not extraembryonic tissue.",
+                "source": "OpenStax Biology 2e - Stem cells",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What is cellular differentiation?",
+                "back": "The process by which a less specialized cell becomes a specialized cell type through selective gene expression, without changing its DNA sequence.",
+                "source": "OpenStax Biology 2e - Differentiation",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "How does mitosis differ from meiosis in outcome?",
+                "back": "Mitosis produces two genetically identical diploid cells, while meiosis produces four genetically distinct haploid cells for sexual reproduction.",
+                "source": "OpenStax Biology 2e - Cell division",
+                "license": "CC BY 4.0"
+            }
+        ],
+        "questions": [
+            {
+                "stem": "DNA is replicated during which phase of the cell cycle?",
+                "options": ["G1 phase", "Mitosis", "S phase", "G2 phase"],
+                "correct_index": 2,
+                "explanation": "DNA synthesis occurs during the S (synthesis) phase of interphase, producing identical sister chromatids for each chromosome.",
+                "source": "OpenStax Biology 2e - Cell cycle",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "Which event defines anaphase of mitosis?",
+                "options": [
+                    "Chromosomes align at the metaphase plate",
+                    "Sister chromatids separate and move to opposite poles",
+                    "The nuclear envelope reassembles",
+                    "DNA is replicated"
+                ],
+                "correct_index": 1,
+                "explanation": "During anaphase the cohesion between sister chromatids breaks and the chromatids are pulled toward opposite spindle poles.",
+                "source": "OpenStax Biology 2e - Mitosis",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "A stem cell that can differentiate into any cell type of the body but cannot form extraembryonic tissue such as placenta is best described as:",
+                "options": ["Pluripotent", "Totipotent", "Multipotent", "Unipotent"],
+                "correct_index": 0,
+                "explanation": "Pluripotent cells can generate all germ-layer cell types of the body but lack the ability to form extraembryonic tissues, unlike totipotent cells.",
+                "source": "OpenStax Biology 2e - Stem cells",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "What is the primary purpose of the cell cycle checkpoints?",
+                "options": [
+                    "To speed up DNA replication",
+                    "To generate genetic variation among cells",
+                    "To trigger apoptosis in every dividing cell",
+                    "To ensure conditions and DNA integrity are correct before advancing"
+                ],
+                "correct_index": 3,
+                "explanation": "Checkpoints verify that requirements such as intact DNA and proper chromosome attachment are met before the cell proceeds, preventing propagation of errors.",
+                "source": "OpenStax Biology 2e - Cell cycle control",
+                "license": "CC BY 4.0"
+            }
+        ]
+    },
+    "3A": {
+        "cards": [
+            {
+                "front": "What maintains the resting membrane potential of a neuron?",
+                "back": "The Na+/K+ ATPase pumps Na+ out and K+ in, and with the membrane most permeable to K+ the interior settles near -70 mV.",
+                "source": "OpenStax Anatomy and Physiology 2e - Nervous tissue",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What triggers neurotransmitter release at a chemical synapse?",
+                "back": "Arrival of the action potential opens voltage-gated Ca2+ channels; Ca2+ influx causes synaptic vesicles to fuse with the membrane and release neurotransmitter.",
+                "source": "OpenStax Anatomy and Physiology 2e - Synapse",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "Contrast the sympathetic and parasympathetic divisions of the autonomic nervous system.",
+                "back": "The sympathetic division drives fight-or-flight responses such as increased heart rate, while the parasympathetic division promotes rest-and-digest activity.",
+                "source": "OpenStax Anatomy and Physiology 2e - Autonomic nervous system",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "How do steroid hormones act on target cells?",
+                "back": "Being lipid-soluble, they diffuse across the plasma membrane and bind intracellular receptors that act as transcription factors to alter gene expression.",
+                "source": "OpenStax Anatomy and Physiology 2e - Endocrine system",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What is the role of the hypothalamus in the endocrine system?",
+                "back": "It links the nervous and endocrine systems, secreting releasing and inhibiting hormones that regulate the anterior pituitary and producing ADH and oxytocin.",
+                "source": "OpenStax Anatomy and Physiology 2e - Endocrine system",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What is saltatory conduction?",
+                "back": "The rapid propagation of an action potential that appears to jump between the nodes of Ranvier along a myelinated axon, increasing conduction speed.",
+                "source": "OpenStax Anatomy and Physiology 2e - Nervous tissue",
+                "license": "CC BY 4.0"
+            }
+        ],
+        "questions": [
+            {
+                "stem": "The resting membrane potential of a typical neuron is closest to which value?",
+                "options": ["+30 mV", "0 mV", "-30 mV", "-70 mV"],
+                "correct_index": 3,
+                "explanation": "A typical neuron rests near -70 mV because the membrane is most permeable to K+ and the Na+/K+ ATPase maintains the ion gradients.",
+                "source": "OpenStax Anatomy and Physiology 2e - Nervous tissue",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "The rapid depolarizing (rising) phase of a neuronal action potential is produced mainly by:",
+                "options": [
+                    "K+ efflux out of the cell",
+                    "Cl- influx into the cell",
+                    "Na+ influx into the cell",
+                    "Ca2+ efflux out of the cell"
+                ],
+                "correct_index": 2,
+                "explanation": "Voltage-gated Na+ channels open at threshold, and the resulting Na+ influx drives the membrane toward positive potentials during depolarization.",
+                "source": "OpenStax Anatomy and Physiology 2e - Nervous tissue",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "Steroid hormones typically exert their effects by binding receptors located:",
+                "options": [
+                    "Inside the cell, in the cytoplasm or nucleus",
+                    "Only on the extracellular membrane surface",
+                    "In the mitochondrial matrix exclusively",
+                    "On the outer face of the Golgi apparatus"
+                ],
+                "correct_index": 0,
+                "explanation": "Because steroid hormones are lipid-soluble, they cross the membrane and bind intracellular receptors that regulate transcription.",
+                "source": "OpenStax Anatomy and Physiology 2e - Endocrine system",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "Activation of the sympathetic nervous system would most likely produce which response?",
+                "options": [
+                    "Increased salivation",
+                    "Increased heart rate",
+                    "Constriction of the pupils",
+                    "Stimulation of digestive motility"
+                ],
+                "correct_index": 1,
+                "explanation": "The sympathetic fight-or-flight response raises heart rate; increased salivation, pupil constriction, and digestive stimulation are parasympathetic effects.",
+                "source": "OpenStax Anatomy and Physiology 2e - Autonomic nervous system",
+                "license": "CC BY 4.0"
+            }
+        ]
+    },
+    "3B": {
+        "cards": [
+            {
+                "front": "Trace the path of blood through the heart beginning at the venae cavae.",
+                "back": "Venae cavae to right atrium to right ventricle to pulmonary arteries to lungs to pulmonary veins to left atrium to left ventricle to aorta.",
+                "source": "OpenStax Anatomy and Physiology 2e - Cardiovascular system",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "Where does most nutrient absorption occur in the digestive tract?",
+                "back": "In the small intestine, whose villi and microvilli enormously increase surface area for absorbing digested nutrients.",
+                "source": "OpenStax Anatomy and Physiology 2e - Digestive system",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What is the functional unit of the kidney and what does it do?",
+                "back": "The nephron, which forms urine through filtration of blood at the glomerulus followed by tubular reabsorption and secretion.",
+                "source": "OpenStax Anatomy and Physiology 2e - Urinary system",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "How is oxygen transported in the blood?",
+                "back": "Most oxygen binds reversibly to hemoglobin in red blood cells, with only a small fraction dissolved directly in the plasma.",
+                "source": "OpenStax Anatomy and Physiology 2e - Respiratory system",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "What drives inhalation during quiet breathing?",
+                "back": "Contraction of the diaphragm and external intercostals expands the thoracic cavity, lowering intrapulmonary pressure so air flows into the lungs.",
+                "source": "OpenStax Anatomy and Physiology 2e - Respiratory system",
+                "license": "CC BY 4.0"
+            },
+            {
+                "front": "How is most carbon dioxide carried in the blood?",
+                "back": "Mainly as bicarbonate ions formed in red blood cells by carbonic anhydrase, with smaller amounts bound to hemoglobin and dissolved in plasma.",
+                "source": "OpenStax Anatomy and Physiology 2e - Respiratory system",
+                "license": "CC BY 4.0"
+            }
+        ],
+        "questions": [
+            {
+                "stem": "Oxygenated blood returns from the lungs to the heart through the:",
+                "options": ["Pulmonary artery", "Superior vena cava", "Pulmonary veins", "Coronary sinus"],
+                "correct_index": 2,
+                "explanation": "The pulmonary veins carry freshly oxygenated blood from the lungs into the left atrium; the pulmonary artery instead carries deoxygenated blood to the lungs.",
+                "source": "OpenStax Anatomy and Physiology 2e - Cardiovascular system",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "In what form is the majority of carbon dioxide transported in the blood?",
+                "options": [
+                    "As bicarbonate ions in plasma",
+                    "Bound to hemoglobin as carbaminohemoglobin",
+                    "Dissolved as CO2 gas in plasma",
+                    "Converted to carbon monoxide"
+                ],
+                "correct_index": 0,
+                "explanation": "About two-thirds of CO2 is carried as bicarbonate, generated when carbonic anhydrase in red blood cells converts CO2 and water to carbonic acid that dissociates.",
+                "source": "OpenStax Anatomy and Physiology 2e - Respiratory system",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "The functional filtering unit of the kidney is the:",
+                "options": ["Alveolus", "Villus", "Sarcomere", "Nephron"],
+                "correct_index": 3,
+                "explanation": "The nephron filters blood and processes the filtrate into urine; alveoli, villi, and sarcomeres are units of the lung, intestine, and muscle respectively.",
+                "source": "OpenStax Anatomy and Physiology 2e - Urinary system",
+                "license": "CC BY 4.0"
+            },
+            {
+                "stem": "During inhalation at rest, the diaphragm:",
+                "options": [
+                    "Relaxes and domes upward",
+                    "Contracts and moves downward",
+                    "Plays no role in ventilation",
+                    "Secretes pulmonary surfactant"
+                ],
+                "correct_index": 1,
+                "explanation": "Contraction flattens the diaphragm downward, increasing thoracic volume and lowering pressure so air enters the lungs.",
+                "source": "OpenStax Anatomy and Physiology 2e - Respiratory system",
+                "license": "CC BY 4.0"
+            }
+        ]
+    }
 }

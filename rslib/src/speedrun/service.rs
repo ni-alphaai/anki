@@ -278,9 +278,7 @@ impl crate::services::SpeedrunService for Collection {
         })
     }
 
-    fn get_topic_signals(
-        &mut self,
-    ) -> error::Result<anki_proto::speedrun::TopicSignalsReport> {
+    fn get_topic_signals(&mut self) -> error::Result<anki_proto::speedrun::TopicSignalsReport> {
         let topics = self
             .storage
             .sr_topic_signals()?
@@ -818,22 +816,24 @@ impl Collection {
             .collect())
     }
 
-    /// Persist the topic map in collection config so it rides normal Anki config sync
-    /// (``sr_topic_map`` itself has no USN and is not chunk-synced).
+    /// Persist the topic map in collection config so it rides normal Anki
+    /// config sync (``sr_topic_map`` itself has no USN and is not
+    /// chunk-synced).
     fn persist_topic_map_config(&mut self, entries: &[SrTopicMapEntry]) -> error::Result<()> {
         let vec = entries.to_vec();
         self.set_config(CFG_TOPIC_MAP, &vec)?;
         Ok(())
     }
 
-    /// Persist held-out questions in collection config so practice banks survive
-    /// incremental sync (``sr_question_items`` itself has no USN and is not
-    /// chunk-synced). Semantics: the whole set is written under one key, and
-    /// ``apply_question_items_from_config`` reinserts by id, so this is an
-    /// append/update-only merge (config keys are last-writer-wins by mtime).
-    /// ``add_question_item`` applies the synced set *before* inserting, so a
-    /// device never clobbers questions another device already uploaded. Items
-    /// are never deleted at runtime, so no tombstones are needed.
+    /// Persist held-out questions in collection config so practice banks
+    /// survive incremental sync (``sr_question_items`` itself has no USN
+    /// and is not chunk-synced). Semantics: the whole set is written under
+    /// one key, and ``apply_question_items_from_config`` reinserts by id,
+    /// so this is an append/update-only merge (config keys are
+    /// last-writer-wins by mtime). ``add_question_item`` applies the synced
+    /// set *before* inserting, so a device never clobbers questions another
+    /// device already uploaded. Items are never deleted at runtime, so no
+    /// tombstones are needed.
     fn persist_question_items_config(&mut self) -> error::Result<()> {
         let items = self.storage.get_all_sr_question_items()?;
         self.set_config(CFG_QUESTION_ITEMS, &items)?;
@@ -1425,9 +1425,8 @@ mod test {
         // Before seeding: all new cards -> readiness abstains honestly.
         assert!(!col.compute_readiness()?.sufficient);
 
-        let resp = col.seed_sample_history(
-            anki_proto::speedrun::SeedSampleHistoryRequest::default(),
-        )?;
+        let resp =
+            col.seed_sample_history(anki_proto::speedrun::SeedSampleHistoryRequest::default())?;
         assert_eq!(resp.cards_matured, 30);
         assert_eq!(resp.attempts_recorded, 36);
 

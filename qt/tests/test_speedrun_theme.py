@@ -93,27 +93,6 @@ class TestPct:
         assert theme._pct(-0.2) == 0
 
 
-class TestBannerHtml:
-    def test_sufficient_shows_projected_score(self) -> None:
-        html = theme.banner_html(SUFFICIENT)
-        assert "sr-banner" in html
-        assert "508" in html
-        assert "Projected MCAT readiness" in html
-        # low-high range + the two headline signals.
-        assert "500" in html and "516" in html
-        assert "memory 80%" in html
-        assert "performance 70%" in html
-        assert "90% covered" in html
-
-    def test_abstain_shows_honest_empty_state(self) -> None:
-        html = theme.banner_html(ABSTAIN)
-        assert "No score yet" in html
-        assert "Readiness withheld" in html
-        assert "sr-muted" in html
-        # The engine reason is surfaced (escaped) in the banner meta.
-        assert "not enough evidence: need graded attempts 0/30" in html
-
-
 class TestPanelHtml:
     def test_sufficient_panel(self) -> None:
         html = theme.panel_html(SUFFICIENT)
@@ -287,9 +266,27 @@ class TestDiagnosticBody:
     REPORT = {
         "overall": {"correct": 9, "total": 15, "pct": 60},
         "sections": [
-            {"short": "Chem/Phys", "full": "Chem & Phys", "correct": 3, "total": 5, "pct": 60},
-            {"short": "Bio/Biochem", "full": "Bio", "correct": 4, "total": 5, "pct": 80},
-            {"short": "Psych/Soc", "full": "Psych", "correct": 2, "total": 5, "pct": 40},
+            {
+                "short": "Chem/Phys",
+                "full": "Chem & Phys",
+                "correct": 3,
+                "total": 5,
+                "pct": 60,
+            },
+            {
+                "short": "Bio/Biochem",
+                "full": "Bio",
+                "correct": 4,
+                "total": 5,
+                "pct": 80,
+            },
+            {
+                "short": "Psych/Soc",
+                "full": "Psych",
+                "correct": 2,
+                "total": 5,
+                "pct": 40,
+            },
         ],
     }
 
@@ -338,20 +335,33 @@ class TestProgressBody:
     """The Progress screen renders diverse charts from a plain dict."""
 
     PROG = {
-        "memory": 1.0, "performance": 0.66, "coverage": 1.0,
-        "memory_ok": True, "perf_ok": True,
-        "cov_total": 31, "cov_covered": 28, "weighted": 0.9,
+        "memory": 1.0,
+        "performance": 0.66,
+        "coverage": 1.0,
+        "memory_ok": True,
+        "perf_ok": True,
+        "cov_total": 31,
+        "cov_covered": 28,
+        "weighted": 0.9,
         "topics": [
             {"label": "1A Proteins", "covered": True, "weight": 3.0},
             {"label": "2B Viruses", "covered": False, "weight": 2.5},
         ],
         "calibration": {
-            "sufficient": True, "n": 40, "brier": 0.13, "logloss": 0.41,
+            "sufficient": True,
+            "n": 40,
+            "brier": 0.13,
+            "logloss": 0.41,
             "bins": [{"mean_predicted": 0.5, "mean_outcome": 0.52, "count": 10}],
         },
         "feedback": {
-            "total": 30, "correct": 20, "memory": 2, "reasoning": 5,
-            "passage": 2, "test_taking": 1, "weak_topics": ["1D Bioenergetics"],
+            "total": 30,
+            "correct": 20,
+            "memory": 2,
+            "reasoning": 5,
+            "passage": 2,
+            "test_taking": 1,
+            "weak_topics": ["1D Bioenergetics"],
         },
     }
 

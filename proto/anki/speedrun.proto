@@ -73,12 +73,13 @@ service SpeedrunService {
   // Per-topic counts of held-out questions in the bank, for the Practice
   // landing (MCAT section / subject cards). Appended last for index stability.
   rpc GetPracticeBankSummary(generic.Empty) returns (PracticeBankSummary);
-  // Demo/sample seeding: mark existing cards as mature review cards and record a
-  // batch of exam-style + SRS attempts (with predictions), so the three scores
-  // and calibration populate immediately for a demo without waiting weeks for
-  // real intervals to mature. The score is still COMPUTED from this seeded
-  // history, never hand-set. Appended last for index stability.
-  rpc SeedSampleHistory(SeedSampleHistoryRequest) returns (SeedSampleHistoryResponse);
+  // Demo/sample seeding: mark existing cards as mature review cards and record
+  // a batch of exam-style + SRS attempts (with predictions), so the three
+  // scores and calibration populate immediately for a demo without waiting
+  // weeks for real intervals to mature. The score is still COMPUTED from this
+  // seeded history, never hand-set. Appended last for index stability.
+  rpc SeedSampleHistory(SeedSampleHistoryRequest)
+      returns (SeedSampleHistoryResponse);
   // Per-topic signal breakdown for the topic-centric dashboard: coverage plus
   // the raw counts behind the memory signal (mature/review cards tagged to the
   // topic) and the performance signal (exam-style attempts whose card is tagged

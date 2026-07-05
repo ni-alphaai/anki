@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-
 _SPEEDRUN = Path(__file__).resolve().parents[1] / "aqt" / "speedrun.py"
 _SPEEDRUN_SYNC = Path(__file__).resolve().parents[1] / "aqt" / "speedrun_sync.py"
 
@@ -31,9 +30,7 @@ def test_first_time_pairing_seed_keeps_the_sync_screen_visible() -> None:
 
     assert "land_home" in src, "sync completion must expose a navigation toggle"
     assert (
-        "_sync_to_local(\n"
-        "            mw,\n"
-        "            on_done=lambda: _show_sync_pair"
+        "_sync_to_local(\n            mw,\n            on_done=lambda: _show_sync_pair"
     ) in src
     assert "land_home=False" in src
 

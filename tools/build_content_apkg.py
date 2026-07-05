@@ -45,7 +45,11 @@ def main() -> int:
     # The 31-category coverage map (id -> label + weight) so Android can load the
     # same content outline as desktop via SetTopicMap.
     topic_map = [
-        {"topic": cid, "label": t.get("name", cid), "weight": float(t.get("weight", 1.0))}
+        {
+            "topic": cid,
+            "label": t.get("name", cid),
+            "weight": float(t.get("weight", 1.0)),
+        }
         for cid, t in topics.items()
     ]
 

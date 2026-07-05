@@ -15,6 +15,7 @@ object AppSettings {
     private const val PREFS = "speedrun_prefs"
     private const val KEY_THEME = "theme_mode"
     private const val KEY_AUTO_ROUND = "auto_reasoning_round"
+    private const val KEY_DELAYED_FB = "delayed_feedback_experiment"
     private const val KEY_EXAMPLE_LOADED = "example_deck_loaded"
     private const val KEY_DIAGNOSTIC_DONE = "diagnostic_done"
     private const val KEY_SYNC_URL = "sync_url"
@@ -30,6 +31,15 @@ object AppSettings {
 
     /** Auto-launch the end-of-session reasoning round instead of offering it. */
     var autoReasoningRound by mutableStateOf(false)
+        private set
+
+    /**
+     * D7 experiment (default OFF, explicitly NOT evidence-established): for a
+     * proficient student, withhold immediate correctness on practice questions
+     * and defer it to the delayed feedback/progress surface. Mirrors the desktop
+     * ``speedrunDelayedFeedbackExperiment`` flag.
+     */
+    var delayedFeedbackExperiment by mutableStateOf(false)
         private set
 
     /** Whether the bundled example deck has been auto-loaded once (first run). */
@@ -100,6 +110,7 @@ object AppSettings {
             ThemeMode.valueOf(prefs.getString(KEY_THEME, ThemeMode.System.name)!!)
         }.getOrDefault(ThemeMode.System)
         autoReasoningRound = prefs.getBoolean(KEY_AUTO_ROUND, false)
+        delayedFeedbackExperiment = prefs.getBoolean(KEY_DELAYED_FB, false)
         exampleLoaded = prefs.getBoolean(KEY_EXAMPLE_LOADED, false)
         diagnosticDone = prefs.getBoolean(KEY_DIAGNOSTIC_DONE, false)
         syncUrl = prefs.getString(KEY_SYNC_URL, "") ?: ""
@@ -149,6 +160,12 @@ object AppSettings {
         autoReasoningRound = on
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putBoolean(KEY_AUTO_ROUND, on).apply()
+    }
+
+    fun setDelayedFeedbackExperiment(context: Context, on: Boolean) {
+        delayedFeedbackExperiment = on
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_DELAYED_FB, on).apply()
     }
 
     fun setSyncViaUsb(context: Context, on: Boolean) {

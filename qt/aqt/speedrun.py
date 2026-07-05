@@ -566,29 +566,6 @@ def _feedback_report(col) -> dict | None:
     }
 
 
-def _feedback_lines(fb: dict) -> list[str]:
-    """Human-readable feedback-report lines (pure; unit-tested)."""
-    total = fb.get("total", 0)
-    if total == 0:
-        return ["No exam-style attempts recorded yet."]
-    lines = [
-        f"Answered {total} exam-style question(s), {fb.get('correct', 0)} correct."
-    ]
-    kinds = [
-        ("Memory", fb.get("memory", 0)),
-        ("Reasoning", fb.get("reasoning", 0)),
-        ("Passage", fb.get("passage", 0)),
-        ("Test-taking", fb.get("test_taking", 0)),
-    ]
-    misses = [f"{name}: {n}" for name, n in kinds if n]
-    if misses:
-        lines.append("Misses by cause \u2014 " + ", ".join(misses) + ".")
-    weak = fb.get("weak_topics") or []
-    if weak:
-        lines.append("Weakest topics: " + ", ".join(weak[:5]) + ".")
-    return lines
-
-
 def _show_feedback_report(mw: aqt.AnkiQt) -> None:
     """Render the end-of-session feedback report as a Speedrun screen (tokened
     cards) in the main webview, so it matches the rest of the app shell."""
@@ -658,8 +635,24 @@ def _collect(col, fresh: bool) -> dict:
         "auto_round": bool(col.get_config(_CFG_AUTO_ROUND, False)),
     }
     data["feedback"] = _feedback_report(col)
+    data["due_today"] = _due_today_count(col)
     data["next_action"] = _next_action(data)
     return data
+
+
+def _due_today_count(col) -> int:
+    """Cards ready to study today (new + learning + due review) across the whole
+    collection, from the scheduler's due tree. Top-level nodes already aggregate
+    their subdecks, so summing them avoids double-counting. Drives the dashboard's
+    'review today' recommendation."""
+    try:
+        tree = col.sched.deck_due_tree()
+        return sum(
+            int(c.new_count) + int(c.learn_count) + int(c.review_count)
+            for c in getattr(tree, "children", [])
+        )
+    except Exception:
+        return 0
 
 
 # Per-topic evidence gates: much lower than the global readiness gates, since a
@@ -737,7 +730,9 @@ def _collect_topic_dashboard(mw) -> dict:
     )
     if other:
         sections.append(
-            _topic_section_summary("other", "Other", "Uncategorized topics", False, other)
+            _topic_section_summary(
+                "other", "Other", "Uncategorized topics", False, other
+            )
         )
 
     return {"sections": sections, "has_topics": bool(topics)}
@@ -811,7 +806,10 @@ def _collect_deck_list(mw) -> dict:
         walk(mw.col.sched.deck_due_tree(), 0)
     except Exception:
         pass
-    return {"decks": rows, "studied": "Your decks, by New / Learn / Due — tap to study."}
+    return {
+        "decks": rows,
+        "studied": "Your decks, by New / Learn / Due — tap to study.",
+    }
 
 
 def _open_deck(mw: aqt.AnkiQt, deck_id: int) -> None:
@@ -904,14 +902,33 @@ def _collect_progress(col) -> dict:
 def _next_action(data: dict) -> dict:
     """The single recommended step, with the command that performs it so the
     panel's card can be a real button (not inert text)."""
+    due = int(data.get("due_today", 0) or 0)
     if not data["sufficient"]:
         seed_cmd = "speedrun:seed" if data.get("cov_total", 0) == 0 else None
+        blocking = data.get("blocking", "")
+        # Memory + graded-attempt evidence is built by REVIEWING cards, so when
+        # anything is ready today the next step is a real review session, not an
+        # inert "study more" note the user can't act on.
+        if blocking in ("memory", "attempts") and due > 0:
+            return {
+                "title": "Review today's cards",
+                "detail": (
+                    f"You have {due} card{'s' if due != 1 else ''} ready to review "
+                    "today. Working through them builds the recall evidence your "
+                    "readiness score needs."
+                ),
+                "cmd": "speedrun:review",
+                "cta": "Start review",
+            }
+        # Nothing due today, or a different dimension is blocking: give an
+        # honest next step that still routes somewhere real.
         by = {
             "memory": (
-                "Study more cards",
-                "Readiness needs more graded reviews before it can estimate your memory signal.",
-                None,
-                None,
+                "Add cards to review",
+                "Readiness needs graded reviews to estimate your memory signal. "
+                "Import a deck or add cards, then review them daily.",
+                "speedrun:decks",
+                "Browse decks",
             ),
             "performance": (
                 "Answer held-out questions",
@@ -926,14 +943,15 @@ def _next_action(data: dict) -> dict:
                 "Seed topics" if seed_cmd else None,
             ),
             "attempts": (
-                "Record a few more attempts",
-                "Keep reviewing; a handful more graded attempts will unlock your readiness estimate.",
-                None,
-                None,
+                "Keep reviewing daily",
+                "A handful more graded reviews will unlock your readiness estimate. "
+                "Come back as cards fall due, or add more cards.",
+                "speedrun:decks",
+                "Browse decks",
             ),
         }
         title, detail, cmd, cta = by.get(
-            data.get("blocking", ""),
+            blocking,
             ("Build more evidence", data.get("reason", ""), None, None),
         )
         return {"title": title, "detail": detail, "cmd": cmd, "cta": cta}
@@ -1132,6 +1150,7 @@ _EXACT_CMDS: dict[str, Callable[[aqt.AnkiQt], object]] = {
     "speedrun:seed": _cmd_seed,
     "speedrun:exam": lambda mw: _set_exam_target(mw),
     "speedrun:practice": lambda mw: _show_workspace(mw, "practice"),
+    "speedrun:review": lambda mw: _review_today(mw),
     "speedrun:practicelater": lambda mw: _flag_practice(mw),
     "speedrun:report": lambda mw: _show_feedback_report(mw),
     "speedrun:library": lambda mw: _show_workspace(mw, "library"),
@@ -1282,6 +1301,9 @@ def _refresh(mw: aqt.AnkiQt, msg: str | None = None) -> None:
 
 _ws_active: str | None = None
 _ws_practice: "_WsPractice | None" = None
+# Set once the Speedrun dashboard has taken over from Anki's startup deck browser,
+# so the initial "land on Home" only fires on the first launch state change.
+_landed_home = False
 
 _CFG_DEFAULTS = {
     _CFG_POINTS: False,
@@ -1433,9 +1455,11 @@ def _current_theme_mode(mw: aqt.AnkiQt) -> str:
     try:
         from aqt.theme import Theme
 
-        return {Theme.FOLLOW_SYSTEM: "system", Theme.LIGHT: "light", Theme.DARK: "dark"}.get(
-            mw.pm.theme(), "system"
-        )
+        return {
+            Theme.FOLLOW_SYSTEM: "system",
+            Theme.LIGHT: "light",
+            Theme.DARK: "dark",
+        }.get(mw.pm.theme(), "system")
     except Exception:
         return "system"
 
@@ -1459,7 +1483,13 @@ def _set_theme_mode(mw: aqt.AnkiQt, mode: str) -> None:
     # (Anki refreshes its native screens itself).
     _render_sidebar(mw)
     if _ws_active in (
-        "dashboard", "decks", "alldecks", "practice", "library", "settings", "progress"
+        "dashboard",
+        "decks",
+        "alldecks",
+        "practice",
+        "library",
+        "settings",
+        "progress",
     ):
         _show_workspace(mw, _ws_active)
 
@@ -1770,9 +1800,7 @@ def _local_full_download(
     def download() -> None:
         mw.create_backup_now()
         mw.col.close_for_full_sync()
-        mw.col.full_upload_or_download(
-            auth=auth, server_usn=server_usn, upload=False
-        )
+        mw.col.full_upload_or_download(auth=auth, server_usn=server_usn, upload=False)
 
     def on_future_done(fut) -> None:
         timer.stop()
@@ -1789,9 +1817,7 @@ def _local_full_download(
     mw.taskman.with_progress(download, on_future_done)
 
 
-def _local_full_upload(
-    mw: aqt.AnkiQt, server_usn: int | None, on_done: object
-) -> None:
+def _local_full_upload(mw: aqt.AnkiQt, server_usn: int | None, on_done: object) -> None:
     """Full upload pinned to the live embedded server (not stale profile URL)."""
     from aqt import gui_hooks
     from aqt import sync as anki_sync
@@ -1858,8 +1884,6 @@ def _run_local_sync(
     when the server explicitly requires it, download when the server is newer
     or ambiguous (so phone uploads reach the desktop instead of being overwritten).
     """
-    from aqt import sync as anki_sync
-
     url = _pin_local_sync_url(mw)
     if not url or mw.col is None:
         tooltip(
@@ -1981,8 +2005,14 @@ def _clear_for_sync_test(mw: aqt.AnkiQt) -> None:
     def on_done(_counts) -> None:
         _render_sidebar(mw)
         if _ws_active in (
-            "dashboard", "decks", "alldecks", "practice", "library", "settings",
-            "progress", "sync",
+            "dashboard",
+            "decks",
+            "alldecks",
+            "practice",
+            "library",
+            "settings",
+            "progress",
+            "sync",
         ):
             if _ws_active == "sync":
                 _show_sync_pair(
@@ -2033,6 +2063,7 @@ def _login_to_local(mw: aqt.AnkiQt, on_done=None) -> None:
 def _sync_to_local(mw: aqt.AnkiQt, on_done=None, *, land_home: bool = True) -> None:
     """Start the local server, sign Anki's own sync in against it, and sync. This
     is the shared path for the toolbar Sync button, the chip, and auto-sync."""
+
     def after_login() -> None:
         _run_local_sync(mw, on_done, land_home=land_home)
 
@@ -2131,6 +2162,7 @@ def _install_sync_button_override(mw: aqt.AnkiQt) -> None:
     paired it syncs to the local server directly (auto-resolving via
     ``_run_local_sync``); otherwise it opens the Sync-with-phone screen (start
     server + show QR)."""
+
     def patched() -> None:
         col = mw.col
         if col is not None and srsync.is_paired(col):
@@ -2589,9 +2621,52 @@ def _show_section(mw: aqt.AnkiQt, key: str) -> None:
     _render_sidebar(mw)
 
 
+def _start_review(mw: aqt.AnkiQt) -> None:
+    """Enter a real review session on the current deck, mirroring what the deck
+    overview's 'Study Now' does (timebox + move to the reviewer). If nothing is
+    studyable the reviewer bounces back to the overview on its own."""
+    global _ws_active
+    try:
+        mw.col.startTimebox()
+    except Exception:
+        pass
+    _ws_active = None
+    mw.moveToState("review")
+    _render_sidebar(mw)
+
+
+def _review_today(mw: aqt.AnkiQt) -> None:
+    """The dashboard's 'Start today's review': pick the deck with the most cards
+    ready today (top-level nodes aggregate their subdecks, so this spans topics)
+    and begin reviewing it right away. Falls back to the Decks hub when nothing is
+    due, so the recommendation is never a dead end."""
+    if mw.col is None:
+        return
+    try:
+        from anki.decks import DeckId
+
+        best_id, best_n = 0, 0
+        for child in getattr(mw.col.sched.deck_due_tree(), "children", []):
+            n = int(child.new_count) + int(child.learn_count) + int(child.review_count)
+            if n > best_n:
+                best_id, best_n = int(child.deck_id), n
+    except Exception:
+        best_id, best_n = 0, 0
+    if not best_id or best_n == 0:
+        _show_workspace(mw, "decks")
+        return
+    try:
+        mw.col.decks.set_current(DeckId(best_id))  # type: ignore[attr-defined]
+    except Exception:
+        pass
+    _start_review(mw)
+
+
 def _review_topic(mw: aqt.AnkiQt, topic_id: str) -> None:
-    """Build (or reuse) a filtered deck of this topic's cards and study it, so
-    'Review memory cards' opens a real review session (not just the browser)."""
+    """Build (or reuse) a filtered deck of this topic's cards and start reviewing
+    it immediately, so 'Review memory cards' drops straight into a real review
+    session rather than Anki's 'special deck / outside the normal schedule'
+    overview (which read as an 'extra', secondary activity)."""
     try:
         from anki.decks import DeckId, FilteredDeckConfig
         from aqt.operations.scheduling import add_or_update_filtered_deck
@@ -2602,29 +2677,32 @@ def _review_topic(mw: aqt.AnkiQt, topic_id: str) -> None:
     try:
         existing = mw.col.decks.by_name(name)
         existing_id = int(existing["id"]) if existing and existing.get("dyn") else 0
-        deck = mw.col.sched.get_or_create_filtered_deck(deck_id=existing_id)
+        deck = mw.col.sched.get_or_create_filtered_deck(deck_id=DeckId(existing_id))
         deck.name = name
         cfg = deck.config
         cfg.reschedule = True
         del cfg.search_terms[:]
         cfg.search_terms.append(
-            FilteredDeckConfig.SearchTerm(search=f"tag:{topic_id}", limit=200, order=0)
+            FilteredDeckConfig.SearchTerm(
+                search=f"tag:{topic_id}",
+                limit=200,
+                order=FilteredDeckConfig.SearchTerm.Order.OLDEST_REVIEWED_FIRST,
+            )
         )
     except Exception:
         _study_topic(mw, topic_id)
         return
 
     def success(out: object) -> None:
-        global _ws_active
         try:
             mw.col.decks.set_current(DeckId(out.id))  # type: ignore[attr-defined]
         except Exception:
             pass
-        _ws_active = None
-        mw.moveToState("overview")
-        _render_sidebar(mw)
+        _start_review(mw)
 
-    add_or_update_filtered_deck(parent=mw, deck=deck).success(success).run_in_background()
+    add_or_update_filtered_deck(parent=mw, deck=deck).success(
+        success
+    ).run_in_background()
 
 
 def _study_topic(mw: aqt.AnkiQt, topic_id: str) -> None:
@@ -2664,10 +2742,26 @@ def _leave_workspace(mw: aqt.AnkiQt) -> None:
 
 def _on_state_changed(new_state: str, old_state: str) -> None:
     """A native Anki state move (Decks/overview/review) leaves the Speedrun
-    screen; reflect that as the Decks section in the sidebar."""
-    global _ws_active
+    screen; reflect that as the Decks section in the sidebar.
+
+    On the first launch transition into the deck browser, take over the main
+    webview with the Speedrun dashboard *synchronously* (inside the same
+    moveToState turn, before the window repaints), so Anki's native deck list
+    never flashes as the startup surface. The deferred first-run pass then adds
+    the example deck / onboarding / sync on top of an already-Speedrun surface."""
+    global _ws_active, _landed_home
     _ws_active = None
     _render_sidebar(aqt.mw)
+    if not _landed_home and new_state == "deckBrowser":
+        _landed_home = True
+        mw = aqt.mw
+        if mw is not None and mw.col is not None and _modern_on(mw.col):
+            try:
+                _apply_shell_visibility(mw)
+                if not maybe_start_diagnostic(mw):
+                    _show_workspace(mw, "dashboard")
+            except Exception as exc:  # pragma: no cover - never block startup
+                print(f"speedrun: initial dashboard takeover failed: {exc}")
 
 
 def _ws_practice_submit(raw: str) -> None:

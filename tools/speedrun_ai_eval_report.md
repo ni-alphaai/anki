@@ -2,39 +2,36 @@
 
 Model `gpt-4o-mini` (temp=0, cached) | abstain cutoff 0.55 | 32 labeled misses | 0 new API calls this run
 
-
 **Leakage/integrity:** training corpus = none (zero-shot; grounded on each item's explanation); gold label in prompt = False; duplicate stems = 0 -> CLEAN.
-
 
 ## Method comparison
 
-| Method | Coverage | Accuracy (overall) | Accuracy (answered) | Wrong-answer rate |
-| --- | --- | --- | --- | --- |
-| Deterministic (signals only, baseline) | 100.0% |  59.4% |  59.4% |  40.6% |
-| Keyword (baseline) | 100.0% |  75.0% |  75.0% |  25.0% |
-| Vector (TF-IDF cosine, LOO NN) | 100.0% |  71.9% |  71.9% |  28.1% |
-| AI coach (source-grounded) | 100.0% |  78.1% |  78.1% |  21.9% |
+| Method                                 | Coverage | Accuracy (overall) | Accuracy (answered) | Wrong-answer rate |
+| -------------------------------------- | -------- | ------------------ | ------------------- | ----------------- |
+| Deterministic (signals only, baseline) | 100.0%   | 59.4%              | 59.4%               | 40.6%             |
+| Keyword (baseline)                     | 100.0%   | 75.0%              | 75.0%               | 25.0%             |
+| Vector (TF-IDF cosine, LOO NN)         | 100.0%   | 71.9%              | 71.9%               | 28.1%             |
+| AI coach (source-grounded)             | 100.0%   | 78.1%              | 78.1%               | 21.9%             |
 
-**AI vs best baseline (overall accuracy):**   3.1% (AI wins).
-
+**AI vs best baseline (overall accuracy):** 3.1% (AI wins).
 
 ## AI coach - per-class precision / recall
 
-| Class | Precision | Recall |
-| --- | --- | --- |
-| memory | 100.0% |  62.5% |
-| reasoning |  53.3% | 100.0% |
-| passage | 100.0% |  75.0% |
-| test_taking | 100.0% |  75.0% |
+| Class       | Precision | Recall |
+| ----------- | --------- | ------ |
+| memory      | 100.0%    | 62.5%  |
+| reasoning   | 53.3%     | 100.0% |
+| passage     | 100.0%    | 75.0%  |
+| test_taking | 100.0%    | 75.0%  |
 
 ## AI coach - confusion matrix (rows = gold, cols = predicted)
 
 | gold \ pred | memory | reasoning | passage | test_taking | abstain |
-| --- | --- | --- | --- | --- | --- |
-| memory | 5 | 3 | 0 | 0 | 0 |
-| reasoning | 0 | 8 | 0 | 0 | 0 |
-| passage | 0 | 2 | 6 | 0 | 0 |
-| test_taking | 0 | 2 | 0 | 6 | 0 |
+| ----------- | ------ | --------- | ------- | ----------- | ------- |
+| memory      | 5      | 3         | 0       | 0           | 0       |
+| reasoning   | 0      | 8         | 0       | 0           | 0       |
+| passage     | 0      | 2         | 6       | 0           | 0       |
+| test_taking | 0      | 2         | 0       | 6           | 0       |
 
 ## Per-item (id | gold | deterministic | keyword | vector | AI | AI source)
 

@@ -10,6 +10,12 @@
 # Machine-specific SDK location
 /local.properties
 
+# Release signing: the keystore lives OUTSIDE the repo; these hold credentials
+# and must never be committed. Use keystore.properties.example as the template.
+keystore.properties
+*.jks
+*.keystore
+
 # Prebuilt native lib is a build output of ../rsandroid
 # (rebuild with cargo-ndk; see README.md).
 /app/src/main/jniLibs/

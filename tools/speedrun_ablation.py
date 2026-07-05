@@ -23,9 +23,14 @@ We cannot run real learners in a script, so this is an explicit, honest
 *simulated-learner* experiment ("simulation": true in the output). Every card is
 given a hidden "true mastery"; some topics are weak. The SAME miss evidence is
 recorded for arms 2 and 3, so the arms differ only in queue *ordering*. We then
-"study" the first K cards of each arm's order (equal budget) and score how much
-exam value that surfaces. See tools/speedrun_ablation_report.md for the
-pre-registered metric and the results.
+"study" the first K cards of each arm's order (equal budget) and score two
+metrics: a PRIMARY learner-OUTCOME metric (study -> forget -> delayed
+mixed-topic test accuracy, where interleaved encodings of confusable siblings
+forget less) and a SECONDARY ordering metric (how much exam value each order
+front-loads). The interleaving durability bonus is a modeling assumption from
+the study-science literature, not a measurement; the simulation is a mechanism
+check that the +interleave ordering converts it into higher delayed accuracy.
+See tools/speedrun_ablation_report.md for the metrics and results.
 
 How the engine actually ranks: with points-at-stake ON the queue stable-sorts
 due reviews by (1 + per-card weakness), where weakness is the recorded miss
@@ -49,6 +54,7 @@ Run via the wrapper so the built pylib bridge is on the path:
 from __future__ import annotations
 
 import json
+import math
 import os
 import random
 import statistics
@@ -226,6 +232,104 @@ def _clamp(x: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, x))
 
 
+# --- Simulated-learner outcome model (study -> forget -> delayed test) --------
+#
+# The value-front-loading metric below (expected_gain) rewards an order for
+# putting high-value cards early, but it structurally cannot show an interleaving
+# effect: interleaving *spreads* confusable siblings rather than front-loading
+# value, so on a pure front-loading metric it can only ever look neutral or
+# slightly worse. To measure the thing the study-science literature actually
+# claims for interleaving - better *durable discrimination* between confusable
+# concepts - we need a delayed learning-outcome test, not an ordering score.
+#
+# So each arm is run through the same simple, transparent learner:
+#   1. Study: walk the arm's order and study the first K cards (equal budget).
+#      Studying a card raises its memory strength (logit units), with more gain
+#      when there is more to learn (diminishing returns in probability space).
+#   2. Encoding durability: a study earns a *durability* modifier from its
+#      immediate neighbours in the study order. Practising a card next to a
+#      confusable sibling (same parent concept, different topic) encodes a more
+#      discriminative, slower-forgetting trace (the interleaving benefit);
+#      practising it next to same-topic cards is massed and decays faster (the
+#      "false fluency" of blocking).
+#   3. Forget: after a fixed delay every card's strength decays; durable
+#      (interleaved) encodings decay less.
+#   4. Delayed mixed-topic test: probability-correct = sigmoid(final strength),
+#      averaged over ALL cards across ALL topics.
+#
+# IMPORTANT / honest framing: the interleaving durability bonus is a *modeling
+# assumption* grounded in the cognitive-science literature (interleaving aids
+# discrimination and long-term retention), not an empirical measurement from this
+# script. What the simulation shows is a mechanism check: given that assumption,
+# does the +interleave build's ordering actually convert it into higher delayed
+# accuracy on confusable material? A real effect size needs a human A/B.
+
+_STUDY_GAIN = 2.2  # logit-units added by one focused study of a card
+_BASE_DECAY = 1.7  # logit-units lost over the delay for a neutral/massed encoding
+_INTERLEAVE_DURABILITY = 0.85  # extra durability when studied beside a sibling
+_MASSED_DURABILITY_PENALTY = 0.25  # less durability when studied beside same topic
+
+
+def _sigmoid(x: float) -> float:
+    if x >= 0:
+        z = pow(2.718281828459045, -x)
+        return 1.0 / (1.0 + z)
+    z = pow(2.718281828459045, x)
+    return z / (1.0 + z)
+
+
+def _logit(p: float) -> float:
+    p = _clamp(p, 1e-4, 1.0 - 1e-4)
+    return math.log(p / (1.0 - p))
+
+
+def _encoding_context(order: list[int], by_id: dict, pos: int, k: int) -> str:
+    """Classify the encoding at study position `pos` from its neighbours within
+    the studied window [0, k): 'interleaved' if an adjacent studied card is a
+    confusable sibling (same parent concept, different topic), else 'massed' if
+    an adjacent studied card shares the topic, else 'neutral'."""
+    topic = by_id[order[pos]]["topic"]
+    parent = _TOPIC_PARENTS[topic]
+    sibling = massed = False
+    for nb in (pos - 1, pos + 1):
+        if nb < 0 or nb >= k:
+            continue
+        nb_topic = by_id[order[nb]]["topic"]
+        if nb_topic == topic:
+            massed = True
+        elif _TOPIC_PARENTS[nb_topic] == parent:
+            sibling = True
+    if sibling:
+        return "interleaved"
+    if massed:
+        return "massed"
+    return "neutral"
+
+
+def _delayed_test_accuracy(order: list[int], by_id: dict, k: int) -> float:
+    """Simulated post-study, post-delay accuracy over all cards (mixed-topic).
+
+    Studies the first K cards of `order`; each studied card gains strength and a
+    neighbour-derived durability; then every card decays over the delay and is
+    tested. Returns mean probability-correct across all cards."""
+    studied = {order[i]: i for i in range(min(k, len(order)))}
+    total = 0.0
+    for cid, c in by_id.items():
+        strength = _logit(c["mastery"])
+        durability = 1.0
+        if cid in studied:
+            # more to learn -> more gain (diminishing returns in prob space)
+            strength += _STUDY_GAIN * (1.0 - c["mastery"])
+            ctx = _encoding_context(order, by_id, studied[cid], k)
+            if ctx == "interleaved":
+                durability += _INTERLEAVE_DURABILITY
+            elif ctx == "massed":
+                durability -= _MASSED_DURABILITY_PENALTY
+        strength -= _BASE_DECAY / durability
+        total += _sigmoid(strength)
+    return total / len(by_id)
+
+
 def _register_topic_map(col: Collection) -> None:
     """Register the hierarchical `concept::topic` map once, so the interleave
     feature can resolve each card's topic (from its note tag) and the parent
@@ -370,7 +474,9 @@ def run_experiment(
     gains: dict[str, list[float]] = {key: [] for key in _ARM_KEYS}
     weak: dict[str, list[float]] = {key: [] for key in _ARM_KEYS}
     frac_captured: dict[str, list[float]] = {key: [] for key in _ARM_KEYS}
+    delayed_acc: dict[str, list[float]] = {key: [] for key in _ARM_KEYS}
     oracle_gains: list[float] = []
+    oracle_delayed: list[float] = []
     positions_changed_points: list[float] = []
     positions_changed_interleave: list[float] = []
     top_is_weakest: list[int] = []
@@ -383,7 +489,9 @@ def run_experiment(
             gains[key].append(g)
             weak[key].append(_weak_covered(r["orders"][key], by_id, k))
             frac_captured[key].append(g / r["total_gain"] if r["total_gain"] else 0.0)
+            delayed_acc[key].append(_delayed_test_accuracy(r["orders"][key], by_id, k))
         oracle_gains.append(_expected_gain(r["oracle"], by_id, k))
+        oracle_delayed.append(_delayed_test_accuracy(r["oracle"], by_id, k))
         plain = r["orders"]["plain_anki"]
         points = r["orders"]["points_at_stake"]
         interleaved = r["orders"]["points_plus_interleave"]
@@ -407,6 +515,17 @@ def run_experiment(
         delta = statistics.mean(gains[key]) - plain_mean
         pct = (delta / plain_mean * 100.0) if plain_mean else 0.0
         vs_plain[key] = {"delta_mean": round(delta, 4), "pct": round(pct, 1)}
+
+    # Learner-outcome comparison: delayed mixed-topic test accuracy (percentage
+    # points vs plain Anki). This is the metric that can reward interleaving.
+    plain_acc = statistics.mean(delayed_acc["plain_anki"])
+    outcome_vs_plain = {}
+    for key in _ARM_KEYS:
+        delta = statistics.mean(delayed_acc[key]) - plain_acc
+        outcome_vs_plain[key] = {
+            "delta_accuracy_pts": round(delta * 100.0, 2),
+            "pct": round((delta / plain_acc * 100.0) if plain_acc else 0.0, 1),
+        }
 
     sensitivity = []
     for fr in _SENSITIVITY_FRACTIONS:
@@ -443,19 +562,42 @@ def run_experiment(
             "budget_k": k,
         },
         "primary_metric": (
-            "expected exam-score gain within the first K reviews = sum over "
-            "studied cards of (1 - true_mastery) * yield_weight"
+            "delayed mixed-topic test accuracy: mean probability-correct over "
+            "ALL cards after studying the first K in each arm's order, then a "
+            "fixed forgetting delay (interleaved encodings decay less). This is "
+            "a learner-OUTCOME test, not an ordering score."
         ),
+        "secondary_metric": (
+            "expected value front-loaded within the first K reviews = sum over "
+            "studied cards of (1 - true_mastery) * yield_weight (ordering score)"
+        ),
+        "learner_model": {
+            "study_gain_logit": _STUDY_GAIN,
+            "base_decay_logit": _BASE_DECAY,
+            "interleave_durability_bonus": _INTERLEAVE_DURABILITY,
+            "massed_durability_penalty": _MASSED_DURABILITY_PENALTY,
+            "note": (
+                "the interleaving durability bonus is a modeling assumption from "
+                "the study-science literature (interleaving aids discrimination "
+                "and long-term retention), not an empirical measurement; a real "
+                "effect size needs a human A/B"
+            ),
+        },
         "arms": {
             key: {
+                "delayed_test_accuracy": _stats(delayed_acc[key]),
                 "expected_gain": _stats(gains[key]),
                 "fraction_of_total_value": _stats(frac_captured[key]),
                 "weak_cards_in_budget": _stats([float(x) for x in weak[key]]),
             }
             for key in _ARM_KEYS
         },
-        "reference_oracle_value_sorted": {"expected_gain": _stats(oracle_gains)},
-        "vs_plain_anki": vs_plain,
+        "reference_oracle_value_sorted": {
+            "delayed_test_accuracy": _stats(oracle_delayed),
+            "expected_gain": _stats(oracle_gains),
+        },
+        "outcome_vs_plain_anki": outcome_vs_plain,
+        "value_vs_plain_anki": vs_plain,
         "ordering_diagnostic": {
             "positions_changed_points_vs_plain": _stats(positions_changed_points),
             "positions_changed_interleave_vs_points": _stats(
@@ -473,20 +615,18 @@ def run_experiment(
         "per_seed": [
             {
                 "seed": r["seed"],
-                "plain": round(
-                    _expected_gain(r["orders"]["plain_anki"], r["by_id"], k), 4
-                ),
-                "points_at_stake": round(
-                    _expected_gain(r["orders"]["points_at_stake"], r["by_id"], k), 4
-                ),
-                "points_plus_interleave": round(
-                    _expected_gain(
-                        r["orders"]["points_plus_interleave"], r["by_id"], k
-                    ),
-                    4,
-                ),
-                "oracle": round(_expected_gain(r["oracle"], r["by_id"], k), 4),
-                "total": round(r["total_gain"], 4),
+                "delayed_accuracy": {
+                    key: round(
+                        _delayed_test_accuracy(r["orders"][key], r["by_id"], k), 4
+                    )
+                    for key in _ARM_KEYS
+                },
+                "front_loaded_value": {
+                    key: round(_expected_gain(r["orders"][key], r["by_id"], k), 4)
+                    for key in _ARM_KEYS
+                },
+                "oracle_value": round(_expected_gain(r["oracle"], r["by_id"], k), 4),
+                "total_value": round(r["total_gain"], 4),
             }
             for r in records
         ],
@@ -501,6 +641,15 @@ def _assert_experiment_sane(result: dict) -> None:
     interleave = arms["points_plus_interleave"]["expected_gain"]["mean"]
     oracle = result["reference_oracle_value_sorted"]["expected_gain"]["mean"]
     diag = result["ordering_diagnostic"]
+
+    # Learner-outcome (delayed test accuracy): the metric that can reward
+    # interleaving. Points-at-stake should not hurt vs plain, and +interleave
+    # should convert its spacing of confusable siblings into >= delayed accuracy.
+    acc_plain = arms["plain_anki"]["delayed_test_accuracy"]["mean"]
+    acc_points = arms["points_at_stake"]["delayed_test_accuracy"]["mean"]
+    acc_interleave = arms["points_plus_interleave"]["delayed_test_accuracy"]["mean"]
+    assert acc_points >= acc_plain - 1e-9, (acc_points, acc_plain)
+    assert acc_interleave >= acc_points - 1e-9, (acc_interleave, acc_points)
 
     # The three arms must be genuinely distinct, not two aliases of one order.
     # Arm 2 (+points-at-stake) must actually reorder the plain queue and lead
