@@ -3581,17 +3581,26 @@ class _WsPractice:
         ci = q["correct_index"]
         self.verdict = "good" if correct else "bad"
         self.verdict_text = "Correct" if correct else "Not quite"
-        parts = [f"Answer: {chr(65 + ci)}. {q['options'][ci]}"]
+        self._feedback_base = [f"Answer: {chr(65 + ci)}. {q['options'][ci]}"]
         if q["explanation"]:
-            parts.append(q["explanation"])
-        if diagnosis is not None and not correct and diagnosis.kind in _DIAGNOSIS_LABEL:
-            parts.append(_DIAGNOSIS_LABEL[diagnosis.kind])
-            action = _ACTION_LABEL.get(diagnosis.routed_action, "")
+            self._feedback_base.append(q["explanation"])
+        if diagnosis is not None and not correct:
+            self._set_feedback_diag(diagnosis.kind, diagnosis.routed_action)
+        else:
+            self.feedback = "\n".join(self._feedback_base)
+        self.render()
+        self._maybe_ai(q, sel, took_ms, predicted, correct, explanation)
+
+    def _set_feedback_diag(self, kind: int, routed_action: int) -> None:
+        """Render feedback with a diagnosis kind + action, so the AI coach (when
+        on) can replace the rule-based call with its own and keep them in sync."""
+        parts = list(getattr(self, "_feedback_base", []))
+        if kind in _DIAGNOSIS_LABEL:
+            parts.append(_DIAGNOSIS_LABEL[kind])
+            action = _ACTION_LABEL.get(routed_action, "")
             if action:
                 parts.append(action)
         self.feedback = "\n".join(parts)
-        self.render()
-        self._maybe_ai(q, sel, took_ms, predicted, correct, explanation)
 
     def _maybe_ai(self, q, selected, took_ms, predicted, correct, explanation) -> None:
         if correct or self.mw.col is None:
@@ -3637,6 +3646,11 @@ class _WsPractice:
                 else (rationale or "No rationale returned.")
             )
             self.ai = {"body": body, "source": (result.get("source") or "").strip()}
+            # AI is the authority when on + confident: sync the diagnosis line +
+            # routed action to its call (was the rule-based kind).
+            ai_kind = int(result.get("kind") or 0)
+            if ai_kind in _DIAGNOSIS_LABEL:
+                self._set_feedback_diag(ai_kind, int(result.get("routed_action") or 0))
         if _ws_active == "practice":
             self.render()
 
@@ -4333,19 +4347,28 @@ class _PracticeDialog(QDialog):
         self.verdict.setVisible(True)
         self._repolish(self.verdict)
 
-        parts = [f"Answer: {chr(65 + ci)}. {q['options'][ci]}"]
+        self._feedback_base = [f"Answer: {chr(65 + ci)}. {q['options'][ci]}"]
         if q["explanation"]:
-            parts.append(q["explanation"])
-        if diagnosis is not None and not correct and diagnosis.kind in _DIAGNOSIS_LABEL:
-            parts.append(_DIAGNOSIS_LABEL[diagnosis.kind])
-            action = _ACTION_LABEL.get(diagnosis.routed_action, "")
-            if action:
-                parts.append(action)
-        self.feedback.setText("\n".join(parts))
+            self._feedback_base.append(q["explanation"])
+        if diagnosis is not None and not correct:
+            self._set_diagnosis_feedback(diagnosis.kind, diagnosis.routed_action)
+        else:
+            self.feedback.setText("\n".join(self._feedback_base))
         self.action_btn.setText(
             "Finish" if self.index + 1 >= len(self.questions) else "Next question"
         )
         self._maybe_ai_diagnose(q, selected, took_ms, predicted, correct)
+
+    def _set_diagnosis_feedback(self, kind: int, routed_action: int) -> None:
+        """Render the feedback with a given diagnosis kind + routed action, so the
+        AI coach (when on) can replace the rule-based call with its own."""
+        parts = list(getattr(self, "_feedback_base", []))
+        if kind in _DIAGNOSIS_LABEL:
+            parts.append(_DIAGNOSIS_LABEL[kind])
+            action = _ACTION_LABEL.get(routed_action, "")
+            if action:
+                parts.append(action)
+        self.feedback.setText("\n".join(parts))
 
     def _maybe_ai_diagnose(self, q, selected, took_ms, predicted, correct) -> None:
         """Non-blocking: enrich a miss with the source-grounded AI coach if it's
@@ -4406,6 +4429,11 @@ class _PracticeDialog(QDialog):
         if source:
             self.ai_source.setText(f"Source: {source}")
             self.ai_source.setVisible(True)
+        # AI is the authority when it's on and confident: replace the rule-based
+        # diagnosis line + routed action with the coach's call so they agree.
+        ai_kind = int(result.get("kind") or 0)
+        if ai_kind in _DIAGNOSIS_LABEL:
+            self._set_diagnosis_feedback(ai_kind, int(result.get("routed_action") or 0))
 
     def _next(self) -> None:
         self.index += 1
