@@ -254,7 +254,6 @@ PYTHONPATH=out/pylib:pylib out/pyenv/bin/pytest -q pylib/tests/test_speedrun.py
 - [docs/speedrun/model-notes.md](docs/speedrun/model-notes.md) — the memory / performance / readiness models and their give-up rules.
 - [docs/speedrun/files-touched.md](docs/speedrun/files-touched.md) — annotated list of upstream files modified and Speedrun files added.
 - [docs/speedrun/ai-note.md](docs/speedrun/ai-note.md) — what AI was built, why, and what was deliberately skipped.
-- [project_brainlift.md](project_brainlift.md) — the research/thesis brainlift.
 
 ## Credits
 

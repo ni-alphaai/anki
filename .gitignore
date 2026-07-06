@@ -29,3 +29,7 @@ docs/autoapi/
 
 # Speedrun tool scratch (pycache from tools/*.sh)
 tools/out/
+
+# Speedrun local-only docs (kept out of the public repo)
+project_brainlift.md
+docs/speedrun/demo-script.md
