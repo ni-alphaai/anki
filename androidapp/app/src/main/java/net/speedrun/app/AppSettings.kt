@@ -89,6 +89,8 @@ object AppSettings {
     private const val KEY_THEME = "theme_mode"
     private const val KEY_AUTO_ROUND = "auto_reasoning_round"
     private const val KEY_DELAYED_FB = "delayed_feedback_experiment"
+    private const val KEY_AI_ENABLED = "ai_diagnosis_enabled"
+    private const val KEY_OPENAI_KEY = "openai_api_key"
     private const val KEY_EXAMPLE_LOADED = "example_deck_loaded"
     private const val KEY_DIAGNOSTIC_DONE = "diagnostic_done"
     private const val KEY_SYNC_URL = "sync_url"
@@ -124,6 +126,14 @@ object AppSettings {
      * ``speedrunDelayedFeedbackExperiment`` flag.
      */
     var delayedFeedbackExperiment by mutableStateOf(false)
+        private set
+
+    /** AI diagnosis on the phone (calls OpenAI directly). Local-only: the toggle
+     * is device-specific and the API key is a secret, so neither syncs to the
+     * collection config. */
+    var aiDiagnosisEnabled by mutableStateOf(false)
+        private set
+    var openaiApiKey by mutableStateOf("")
         private set
 
     /** Whether the bundled example deck has been auto-loaded once (first run). */
@@ -218,6 +228,8 @@ object AppSettings {
         }.getOrDefault(ThemeMode.System)
         autoReasoningRound = prefs.getBoolean(KEY_AUTO_ROUND, false)
         delayedFeedbackExperiment = prefs.getBoolean(KEY_DELAYED_FB, false)
+        aiDiagnosisEnabled = prefs.getBoolean(KEY_AI_ENABLED, false)
+        openaiApiKey = prefs.getString(KEY_OPENAI_KEY, "") ?: ""
         exampleLoaded = prefs.getBoolean(KEY_EXAMPLE_LOADED, false)
         diagnosticDone = prefs.getBoolean(KEY_DIAGNOSTIC_DONE, false)
         syncUrl = prefs.getString(KEY_SYNC_URL, "") ?: ""
@@ -402,6 +414,18 @@ object AppSettings {
         delayedFeedbackExperiment = on
         persistBool(context, KEY_DELAYED_FB, on)
         writeConfig(SpeedrunConfig.KEY_DELAYED_FB, SpeedrunConfig.encodeBool(on))
+    }
+
+    /** Local-only (not synced): the coach calls OpenAI from this device. */
+    fun setAiDiagnosisEnabled(context: Context, on: Boolean) {
+        aiDiagnosisEnabled = on
+        persistBool(context, KEY_AI_ENABLED, on)
+    }
+
+    fun setOpenaiApiKey(context: Context, key: String) {
+        openaiApiKey = key
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putString(KEY_OPENAI_KEY, key).apply()
     }
 
     fun setSyncViaUsb(context: Context, on: Boolean) {

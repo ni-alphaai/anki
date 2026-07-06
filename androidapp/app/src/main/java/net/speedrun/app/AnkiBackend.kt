@@ -46,6 +46,7 @@ import anki.speedrun.SeedSampleHistoryResponse
 import anki.speedrun.SessionReasoningRoundRequest
 import anki.speedrun.SetTopicMapResponse
 import anki.speedrun.TopicMap
+import anki.speedrun.UpdateAttemptDiagnosisRequest
 import anki.speedrun.TopicMapEntry
 import anki.speedrun.TopicAttemptStat
 import anki.speedrun.TopicAttemptStats
@@ -217,6 +218,17 @@ class AnkiBackend private constructor(private var ptr: Long) {
     /** Record a graded attempt (with any self-explanation) and get its diagnosis. */
     fun recordAttempt(req: RecordAttemptRequest): RecordAttemptResponse =
         RecordAttemptResponse.parseFrom(run(SVC_SPEEDRUN, M_RECORD_ATTEMPT, req.toByteArray()))
+
+    /** Overwrite an attempt's diagnosis (used to make the AI coach's call the
+     * stored one, so reports/routing reflect it). */
+    fun updateAttemptDiagnosis(attemptId: Long, kind: Int, routedAction: Int) {
+        val req = UpdateAttemptDiagnosisRequest.newBuilder()
+            .setAttemptId(attemptId)
+            .setDiagnosisKind(kind)
+            .setRoutedAction(routedAction)
+            .build()
+        run(SVC_SPEEDRUN, M_UPDATE_ATTEMPT_DIAGNOSIS, req.toByteArray())
+    }
 
     /** Fetch a batch of held-out practice questions (optionally by topic). */
     fun getPracticeQuestions(limit: Int, topic: String): List<QuestionItem> {
@@ -425,6 +437,7 @@ class AnkiBackend private constructor(private var ptr: Long) {
         private const val SVC_SPEEDRUN = 43
         private const val M_RECORD_ATTEMPT = 0
         private const val M_COMPUTE_READINESS = 3
+        private const val M_UPDATE_ATTEMPT_DIAGNOSIS = 19
         private const val M_ADD_QUESTION_ITEM = 5
         private const val M_PERFORMANCE_REPORT = 7
         private const val M_SET_TOPIC_MAP = 8

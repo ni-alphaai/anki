@@ -45,6 +45,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import net.speedrun.app.AiCoach
+import net.speedrun.app.AppSettings
 import net.speedrun.app.Diagnosis
 import net.speedrun.app.EngineRepository
 import net.speedrun.app.Feedback
@@ -329,6 +331,8 @@ private fun PracticeRunner(
     var pendingExplanation by remember { mutableStateOf("") }
     var showVoice by remember { mutableStateOf(false) }
     var diagnosis by remember { mutableStateOf<Diagnosis?>(null) }
+    var aiStatus by remember { mutableStateOf<String?>(null) }
+    var aiResult by remember { mutableStateOf<AiCoach.Diagnosis?>(null) }
     var correctCount by remember { mutableIntStateOf(0) }
     var shownAt by remember { mutableStateOf(0L) }
     // D7: decide once whether to withhold immediate correctness (experiment on
@@ -453,6 +457,10 @@ private fun PracticeRunner(
                                 Spacer(Modifier.height(Space.s))
                                 DiagnosisView(it)
                             }
+                            if (aiStatus != null || aiResult != null) {
+                                Spacer(Modifier.height(Space.s))
+                                AiCoachCard(aiStatus, aiResult)
+                            }
                         }
                     }
                     Spacer(Modifier.height(Space.l))
@@ -475,9 +483,37 @@ private fun PracticeRunner(
                                 val took = System.currentTimeMillis() - shownAt
                                 val expl = pendingExplanation
                                 scope.launch {
-                                    diagnosis = runCatching {
+                                    val rec = runCatching {
                                         EngineRepository.recordQuestionAttempt(q, sel, took, conf, expl)
-                                    }.getOrNull()?.takeIf { it.label != null }
+                                    }.getOrNull()
+                                    diagnosis = rec?.diagnosis?.takeIf { it.label != null }
+                                    // AI coach (opt-in, needs a key): on a miss, diagnose
+                                    // against the source, then override + persist its call.
+                                    val miss = sel != q.correctIndex
+                                    if (rec != null && miss && AppSettings.aiDiagnosisEnabled &&
+                                        AppSettings.openaiApiKey.isNotBlank()
+                                    ) {
+                                        aiResult = null
+                                        aiStatus = "Analyzing your miss against the source…"
+                                        val ai = runCatching {
+                                            AiCoach.diagnose(
+                                                AppSettings.openaiApiKey, q.topic, q.stem, q.options,
+                                                q.correctIndex, sel, q.explanation, expl,
+                                                took.coerceIn(1, 600_000).toInt(), conf,
+                                                if (q.isPassage) 1 else 2,
+                                            )
+                                        }.getOrNull()
+                                        aiStatus = null
+                                        if (ai != null) {
+                                            aiResult = ai
+                                            diagnosis = Diagnosis(ai.kind, ai.routedAction)
+                                            runCatching {
+                                                EngineRepository.updateAttemptDiagnosis(
+                                                    rec.attemptId, ai.kind, ai.routedAction,
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
                             if (selected == null) {
@@ -496,6 +532,8 @@ private fun PracticeRunner(
                             answered = false
                             pendingExplanation = ""
                             diagnosis = null
+                            aiStatus = null
+                            aiResult = null
                             shownAt = System.currentTimeMillis()
                         }
                     }
@@ -572,6 +610,41 @@ private fun BankedFeedback() {
             style = MaterialTheme.typography.body,
             modifier = Modifier.padding(top = Space.xs),
         )
+    }
+}
+
+@Composable
+private fun AiCoachCard(status: String?, result: AiCoach.Diagnosis?) {
+    val c = Speedrun.colors
+    SpeedrunCard {
+        Text(
+            "AI coach",
+            color = c.textSecondary,
+            style = MaterialTheme.typography.caption,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(Modifier.height(Space.xs))
+        if (result != null) {
+            Text(
+                "${result.kindName.replace('_', ' ')}: ${result.rationale}",
+                color = c.textPrimary,
+                style = MaterialTheme.typography.body,
+            )
+            if (result.source.isNotBlank()) {
+                Spacer(Modifier.height(Space.xs))
+                Text(
+                    "Source: ${result.source}",
+                    color = c.textTertiary,
+                    style = MaterialTheme.typography.caption,
+                )
+            }
+        } else {
+            Text(
+                status ?: "",
+                color = c.textSecondary,
+                style = MaterialTheme.typography.body,
+            )
+        }
     }
 }
 

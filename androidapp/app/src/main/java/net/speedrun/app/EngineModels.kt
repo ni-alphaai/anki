@@ -359,6 +359,10 @@ data class Diagnosis(val kind: Int, val routedAction: Int) {
         }
 }
 
+/** A recorded attempt: its id (so a later AI diagnosis can overwrite it) and the
+ * engine's deterministic diagnosis. */
+data class RecordedAttempt(val attemptId: Long, val diagnosis: Diagnosis)
+
 /** Result of trying to open the shared collection on the device. */
 sealed interface OpenState {
     data object Ready : OpenState

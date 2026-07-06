@@ -703,7 +703,7 @@ object EngineRepository {
         confidence: Float?,
         selfExplanation: String,
         session: String? = null,
-    ): Diagnosis? = engine { b ->
+    ): RecordedAttempt? = engine { b ->
         val correct = selectedIndex == item.correctIndex
         val ms = tookMs.coerceIn(1, 600_000).toInt()
         // CARS/passage items record as passage MCQ so a miss is diagnosed as a
@@ -732,9 +732,17 @@ object EngineRepository {
                 .setData(data)
             if (confidence != null) builder.setPredicted(confidence)
             val resp = b.recordAttempt(builder.build())
-            Diagnosis(resp.diagnosis.kind, resp.diagnosis.routedAction)
+            RecordedAttempt(resp.id, Diagnosis(resp.diagnosis.kind, resp.diagnosis.routedAction))
         }.getOrNull()
     }
+
+    /** Overwrite an attempt's stored diagnosis (used to persist the AI coach's
+     * call so reports / routing / sync reflect it). */
+    suspend fun updateAttemptDiagnosis(attemptId: Long, kind: Int, routedAction: Int) =
+        engine { b ->
+            runCatching { b.updateAttemptDiagnosis(attemptId, kind, routedAction) }
+            Unit
+        }
 
     /**
      * Two-way collection sync against a self-hosted anki-sync-server. Runs an

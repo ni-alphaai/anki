@@ -20,12 +20,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import net.speedrun.app.AppSettings
 import net.speedrun.app.EngineRepository
 import net.speedrun.app.ExamProfileUi
 import net.speedrun.app.McatScale
 import net.speedrun.app.ThemeMode
 import net.speedrun.app.ui.AppSwitch
+import net.speedrun.app.ui.AppTextField
 import net.speedrun.app.ui.DetailTopBar
 import net.speedrun.app.ui.GroupFootnote
 import net.speedrun.app.ui.RowDivider
@@ -136,6 +138,37 @@ fun SettingsScreen(
             "Auto reasoning jumps into a short reasoning check right after a deck's " +
                 "reviews. Daily limits follow each deck's preset - adjust them in the " +
                 "desktop app; the phone shares the same collection.",
+        )
+        Spacer(Modifier.height(Space.xl))
+
+        SectionLabel("AI coach (beta)")
+        SettingsGroup {
+            SettingsRow(
+                title = "AI diagnosis",
+                subtitle = "Diagnose a miss with OpenAI; off, the built-in classifier is used",
+                trailing = {
+                    AppSwitch(
+                        checked = AppSettings.aiDiagnosisEnabled,
+                        onCheckedChange = { AppSettings.setAiDiagnosisEnabled(context, it) },
+                    )
+                },
+            )
+        }
+        if (AppSettings.aiDiagnosisEnabled) {
+            Spacer(Modifier.height(Space.s))
+            var key by remember { mutableStateOf(AppSettings.openaiApiKey) }
+            AppTextField(
+                value = key,
+                onValueChange = { key = it; AppSettings.setOpenaiApiKey(context, it) },
+                label = "OpenAI API key",
+                placeholder = "sk-…",
+                visualTransformation = PasswordVisualTransformation(),
+            )
+        }
+        GroupFootnote(
+            "When on, a miss is diagnosed by OpenAI (gpt-4o) from the question and your " +
+                "self-explanation, and its call is stored. The key is kept only on this " +
+                "device and never synced. Off, nothing leaves the phone.",
         )
         Spacer(Modifier.height(Space.xl))
 
