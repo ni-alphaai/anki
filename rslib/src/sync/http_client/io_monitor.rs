@@ -120,12 +120,16 @@ impl IoMonitor {
                 .await?
                 .error_for_status()?;
             map_redirect_to_error(&resp)?;
+            let resp_status = resp.status();
+            let resp_url = resp.url().clone();
             let response_total = resp
                 .headers()
                 .get(&ORIGINAL_SIZE)
                 .and_then(|v| v.to_str().ok())
                 .and_then(|v| v.parse::<u32>().ok())
-                .or_bad_request("missing original size")?;
+                .or_bad_request(format!(
+                    "missing original size (status={resp_status}, url={resp_url})"
+                ))?;
             let response_stream = self.wrap_stream(
                 false,
                 response_total,

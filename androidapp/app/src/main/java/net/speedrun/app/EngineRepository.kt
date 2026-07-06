@@ -794,7 +794,14 @@ object EngineRepository {
         withContext(dispatcher) {
             val b = backend ?: return@withContext SyncResult.Error("Collection is not open")
             try {
-                b.fullUploadOrDownload(buildAuth(hkey, endpoint), upload = upload)
+                // AnkiWeb 308-redirects the base host (sync.ankiweb.net) to the
+                // account's numbered shard. full_upload/full_download post directly
+                // to the auth endpoint and do NOT follow redirects, so a base-host
+                // full transfer fails ("missing original size"). Resolve the shard
+                // first (a meta call re-pins it; a schema conflict returns FullSync
+                // at the meta stage without exchanging chunks), then transfer.
+                val auth = resolveAnkiwebShard(b, hkey, endpoint)
+                b.fullUploadOrDownload(auth, upload = upload)
                 if (!upload) reopenCollection(b)
                 afterSyncRefresh()
                 SyncResult.Ok(
@@ -942,6 +949,20 @@ object EngineRepository {
     /** Build a SyncAuth from a persisted session token + endpoint (no login). */
     private fun buildAuth(hkey: String, endpoint: String): SyncAuth =
         SyncAuth.newBuilder().setHkey(hkey).setEndpoint(SyncUrl.normalize(endpoint)).build()
+
+    /**
+     * Return a SyncAuth pinned to the AnkiWeb account's shard. syncCollection runs
+     * meta-with-redirect internally and reports the shard via newEndpoint; the
+     * inline normal-sync path relies on the same step. Falls back to the given
+     * endpoint if the probe can't resolve one. Callers that post directly (full
+     * upload/download) must use this so they don't hit the un-sharded base host.
+     */
+    private fun resolveAnkiwebShard(b: AnkiBackend, hkey: String, endpoint: String): SyncAuth {
+        var session = SyncSession(SyncUrl.normalize(endpoint), buildAuth(hkey, endpoint))
+        val meta = runCatching { b.syncCollection(session.auth) }.getOrNull()
+        if (meta != null) session = applyNewEndpoint(session, meta)
+        return session.auth
+    }
 
     private const val CONNECTIVITY_MESSAGE =
         "Couldn't reach the sync server. On the desktop open Sync with phone to host " +
