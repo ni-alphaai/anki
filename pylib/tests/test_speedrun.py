@@ -130,13 +130,22 @@ def test_topic_outline_and_coverage():
     assert report.topics_total == 10
     assert report.topics_covered == 0
 
-    # add a note tagged with topic "fc1"
+    # A topic needs at least MIN_CARDS_PER_TOPIC (3) tagged cards before it counts
+    # as covered, so a lone incidental card can't light up a whole topic. Two
+    # cards stays below the bar; the third clears it.
     model = col.models.by_name("Basic")
-    note = col.new_note(model)
-    note["Front"] = "an amino acid fact"
-    note.tags = ["fc1"]
-    col.add_note(note, col.decks.id("Default"))
 
+    def _add_fc1_card(front: str) -> None:
+        note = col.new_note(model)
+        note["Front"] = front
+        note.tags = ["fc1"]
+        col.add_note(note, col.decks.id("Default"))
+
+    _add_fc1_card("an amino acid fact")
+    _add_fc1_card("another amino acid fact")
+    assert col._backend.get_coverage_report().topics_covered == 0
+
+    _add_fc1_card("a third amino acid fact")
     report = col._backend.get_coverage_report()
     assert report.topics_covered == 1
     assert abs(report.coverage - 0.1) < 1e-6
