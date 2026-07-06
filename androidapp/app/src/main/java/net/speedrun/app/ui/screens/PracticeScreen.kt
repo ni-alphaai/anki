@@ -56,7 +56,6 @@ import net.speedrun.app.ui.DiagnosisView
 import net.speedrun.app.ui.PrimaryButton
 import net.speedrun.app.ui.SecondaryButton
 import net.speedrun.app.ui.SectionLabel
-import net.speedrun.app.ui.SegmentedControl
 import net.speedrun.app.ui.SessionTopBar
 import net.speedrun.app.ui.SpeedrunCard
 import net.speedrun.app.ui.VoiceExplainSheet
@@ -327,7 +326,6 @@ private fun PracticeRunner(
     var index by remember { mutableIntStateOf(0) }
     var selected by remember { mutableStateOf<Int?>(null) }
     var answered by remember { mutableStateOf(false) }
-    var confidence by remember { mutableStateOf<Float?>(null) }
     var pendingExplanation by remember { mutableStateOf("") }
     var showVoice by remember { mutableStateOf(false) }
     var diagnosis by remember { mutableStateOf<Diagnosis?>(null) }
@@ -463,32 +461,32 @@ private fun PracticeRunner(
                 Column(Modifier.padding(horizontal = Space.l).padding(bottom = Space.l)) {
                     if (!answered) {
                         // Learning-science flow: self-explanation is mandatory and
-                        // comes first; the forced confidence choice appears once the
-                        // student has explained; submit needs answer + explanation +
-                        // confidence.
+                        // comes first; then the forced confidence choice appears and
+                        // DOUBLES AS SUBMIT - tapping a level records the answer at
+                        // that confidence (one action instead of pick-then-submit).
                         SelfExplainRow(pendingExplanation.isNotBlank()) { showVoice = true }
                         if (pendingExplanation.isNotBlank()) {
-                            Spacer(Modifier.height(Space.s))
-                            ConfidencePicker(confidence) { confidence = it }
-                        }
-                        Spacer(Modifier.height(Space.s))
-                        PrimaryButton(
-                            "Submit answer",
-                            enabled = selected != null &&
-                                pendingExplanation.isNotBlank() &&
-                                confidence != null,
-                        ) {
-                            val sel = selected ?: return@PrimaryButton
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            answered = true
-                            if (sel == q.correctIndex) correctCount++
-                            val took = System.currentTimeMillis() - shownAt
-                            val expl = pendingExplanation
-                            val conf = confidence
-                            scope.launch {
-                                diagnosis = runCatching {
-                                    EngineRepository.recordQuestionAttempt(q, sel, took, conf, expl)
-                                }.getOrNull()?.takeIf { it.label != null }
+                            Spacer(Modifier.height(Space.m))
+                            ConfidenceSubmit(enabled = selected != null) { conf ->
+                                val sel = selected ?: return@ConfidenceSubmit
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                answered = true
+                                if (sel == q.correctIndex) correctCount++
+                                val took = System.currentTimeMillis() - shownAt
+                                val expl = pendingExplanation
+                                scope.launch {
+                                    diagnosis = runCatching {
+                                        EngineRepository.recordQuestionAttempt(q, sel, took, conf, expl)
+                                    }.getOrNull()?.takeIf { it.label != null }
+                                }
+                            }
+                            if (selected == null) {
+                                Spacer(Modifier.height(Space.xs))
+                                Text(
+                                    "Select an answer above, then tap your confidence to submit.",
+                                    color = c.textTertiary,
+                                    style = MaterialTheme.typography.caption,
+                                )
                             }
                         }
                     } else {
@@ -496,7 +494,6 @@ private fun PracticeRunner(
                             index += 1
                             selected = null
                             answered = false
-                            confidence = null
                             pendingExplanation = ""
                             diagnosis = null
                             shownAt = System.currentTimeMillis()
@@ -601,15 +598,45 @@ private fun AnswerFeedback(q: QuestionItemUi) {
 }
 
 @Composable
-private fun ConfidencePicker(confidence: Float?, onSelect: (Float) -> Unit) {
+private fun ConfidenceSubmit(enabled: Boolean, onSubmit: (Float) -> Unit) {
     val c = Speedrun.colors
     Column {
-        Text("How confident?", color = c.textSecondary, style = MaterialTheme.typography.caption, modifier = Modifier.padding(bottom = Space.xs))
-        SegmentedControl(
-            options = confidenceLevels.map { it.first },
-            selectedIndex = confidenceLevels.indexOfFirst { it.second == confidence },
-            onSelect = { i -> onSelect(confidenceLevels[i].second) },
+        Text(
+            "How confident? Tap to submit your answer.",
+            color = c.textSecondary,
+            style = MaterialTheme.typography.caption,
+            modifier = Modifier.padding(bottom = Space.xs),
         )
+        Row(horizontalArrangement = Arrangement.spacedBy(Space.s)) {
+            confidenceLevels.forEach { (label, value) ->
+                ConfidenceSubmitButton(label, enabled, Modifier.weight(1f)) { onSubmit(value) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ConfidenceSubmitButton(
+    label: String,
+    enabled: Boolean,
+    modifier: Modifier,
+    onClick: () -> Unit,
+) {
+    val c = Speedrun.colors
+    // Confidence buttons ARE the submit (tap = record the answer at that
+    // confidence), styled like the reviewer's one-tap rating buttons.
+    val border = if (enabled) c.accent.copy(alpha = 0.55f) else c.separator
+    val fg = if (enabled) c.accent else c.textTertiary
+    Box(
+        modifier
+            .clip(RoundedCornerShape(Radius.control))
+            .background(c.surfaceElevated)
+            .border(1.dp, border, RoundedCornerShape(Radius.control))
+            .clickable(enabled = enabled) { onClick() }
+            .padding(vertical = 13.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, color = fg, style = MaterialTheme.typography.body, fontWeight = FontWeight.SemiBold)
     }
 }
 

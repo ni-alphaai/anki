@@ -1498,16 +1498,21 @@ _WORKSPACE_CSS = """
 .sr-pq-voicebtn.captured { border-color:var(--sr-perf); color:var(--sr-perf);
   background:color-mix(in srgb, var(--sr-perf) 12%, transparent); }
 .sr-pq-explain-note { color:var(--sr-tertiary); font-size:12px; }
-.sr-pq-conf { display:flex; align-items:center; gap:12px; margin:14px 0 2px;
+.sr-pq-conf { display:flex; align-items:center; gap:12px; margin:14px 0 2px; flex-wrap:wrap;
   color:var(--sr-secondary); font-size:14px; }
 .sr-pq-confbtns { display:inline-flex; gap:8px; }
+/* Confidence buttons ARE the submit action (tap = record answer at that
+   confidence), so they read as accented actions, not a muted selector. */
 .sr-pq-confbtns button { font-family:var(--sr-font); font-size:13.5px; font-weight:600;
-  padding:8px 16px; border-radius:var(--sr-radius-input); border:1px solid var(--sr-hairline);
-  background:var(--sr-surface); color:var(--sr-secondary); cursor:pointer;
+  padding:9px 18px; border-radius:var(--sr-radius-input);
+  border:1px solid color-mix(in srgb, var(--sr-accent) 55%, transparent);
+  background:var(--sr-surface); color:var(--sr-accent); cursor:pointer;
   transition:border-color .14s, color .14s, background .14s; }
-.sr-pq-confbtns button:hover { border-color:var(--sr-accent); }
-.sr-pq-confbtns button.sel { border-color:var(--sr-accent); color:var(--sr-accent);
-  background:color-mix(in srgb, var(--sr-accent) 12%, transparent); }
+.sr-pq-confbtns button:hover:not([disabled]) { border-color:var(--sr-accent);
+  background:color-mix(in srgb, var(--sr-accent) 14%, transparent); }
+.sr-pq-confbtns button[disabled] { color:var(--sr-tertiary); border-color:var(--sr-hairline);
+  background:transparent; cursor:default; opacity:.65; }
+#sr-conf-hint { flex-basis:100%; margin:6px 0 0; }
 .sr-pq-verdict { font-family:var(--sr-display); font-size:22px; font-weight:600; margin:14px 0 6px; }
 .sr-pq-verdict.good { color:var(--sr-perf); }
 .sr-pq-verdict.bad { color:var(--sr-danger); }
@@ -2359,19 +2364,24 @@ def _sync_section(sync: dict) -> str:
 _PRACTICE_JS = """
 <script>
 window._srSel = (typeof window._srSel === 'undefined') ? null : window._srSel;
-window._srConf = (typeof window._srConf === 'undefined') ? null : window._srConf;
 function srExplained(){
   var ex = document.getElementById('sr-explain');
   return !!(ex && ex.value.trim().length > 0);
 }
 function srUpdate(){
-  // Reveal the confidence choice only once the student has self-explained, and
-  // enable submit only when answer + explanation + confidence are all present.
+  // The confidence choice appears once the student has self-explained. Tapping a
+  // level submits the answer, so it also needs a selected option: until one is
+  // picked the confidence buttons are disabled and a hint is shown.
+  var explained = srExplained();
   var row = document.getElementById('sr-conf-row');
-  if(row){ row.style.display = srExplained() ? '' : 'none'; }
-  var ok = window._srSel !== null && window._srConf !== null && srExplained();
-  var b = document.getElementById('sr-pq-submit');
-  if(b){ if(ok){ b.removeAttribute('disabled'); } else { b.setAttribute('disabled','1'); } }
+  if(row){ row.style.display = explained ? '' : 'none'; }
+  var hasSel = window._srSel !== null;
+  var hint = document.getElementById('sr-conf-hint');
+  if(hint){ hint.style.display = (explained && !hasSel) ? '' : 'none'; }
+  var btns = document.querySelectorAll('.sr-pq-confbtns button');
+  for (var k=0;k<btns.length;k++){
+    if(hasSel){ btns[k].removeAttribute('disabled'); } else { btns[k].setAttribute('disabled','1'); }
+  }
 }
 function srSel(el, i){
   window._srSel = i;
@@ -2380,18 +2390,13 @@ function srSel(el, i){
   el.classList.add('sel');
   srUpdate();
 }
-function srConf(el, v){
-  window._srConf = v;
-  var btns = document.querySelectorAll('.sr-pq-confbtns button');
-  for (var k=0;k<btns.length;k++){ btns[k].classList.remove('sel'); }
-  el.classList.add('sel');
-  srUpdate();
-}
-function srSubmit(){
-  if(window._srSel===null || window._srConf===null || !srExplained()){ return; }
+function srConfSubmit(v){
+  // Confidence doubles as submit: tapping a level records the answer with that
+  // confidence (one action instead of pick-a-level then press Submit).
+  if(window._srSel===null || !srExplained()){ return; }
   var ex = document.getElementById('sr-explain');
-  var payload = {sel: window._srSel, conf: window._srConf, explain: ex?ex.value:''};
-  window._srSel = null; window._srConf = null;
+  var payload = {sel: window._srSel, conf: v, explain: ex?ex.value:''};
+  window._srSel = null;
   pycmd('speedrun:pq:submit:'+encodeURIComponent(JSON.stringify(payload)));
 }
 function srVoice(){
@@ -2614,16 +2619,14 @@ def practice_body(s: dict) -> str:
         )
         inner.append(
             '<div id="sr-conf-row" class="sr-pq-conf" style="display:none">'
-            "<span>How confident?</span>"
+            "<span>How confident? Tap to submit your answer.</span>"
             '<div class="sr-pq-confbtns">'
-            '<button type="button" data-conf="1" onclick="srConf(this,1)">Low</button>'
-            '<button type="button" data-conf="2" onclick="srConf(this,2)">Medium</button>'
-            '<button type="button" data-conf="3" onclick="srConf(this,3)">High</button>'
-            "</div></div>"
-        )
-        inner.append(
-            '<div class="sr-pq-foot"><button id="sr-pq-submit" class="sr-btn sr-primary" '
-            'disabled onclick="srSubmit()">Submit answer</button></div>'
+            '<button type="button" data-conf="1" onclick="srConfSubmit(1)">Low</button>'
+            '<button type="button" data-conf="2" onclick="srConfSubmit(2)">Medium</button>'
+            '<button type="button" data-conf="3" onclick="srConfSubmit(3)">High</button>'
+            "</div>"
+            '<p id="sr-conf-hint" class="sr-pq-explain-note" style="display:none">'
+            "Select an answer above, then tap your confidence to submit.</p></div>"
         )
         inner.append(_PRACTICE_JS)
     else:

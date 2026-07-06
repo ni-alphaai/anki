@@ -780,10 +780,18 @@ class TestPracticeCarsContainment:
         assert "(skip)" not in html
         assert "(optional)" not in html
         assert 'data-conf="1"' in html and 'data-conf="3"' in html
-        # The textarea drives the progressive reveal + submit gate, and submit
-        # starts disabled until answer + explanation + confidence are all present.
+        # The textarea drives the progressive reveal (confidence appears only
+        # after a self-explanation).
         assert 'oninput="srUpdate()"' in html
-        assert 'disabled onclick="srSubmit()"' in html
+
+    def test_confidence_doubles_as_submit(self) -> None:
+        html = theme.practice_body(self._cars())
+        # Tapping a confidence level submits the answer; there is no separate
+        # Submit button (folded into the confidence choice).
+        assert 'onclick="srConfSubmit(3)"' in html
+        assert "srSubmit()" not in html
+        assert 'id="sr-pq-submit"' not in html
+        assert "Submit answer" not in html
 
     def test_passage_is_recessed_not_the_card_fill(self) -> None:
         passage_rule = theme._WORKSPACE_CSS.split(".sr-pq-passage {")[1].split("}")[0]

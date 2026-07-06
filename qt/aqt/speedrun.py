@@ -48,7 +48,6 @@ from aqt.qt import (
     QAction,
     QApplication,
     QButtonGroup,
-    QComboBox,
     QDialog,
     QDialogButtonBox,
     QFrame,
@@ -4125,13 +4124,17 @@ class _PracticeDialog(QDialog):
         options_container = QWidget()
         options_container.setLayout(self.options_box)
 
+        # Confidence doubles as submit: tapping Low/Medium/High records the answer
+        # at that confidence (1-3 map through _CONFIDENCE), so there is no separate
+        # Submit button. _submit still guards on a selected answer + explanation.
         conf_row = QHBoxLayout()
-        conf_row.addWidget(_mark(QLabel("Confidence:"), role="muted"))
-        self.confidence = QComboBox()
-        # Index 0 is a non-choice placeholder (forces an explicit Low/Medium/High);
-        # 1-3 map through _CONFIDENCE. Reset returns to 0 and _submit requires >=1.
-        self.confidence.addItems(["How confident?", "Low", "Medium", "High"])
-        conf_row.addWidget(self.confidence)
+        conf_row.addWidget(_mark(QLabel("How confident? Tap to submit:"), role="muted"))
+        self.conf_btns: list[QPushButton] = []
+        for ci, label in ((1, "Low"), (2, "Medium"), (3, "High")):
+            btn = QPushButton(label)
+            qconnect(btn.clicked, lambda _=False, c=ci: self._submit(c))
+            self.conf_btns.append(btn)
+            conf_row.addWidget(btn)
         conf_row.addStretch(1)
 
         self.explain_btn = QPushButton("Self-explain (required)")
@@ -4172,8 +4175,11 @@ class _PracticeDialog(QDialog):
         ai_source_row.addStretch(1)
         ai_layout.addLayout(ai_source_row)
 
-        self.action_btn = _mark(QPushButton("Submit answer"), primary=True)
-        qconnect(self.action_btn.clicked, self._on_action)
+        # Advance button (Next / Finish), shown only AFTER an answer is recorded;
+        # before that the confidence buttons above are the submit.
+        self.action_btn = _mark(QPushButton("Next question"), primary=True)
+        self.action_btn.setVisible(False)
+        qconnect(self.action_btn.clicked, self._next)
 
         close_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
         qconnect(close_box.rejected, self.reject)
@@ -4248,11 +4254,11 @@ class _PracticeDialog(QDialog):
         self.verdict.setVisible(False)
         self.feedback.setText("")
         self._reset_ai_card()
-        self.confidence.setCurrentIndex(0)
-        self.confidence.setEnabled(True)
+        for b in self.conf_btns:
+            b.setEnabled(True)
         self.explain_btn.setEnabled(True)
         self.explain_btn.setText("Self-explain (required)")
-        self.action_btn.setText("Submit answer")
+        self.action_btn.setVisible(False)
         self._clear_options()
         for i, opt in enumerate(q["options"]):
             radio = QRadioButton(f"{chr(65 + i)}.  {opt}")
@@ -4265,13 +4271,9 @@ class _PracticeDialog(QDialog):
             self.pending_explanation = dialog.text()
             self.explain_btn.setText("Reasoning captured — edit")
 
-    def _on_action(self) -> None:
-        if not self.answered:
-            self._submit()
-        else:
-            self._next()
-
-    def _submit(self) -> None:
+    def _submit(self, conf_index: int) -> None:
+        # conf_index (1-3) comes from the tapped confidence button, which is also
+        # the submit action. Self-explain stays mandatory.
         selected = self.group.checkedId()
         if selected < 0:
             tooltip("Pick an answer first.")
@@ -4279,15 +4281,12 @@ class _PracticeDialog(QDialog):
         if not self.pending_explanation.strip():
             tooltip("Self-explain your reasoning first.")
             return
-        if self.confidence.currentIndex() < 1:
-            tooltip("Choose your confidence first.")
-            return
         q = self.questions[self.index]
         correct = selected == q["correct_index"]
         if correct:
             self.correct_count += 1
         took_ms = max(int((time.monotonic() - self.shown_at) * 1000), 0)
-        predicted = self._CONFIDENCE.get(self.confidence.currentIndex())
+        predicted = self._CONFIDENCE.get(conf_index)
 
         qtype = _question_type_for(q)
         req = speedrun_pb2.RecordAttemptRequest(
@@ -4321,8 +4320,14 @@ class _PracticeDialog(QDialog):
         self.answered = True
         for button in self.group.buttons():
             button.setEnabled(False)
-        self.confidence.setEnabled(False)
+        for b in self.conf_btns:
+            b.setEnabled(False)
         self.explain_btn.setEnabled(False)
+        # The confidence buttons submitted; now reveal the advance button.
+        self.action_btn.setText(
+            "Finish" if self.index + 1 >= len(self.questions) else "Next question"
+        )
+        self.action_btn.setVisible(True)
 
         # D7 experiment: hold back correctness (and the answer/diagnosis) until the
         # feedback report; the attempt is still recorded above so the report can
@@ -4335,9 +4340,6 @@ class _PracticeDialog(QDialog):
             self.feedback.setText(
                 "Delayed feedback is on. You'll find out whether you were right in "
                 "your feedback report \u2014 try to re-derive it before then."
-            )
-            self.action_btn.setText(
-                "Finish" if self.index + 1 >= len(self.questions) else "Next question"
             )
             return
 
