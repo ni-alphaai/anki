@@ -84,6 +84,9 @@ _CONTENT_PATH = os.path.join(
 
 # Cover ALL 31 content categories with several real cards each, so coverage is
 # full and every concept is exercised (up from a 20-topic placeholder deck).
+# _CARDS_PER_TOPIC must stay at or above rslib MIN_CARDS_PER_TOPIC (3, in
+# rslib/src/speedrun/coverage.rs): a topic only counts as covered once it holds
+# that many tagged cards, so a thinner seed would no longer reach full coverage.
 _TOPICS_TO_COVER = 31
 _CARDS_PER_TOPIC = 4
 

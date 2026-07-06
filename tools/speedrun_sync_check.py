@@ -19,6 +19,7 @@ from __future__ import annotations
 import os
 import tempfile
 
+from anki import speedrun_pb2
 from anki.collection import Collection
 
 ENDPOINT = os.environ.get("SYNC_ENDPOINT", "http://127.0.0.1:8080/")
@@ -27,6 +28,32 @@ PASSWORD = os.environ.get("SYNC_PASSWORD", "demo")
 
 PROBE_A = "SYNCPROBEALPHA"
 PROBE_B = "SYNCPROBEBETA"
+
+
+def _record_exam_attempt(col: Collection, needle: str) -> None:
+    """Record one card-linked exam-style Speedrun attempt on `col`, the way the
+    Practice tab does through the protobuf boundary. Crucially this is the ONLY
+    change since the last sync - no card review - so it exercises the exact
+    "practice, then Sync now" path from the bug report."""
+    nid = col.find_notes(f'"{needle}"')[0]
+    cid = col.find_cards(f'"{needle}"')[0]
+    col._backend.record_attempt(
+        speedrun_pb2.RecordAttemptRequest(
+            card_id=cid,
+            note_id=nid,
+            session_id="sync-check",
+            answered_at_ms=1_700_000_000_000,
+            took_ms=5000,
+            question_type=1,  # exam-style
+            correct=True,
+            data="{}",
+        )
+    )
+
+
+def _exam_attempts(col: Collection) -> int:
+    """Exam-style attempt count as the readiness pipeline sees it."""
+    return col._backend.get_performance_report().exam_attempts
 
 
 def _fresh_collection() -> tuple[Collection, str]:
@@ -104,12 +131,30 @@ def main() -> int:
         failed |= not (a_has_a == 1 and a_has_b == 1 and b_has_a == 1 and b_has_b == 1)
         failed |= not (total_a == 2 and total_b == 2)
 
+        # [4] The real symptom: A is now level with the server (it just synced),
+        # then the student answers one exam-style practice question and taps
+        # "Sync now". The evidence (which produces the readiness score) must
+        # reach B. Recording an attempt does not review a card, so this only
+        # syncs if the attempt marks the collection modified.
+        print("\n[4] A records an exam-style attempt (practice only) and syncs")
+        _record_exam_attempt(col_a, PROBE_A)
+        a_attempts_before = _exam_attempts(col_a)
+        col_a = _sync(col_a, path_a, "A")
+        col_b = _sync(col_b, path_b, "B")
+        a_attempts = _exam_attempts(col_a)
+        b_attempts = _exam_attempts(col_b)
+        print(f"      A exam attempts={a_attempts} (recorded {a_attempts_before})")
+        print(f"      B exam attempts={b_attempts} (must match A)")
+        failed |= a_attempts != 1
+        failed |= b_attempts != a_attempts
+
         print(
             "\n"
             + (
                 "speedrun sync check: FAIL"
                 if failed
-                else "speedrun sync check: PASS (two-way, no loss, no duplication)"
+                else "speedrun sync check: PASS (two-way, no loss, no duplication; "
+                "practice evidence propagates)"
             )
         )
         return 1 if failed else 0

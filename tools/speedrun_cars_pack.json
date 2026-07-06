@@ -1,0 +1,152 @@
+{
+    "name": "Speedrun CARS starter pack",
+    "license": "Passages: public domain. Questions & explanations: original, authored for Speedrun (CC BY 4.0).",
+    "attribution": "Passage excerpts are from public-domain works (J.S. Mill, On Liberty, 1859; M. Wollstonecraft, A Vindication of the Rights of Woman, 1792; H.D. Thoreau, Civil Disobedience, 1849). All questions, answer choices, and explanations were written from scratch for this pack. No copyrighted AAMC or commercial-prep passages or questions are included.",
+    "note": "A modest CARS starter: three public-domain humanities passages with author-written critical-analysis and reasoning questions. topic=\"cars\"; passage_id groups the questions that share a passage; provenance=0 (hand_authored questions over open passages).",
+    "questions": [
+        {
+            "topic": "cars",
+            "passage_id": "cars_mill_liberty",
+            "passage_title": "On the Liberty of Thought and Discussion (Mill, 1859)",
+            "passage": "The peculiar evil of silencing the expression of an opinion is, that it is robbing the human race; posterity as well as the existing generation; those who dissent from the opinion, still more than those who hold it. If the opinion is right, they are deprived of the opportunity of exchanging error for truth: if wrong, they lose, what is almost as great a benefit, the clearer perception and livelier impression of truth, produced by its collision with error.\n\nWe can never be sure that the opinion we are endeavouring to stifle is a false opinion; and if we were sure, stifling it would be an evil still. To refuse a hearing to an opinion, because they are sure that it is false, is to assume that their certainty is the same thing as absolute certainty. All silencing of discussion is an assumption of infallibility.",
+            "stem": "Which of the following best captures the central claim of the passage?",
+            "options": [
+                "Suppressing an opinion harms society whether or not the opinion is true.",
+                "False opinions should be tolerated only until they can be disproved.",
+                "Truth is valuable mainly because the majority already accepts it.",
+                "Certainty about an opinion justifies preventing its expression."
+            ],
+            "correct_index": 0,
+            "explanation": "The author argues the harm of silencing holds in both cases: if the opinion is right, truth is lost; if wrong, the sharpening of truth against error is lost. So the cost is independent of the opinion's truth (choice A). D directly contradicts the closing lines about assuming infallibility.",
+            "provenance": 0
+        },
+        {
+            "topic": "cars",
+            "passage_id": "cars_mill_liberty",
+            "passage_title": "On the Liberty of Thought and Discussion (Mill, 1859)",
+            "passage": "The peculiar evil of silencing the expression of an opinion is, that it is robbing the human race; posterity as well as the existing generation; those who dissent from the opinion, still more than those who hold it. If the opinion is right, they are deprived of the opportunity of exchanging error for truth: if wrong, they lose, what is almost as great a benefit, the clearer perception and livelier impression of truth, produced by its collision with error.\n\nWe can never be sure that the opinion we are endeavouring to stifle is a false opinion; and if we were sure, stifling it would be an evil still. To refuse a hearing to an opinion, because they are sure that it is false, is to assume that their certainty is the same thing as absolute certainty. All silencing of discussion is an assumption of infallibility.",
+            "stem": "The author would most likely agree that a community that bans a doctrine it considers plainly false has:",
+            "options": [
+                "acted prudently, since plainly false ideas waste public attention",
+                "still erred, because even a true belief is held better when tested against dissent",
+                "protected the dissenters from the consequences of their error",
+                "correctly treated its shared certainty as absolute certainty"
+            ],
+            "correct_index": 1,
+            "explanation": "Even granting the ban targets a false idea, the passage says the community loses 'the clearer perception and livelier impression of truth, produced by its collision with error.' So the act still causes harm (B). D restates the fallacy the author criticizes, not a view he endorses.",
+            "provenance": 0
+        },
+        {
+            "topic": "cars",
+            "passage_id": "cars_mill_liberty",
+            "passage_title": "On the Liberty of Thought and Discussion (Mill, 1859)",
+            "passage": "The peculiar evil of silencing the expression of an opinion is, that it is robbing the human race; posterity as well as the existing generation; those who dissent from the opinion, still more than those who hold it. If the opinion is right, they are deprived of the opportunity of exchanging error for truth: if wrong, they lose, what is almost as great a benefit, the clearer perception and livelier impression of truth, produced by its collision with error.\n\nWe can never be sure that the opinion we are endeavouring to stifle is a false opinion; and if we were sure, stifling it would be an evil still. To refuse a hearing to an opinion, because they are sure that it is false, is to assume that their certainty is the same thing as absolute certainty. All silencing of discussion is an assumption of infallibility.",
+            "stem": "Which finding, if true, would most weaken the author's argument?",
+            "options": [
+                "Some widely held beliefs later turned out to be mistaken.",
+                "Publicly debating a true belief reliably erodes people's confidence in it and their grasp of why it is true.",
+                "Most people rarely change their opinions after hearing an opposing view.",
+                "Silencing a view sometimes makes it more popular."
+            ],
+            "correct_index": 1,
+            "explanation": "The author's 'if wrong' branch depends on debate improving people's grasp of the truth. If open debate instead reliably erodes understanding of a true belief (B), a key benefit he claims for free discussion collapses. A actually supports him; C and D are tangential to the mechanism he asserts.",
+            "provenance": 0
+        },
+        {
+            "topic": "cars",
+            "passage_id": "cars_wollstonecraft_rights",
+            "passage_title": "A Vindication of the Rights of Woman (Wollstonecraft, 1792)",
+            "passage": "My own sex, I hope, will excuse me, if I treat them like rational creatures, instead of flattering their fascinating graces, and viewing them as if they were in a state of perpetual childhood, unable to stand alone. I earnestly wish to point out in what true dignity and human happiness consists. I wish to persuade women to endeavour to acquire strength, both of mind and body, and to convince them that the soft phrases, susceptibility of heart, delicacy of sentiment, and refinement of taste, are almost synonymous with epithets of weakness, and that those beings who are only the objects of pity, and that kind of love which has been termed its sister, will soon become objects of contempt.\n\nGenteel women are, literally speaking, slaves to their bodies, and glory in their subjection. I wish to show that the first object of laudable ambition is to obtain a character as a human being, regardless of the distinction of sex.",
+            "stem": "The author's primary purpose in the passage is to:",
+            "options": [
+                "praise the graces and delicacy conventionally admired in women",
+                "urge that women be regarded and cultivated as rational human beings",
+                "argue that women are naturally suited only to domestic life",
+                "describe how women can better please those who pity them"
+            ],
+            "correct_index": 1,
+            "explanation": "She explicitly treats women 'like rational creatures' and says the 'first object of laudable ambition is to obtain a character as a human being, regardless of the distinction of sex' (B). A and D name the very qualities she disparages as 'epithets of weakness.'",
+            "provenance": 0
+        },
+        {
+            "topic": "cars",
+            "passage_id": "cars_wollstonecraft_rights",
+            "passage_title": "A Vindication of the Rights of Woman (Wollstonecraft, 1792)",
+            "passage": "My own sex, I hope, will excuse me, if I treat them like rational creatures, instead of flattering their fascinating graces, and viewing them as if they were in a state of perpetual childhood, unable to stand alone. I earnestly wish to point out in what true dignity and human happiness consists. I wish to persuade women to endeavour to acquire strength, both of mind and body, and to convince them that the soft phrases, susceptibility of heart, delicacy of sentiment, and refinement of taste, are almost synonymous with epithets of weakness, and that those beings who are only the objects of pity, and that kind of love which has been termed its sister, will soon become objects of contempt.\n\nGenteel women are, literally speaking, slaves to their bodies, and glory in their subjection. I wish to show that the first object of laudable ambition is to obtain a character as a human being, regardless of the distinction of sex.",
+            "stem": "When the author writes that genteel women 'glory in their subjection,' she most nearly implies that:",
+            "options": [
+                "such women take pride in a dependence that in fact diminishes them",
+                "subjection is a source of genuine and lasting honor for women",
+                "women should be admired for accepting their assigned place",
+                "physical strength matters more to women than mental strength"
+            ],
+            "correct_index": 0,
+            "explanation": "The phrase is critical, not approving: she casts these women as 'slaves to their bodies' who prize a condition she has just equated with weakness and eventual 'contempt.' So they take pride in something that actually lowers them (A). B and C read the line as praise, reversing her tone.",
+            "provenance": 0
+        },
+        {
+            "topic": "cars",
+            "passage_id": "cars_wollstonecraft_rights",
+            "passage_title": "A Vindication of the Rights of Woman (Wollstonecraft, 1792)",
+            "passage": "My own sex, I hope, will excuse me, if I treat them like rational creatures, instead of flattering their fascinating graces, and viewing them as if they were in a state of perpetual childhood, unable to stand alone. I earnestly wish to point out in what true dignity and human happiness consists. I wish to persuade women to endeavour to acquire strength, both of mind and body, and to convince them that the soft phrases, susceptibility of heart, delicacy of sentiment, and refinement of taste, are almost synonymous with epithets of weakness, and that those beings who are only the objects of pity, and that kind of love which has been termed its sister, will soon become objects of contempt.\n\nGenteel women are, literally speaking, slaves to their bodies, and glory in their subjection. I wish to show that the first object of laudable ambition is to obtain a character as a human being, regardless of the distinction of sex.",
+            "stem": "The author's argument depends most on which of the following assumptions?",
+            "options": [
+                "Dignity and happiness are best secured by cultivating rational strength rather than ornamental graces.",
+                "Men and women differ fundamentally in their capacity for reason.",
+                "Refinement of taste is impossible for women to attain.",
+                "Pity is a more durable basis for love than respect."
+            ],
+            "correct_index": 0,
+            "explanation": "Her whole case for redirecting women toward 'strength, both of mind and body' presupposes that true 'dignity and human happiness' come from rational strength, not the admired graces (A). B contradicts her rational-creature premise; C and D are not needed for her argument.",
+            "provenance": 0
+        },
+        {
+            "topic": "cars",
+            "passage_id": "cars_thoreau_disobedience",
+            "passage_title": "Civil Disobedience (Thoreau, 1849)",
+            "passage": "I heartily accept the motto, \u201cThat government is best which governs least\u201d; and I should like to see it acted up to more rapidly and systematically. Carried out, it finally amounts to this, which also I believe,\u2014\u201cThat government is best which governs not at all\u201d; and when men are prepared for it, that will be the kind of government which they will have.\n\nGovernment is at best but an expedient; but most governments are usually, and all governments are sometimes, inexpedient. The objections which have been brought against a standing army may also at last be brought against a standing government. The government itself, which is only the mode which the people have chosen to execute their will, is equally liable to be abused and perverted before the people can act through it.",
+            "stem": "The passage is best described as an argument that government:",
+            "options": [
+                "is a necessary good whose powers should be steadily expanded",
+                "is at most a provisional tool that is often ill-suited to its ends",
+                "should govern not at all under present conditions",
+                "is identical to a standing army in both form and function"
+            ],
+            "correct_index": 1,
+            "explanation": "Thoreau calls government 'at best but an expedient' that is 'usually' or 'sometimes' inexpedient (B). He treats 'governs not at all' as an ideal for 'when men are prepared for it,' not a present prescription, so C overstates. D misreads an analogy as an identity.",
+            "provenance": 0
+        },
+        {
+            "topic": "cars",
+            "passage_id": "cars_thoreau_disobedience",
+            "passage_title": "Civil Disobedience (Thoreau, 1849)",
+            "passage": "I heartily accept the motto, \u201cThat government is best which governs least\u201d; and I should like to see it acted up to more rapidly and systematically. Carried out, it finally amounts to this, which also I believe,\u2014\u201cThat government is best which governs not at all\u201d; and when men are prepared for it, that will be the kind of government which they will have.\n\nGovernment is at best but an expedient; but most governments are usually, and all governments are sometimes, inexpedient. The objections which have been brought against a standing army may also at last be brought against a standing government. The government itself, which is only the mode which the people have chosen to execute their will, is equally liable to be abused and perverted before the people can act through it.",
+            "stem": "The author's use of the standing-army comparison functions primarily to:",
+            "options": [
+                "concede that a permanent government is as legitimate as a permanent army",
+                "suggest that a permanent government invites the same objections as a permanent army",
+                "prove that armies and governments arise from the same historical causes",
+                "argue that the people can never act through their government"
+            ],
+            "correct_index": 1,
+            "explanation": "He writes that 'objections which have been brought against a standing army may also at last be brought against a standing government' - extending a familiar critique by analogy (B). It is not a concession (A) or a claim of shared origins (C); D overstates 'equally liable to be abused' into an absolute.",
+            "provenance": 0
+        },
+        {
+            "topic": "cars",
+            "passage_id": "cars_thoreau_disobedience",
+            "passage_title": "Civil Disobedience (Thoreau, 1849)",
+            "passage": "I heartily accept the motto, \u201cThat government is best which governs least\u201d; and I should like to see it acted up to more rapidly and systematically. Carried out, it finally amounts to this, which also I believe,\u2014\u201cThat government is best which governs not at all\u201d; and when men are prepared for it, that will be the kind of government which they will have.\n\nGovernment is at best but an expedient; but most governments are usually, and all governments are sometimes, inexpedient. The objections which have been brought against a standing army may also at last be brought against a standing government. The government itself, which is only the mode which the people have chosen to execute their will, is equally liable to be abused and perverted before the people can act through it.",
+            "stem": "Which situation best illustrates the passage's claim that government is 'liable to be abused and perverted before the people can act through it'?",
+            "options": [
+                "A legislature enacts a widely supported law through ordinary debate.",
+                "Officials use the machinery of the state to entrench their own power against the public will.",
+                "Citizens vote in a routine election with high turnout.",
+                "A government reduces its own budget to govern less."
+            ],
+            "correct_index": 1,
+            "explanation": "The passage warns that the state, though meant to execute the people's will, can be 'abused and perverted' before the people can act through it - i.e., turned against them (B). A and C are the government working as intended; D matches Thoreau's ideal, not the abuse he warns of.",
+            "provenance": 0
+        }
+    ]
+}

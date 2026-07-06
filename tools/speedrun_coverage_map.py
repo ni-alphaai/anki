@@ -47,6 +47,14 @@ from anki.collection import Collection
 # sections (see the weighted-skip demo below).
 MIN_COVERAGE = 0.5
 
+# Mirrors rslib MIN_CARDS_PER_TOPIC (rslib/src/speedrun/coverage.rs): a topic
+# only counts as covered once it holds at least this many tagged cards, so a
+# lone incidental card can no longer light up a whole topic. Covered topics in
+# this demo are seeded with exactly this many cards, so the pure-Python
+# expected-coverage cross-check (which treats "covered" as membership) still
+# matches the engine's card-count bar.
+MIN_CARDS_PER_TOPIC = 3
+
 # Give-up thresholds from rslib/src/speedrun/readiness.rs, used only to seed the
 # memory/performance dimensions so the *coverage* dimension is the one on show.
 MIN_REVIEW_CARDS = 20
@@ -311,7 +319,7 @@ def demo(outline: dict) -> int:
             {e.topic for e in col._backend.get_topic_map()}
             == {t["id"] for t in topics},
         )
-        add_tagged_cards(col, {tid: 1 for tid in covered1})
+        add_tagged_cards(col, {tid: MIN_CARDS_PER_TOPIC for tid in covered1})
         cov = col._backend.get_coverage_report()
         print_coverage_table(cov, outline)
         assert_engine_matches_expected(check, cov, outline, covered1, "map")
@@ -384,7 +392,7 @@ def demo(outline: dict) -> int:
         # (or only one science concept) is not enough. Cover the high-weight
         # Bio/Biochem + Chem/Phys sciences so BOTH metrics clear the line.
         add_ids = science_ids
-        add_tagged_cards(col, {tid: 1 for tid in add_ids})
+        add_tagged_cards(col, {tid: MIN_CARDS_PER_TOPIC for tid in add_ids})
         now_covered = psych_ids + add_ids
         cov2 = col._backend.get_coverage_report()
         snap2 = col._backend.compute_readiness()
@@ -443,10 +451,10 @@ def demo(outline: dict) -> int:
     try:
         load_outline_into(col, outline)
         # Seed memory + performance the same way section [2] does, so coverage is
-        # the binding dimension: 2 mature review cards per covered topic clears
-        # MIN_REVIEW_CARDS, and the exam attempts clear the performance + graded
-        # gates. (Card count does not change which topics are covered.)
-        add_tagged_cards(col, {tid: 2 for tid in covered4})
+        # the binding dimension: MIN_CARDS_PER_TOPIC mature review cards per
+        # covered topic clears both the coverage bar and MIN_REVIEW_CARDS, and the
+        # exam attempts clear the performance + graded gates.
+        add_tagged_cards(col, {tid: MIN_CARDS_PER_TOPIC for tid in covered4})
         record_exam_attempts(col, MIN_GRADED_ATTEMPTS)
         review_cards = col.db.scalar("select count(*) from cards where type = 2")
         cov = col._backend.get_coverage_report()
@@ -530,8 +538,9 @@ def report_real_collection(path: str, outline: dict) -> int:
         if cov.topics_covered == 0:
             print(
                 "\n  note: 0 topics covered means this deck's notes are not tagged with the\n"
-                "  outline ids (1A..10A). Coverage is defined as '>=1 note tagged with the\n"
-                "  topic id'; tag your notes with the content-category ids to populate the map."
+                f"  outline ids (1A..10A), or each tagged topic has fewer than {MIN_CARDS_PER_TOPIC}\n"
+                f"  cards. Coverage requires at least {MIN_CARDS_PER_TOPIC} notes tagged with a\n"
+                "  topic id; tag more notes with the content-category ids to populate the map."
             )
     finally:
         col.close()

@@ -17,26 +17,26 @@ app = "speedrun-sync"
 primary_region = "iad"
 
 [build]
-  dockerfile = "Dockerfile"
+dockerfile = "Dockerfile"
 
 [env]
-  SYNC_HOST = "0.0.0.0"
-  SYNC_PORT = "8080"
-  SYNC_BASE = "/data"
-  # SYNC_USER1 is set via `fly secrets set` (never commit credentials).
+SYNC_HOST = "0.0.0.0"
+SYNC_PORT = "8080"
+SYNC_BASE = "/data"
+# SYNC_USER1 is set via `fly secrets set` (never commit credentials).
 
 [[mounts]]
-  source = "speedrun_sync_data"
-  destination = "/data"
+source = "speedrun_sync_data"
+destination = "/data"
 
 [http_service]
-  internal_port = 8080
-  force_https = true
-  auto_stop_machines = false
-  auto_start_machines = true
-  min_machines_running = 1
+internal_port = 8080
+force_https = true
+auto_stop_machines = false
+auto_start_machines = true
+min_machines_running = 1
 
 [[vm]]
-  cpu_kind = "shared"
-  cpus = 1
-  memory_mb = 512
+cpu_kind = "shared"
+cpus = 1
+memory_mb = 512
