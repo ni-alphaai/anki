@@ -25,7 +25,7 @@ import socket
 import subprocess
 import sys
 import time
-import urllib.request
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -33,18 +33,41 @@ import aqt
 from aqt.utils import tooltip
 
 # Collection-config keys. The user + token identify the single server account
-# that both the desktop client and the phone authenticate with.
+# that both the desktop client and the phone authenticate with; the port is
+# persisted so a paired phone's cached USB URL survives desktop restarts.
 _CFG_USER = "speedrunServerUser"
 _CFG_TOKEN = "speedrunServerToken"
 _CFG_PAIRED = "speedrunPaired"
+_CFG_PORT = "speedrunServerPort"
 
 _DEFAULT_USER = "speedrun"
+
+# A stable default port. Persisting the actually-chosen port per collection keeps
+# the phone's saved http://127.0.0.1:<port>/ USB URL valid across desktop
+# restarts (the adb-reverse tunnel is re-established on the same port).
+_DEFAULT_PORT = 27701
+
+# The QR pairing code is short-lived: a stale screenshot cannot be used to pair
+# after this window. The phone enforces the same deadline at scan time.
+PAIRING_CODE_TTL_MS = 5 * 60 * 1000
+
+# The hosted server stops after this much time with no sync activity, so it is
+# never left listening indefinitely; re-open "Sync with phone" to host again.
+IDLE_LIMIT_SECS = 30 * 60
 
 # Live server process state (one embedded server per running app).
 _proc: Any = None
 _port: int | None = None
 _log_file: Any = None
 _base: str | None = None
+# Monotonic timestamp of the last sync activity, for idle auto-expiry.
+_last_activity: float | None = None
+# Last-known USB tunnel result (ok, human message). The adb subprocess calls
+# that produce it run off the Qt thread, so this cache lets the sidebar chip and
+# the Sync screen render the USB state without a blocking adb call. Reset when
+# the server (re)starts or stops.
+_USB_STATUS_CHECKING: tuple[bool, str] = (False, "Checking USB tunnel\u2026")
+_usb_status: tuple[bool, str] = _USB_STATUS_CHECKING
 
 
 # --- credentials ------------------------------------------------------------
@@ -111,18 +134,112 @@ def _free_port() -> int:
         return int(s.getsockname()[1])
 
 
-def _health_ok(port: int, timeout: float = 0.5) -> bool:
+def _port_free(port: int) -> bool:
+    """True when nothing else is bound to ``port`` (a plain probe, no reuse)."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.bind(("", port))
+            return True
+        except OSError:
+            return False
+
+
+def _stable_port(col) -> int:
+    """The server port for this collection, reused across launches.
+
+    Callers reap any orphaned server first, so a persisted port is free again on
+    a normal restart and gets reused -- keeping the phone's cached USB URL valid.
+    Only when the saved port is taken by an unrelated process (or none is saved
+    yet) do we pick a new one and persist it.
+    """
     try:
-        with urllib.request.urlopen(
-            f"http://127.0.0.1:{port}/health", timeout=timeout
-        ) as resp:
-            return resp.status == 200
+        saved = int(col.get_config(_CFG_PORT, 0) or 0)
     except Exception:
+        saved = 0
+    if 1024 <= saved <= 65535 and _port_free(saved):
+        return saved
+    port = _DEFAULT_PORT if _port_free(_DEFAULT_PORT) else _free_port()
+    try:
+        col.set_config(_CFG_PORT, port)
+    except Exception:
+        pass
+    return port
+
+
+# --- idle auto-expiry -------------------------------------------------------
+#
+# The hosted server should not linger forever. We track the time of the last
+# sync activity (every start_server/sync touches it) and let a caller-driven
+# watchdog stop the server once it has been idle past IDLE_LIMIT_SECS.
+
+
+def touch_activity() -> None:
+    """Mark the server as freshly used, resetting the idle-expiry countdown."""
+    global _last_activity
+    _last_activity = time.monotonic()
+
+
+def idle_seconds() -> float | None:
+    """Seconds since the last sync activity, or None when not hosting."""
+    if not is_running() or _last_activity is None:
+        return None
+    return time.monotonic() - _last_activity
+
+
+def stop_if_idle() -> bool:
+    """Stop the hosted server when it has been idle past IDLE_LIMIT_SECS.
+
+    Returns True only when it was actually stopped."""
+    idle = idle_seconds()
+    if idle is not None and idle >= IDLE_LIMIT_SECS:
+        stop_server()
+        return True
+    return False
+
+
+def _accepting(port: int, timeout: float = 0.2) -> bool:
+    """True when the loopback port accepts a TCP connection.
+
+    A plain connect is a better readiness signal than an HTTP probe here: the
+    server serves no body on ``/`` (any response means "up"), and a connect is
+    bounded so it never hangs the Qt thread. A connect dropped by a local
+    firewall fails fast at ``timeout`` rather than blocking.
+    """
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=timeout):
+            return True
+    except OSError:
         return False
 
 
 def is_running() -> bool:
     return _proc is not None and _proc.poll() is None and _port is not None
+
+
+def _discard_proc() -> None:
+    """Reap the child we currently hold and close its log handle.
+
+    Terminating + waiting the previous process, and closing its ``server.log``
+    file object, before dropping the references is what keeps a respawn from
+    leaking a process ("subprocess still running") or the log file handle.
+    """
+    global _proc, _log_file
+    proc, _proc = _proc, None
+    if proc is not None and proc.poll() is None:
+        try:
+            proc.terminate()
+            proc.wait(timeout=5)
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+    if _log_file is not None:
+        try:
+            _log_file.close()
+        except Exception:
+            pass
+        _log_file = None
 
 
 # --- stale-server reaping ---------------------------------------------------
@@ -197,6 +314,10 @@ def _reap_stale_server(base: str) -> None:
     pid = _read_pidfile(base)
     if pid is None:
         return
+    # Only orphans from a previous run are reaped here, never the child this
+    # process is actively running (that would be the respawn-loop bug).
+    if _proc is not None and _proc.poll() is None and pid == _proc.pid:
+        return
     if not _process_is_sync_server(pid):
         _remove_pidfile(base)
         return
@@ -227,10 +348,61 @@ def _server_log_tail(base: str) -> str:
         return ""
 
 
-def start_server(mw: aqt.AnkiQt) -> bool:
-    """Start the embedded sync server (idempotent). Returns True if it is up."""
+# Readiness window for a freshly spawned server. Bounded so it never hangs the
+# Qt thread; because start is idempotent this wait only runs on the first spawn.
+# A healthy server accepts within ~1s, so this window mainly caps how long we
+# wait before falling back to "process alive" when loopback probes are firewalled.
+_READY_TRIES = 12
+_READY_STEP_MS = 150
+
+
+def _await_ready(base: str, port: int) -> bool:
+    """Wait (bounded) for the freshly spawned server to become usable.
+
+    A real startup failure (e.g. a locked collection) makes the process exit,
+    which we detect and report. Otherwise we return once it accepts a loopback
+    connection -- or, if such probes are dropped by a local firewall, once it
+    has stayed alive through the window, since the subsequent sync surfaces any
+    genuine connectivity error instead of us spinning here.
+    """
+    global _port
+    from aqt.qt import QEventLoop, QTimer
+
+    for _ in range(_READY_TRIES):
+        if _proc is None or _proc.poll() is not None:  # died on startup
+            detail = _server_log_tail(base)
+            tooltip(
+                "Sync server exited on startup; see speedrun_syncserver/server.log."
+                + (f"\n{detail}" if detail else "")
+            )
+            _discard_proc()
+            _port = None
+            _remove_pidfile(base)
+            return False
+        if _accepting(port):
+            return True
+        loop = QEventLoop()
+        QTimer.singleShot(_READY_STEP_MS, loop.quit)
+        loop.exec()
+    return _proc is not None and _proc.poll() is None
+
+
+def start_server(mw: aqt.AnkiQt, *, on_ready: Callable[[], None] | None = None) -> bool:
+    """Start the embedded sync server (idempotent). Returns True if it is up.
+
+    Idempotency keys on our own live child process, not a network probe: a
+    loopback probe can be dropped by a local firewall, and re-probing a server
+    we already started would otherwise make us reap and respawn it in a loop.
+
+    The mDNS advert and USB tunnel are best-effort side effects run off the Qt
+    thread (see ``_run_side_effects``); the returned readiness only reflects the
+    server listening, which is all the sync itself needs. ``on_ready`` fires on
+    the main thread once those side effects finish, so callers can refresh a
+    status badge without blocking the click.
+    """
     global _proc, _port, _log_file, _base
-    if is_running() and _port is not None and _health_ok(_port):
+    if is_running():
+        touch_activity()
         return True
     if mw.col is None:
         return False
@@ -241,13 +413,16 @@ def start_server(mw: aqt.AnkiQt) -> bool:
         )
         return False
 
+    # Drop any dead child (and its log handle) we still hold before respawning.
+    _discard_proc()
+
     user, token = creds(mw.col)
     base = _server_base(mw)
     _base = base
-    # Clear any server orphaned by a previous run that still holds the lock;
-    # otherwise the fresh server below dies on startup with "Locked".
+    # Clear a server orphaned by a previous run (crash/force-quit) that still
+    # holds the lock; never our own live child (guarded in _reap_stale_server).
     _reap_stale_server(base)
-    port = _free_port()
+    port = _stable_port(mw.col)
     env = dict(os.environ)
     env.update(
         {
@@ -264,58 +439,58 @@ def start_server(mw: aqt.AnkiQt) -> bool:
         )
     except Exception as exc:
         tooltip(f"Could not start sync server: {exc}")
+        _discard_proc()
+        _port = None
         return False
     _port = port
     _write_pidfile(base, _proc.pid)
 
-    # Wait briefly for the listener to accept connections.
-    from aqt.qt import QEventLoop, QTimer
+    if not _await_ready(base, port):
+        return False
+    touch_activity()
+    _run_side_effects(mw, port, on_ready)
+    return True
 
-    for _ in range(40):  # up to ~8s
-        if _proc.poll() is not None:  # died on startup
-            detail = _server_log_tail(base)
-            tooltip(
-                "Sync server exited on startup; see speedrun_syncserver/server.log."
-                + (f"\n{detail}" if detail else "")
-            )
-            _proc = None
-            _port = None
-            _remove_pidfile(base)
-            return False
-        if _health_ok(port):
-            _advertise_mdns(lan_ip(), port)
-            setup_usb_tunnel(port)
-            return True
-        loop = QEventLoop()
-        QTimer.singleShot(200, loop.quit)
-        loop.exec()
-    tooltip("Sync server did not become ready in time.")
-    if _health_ok(port):
+
+def _run_side_effects(
+    mw: aqt.AnkiQt, port: int, on_ready: Callable[[], None] | None = None
+) -> None:
+    """Advertise mDNS and bring up the USB tunnel off the Qt main thread.
+
+    Both are best-effort: the sync only needs the server listening, so the adb
+    subprocess calls (``adb devices`` at 5s, ``adb reverse`` at 10s) and the
+    mDNS registration must never block the Sync click. This runs on the
+    no-collection executor so it never contends with a collection op, and it
+    refreshes the cached USB status the UI reads. ``on_ready`` (if any) fires on
+    the main thread once the tunnel result is known.
+    """
+    global _usb_status
+    _usb_status = _USB_STATUS_CHECKING
+
+    def work() -> None:
         _advertise_mdns(lan_ip(), port)
-        setup_usb_tunnel(port)
-        return True
-    return False
+        set_usb_status(*setup_usb_tunnel(port))
+
+    def done(fut: Any) -> None:
+        if callable(on_ready):
+            try:
+                on_ready()
+            except Exception:
+                pass
+
+    try:
+        mw.taskman.run_in_background(work, done, uses_collection=False)
+    except Exception:
+        pass
 
 
 def stop_server() -> None:
-    global _proc, _port, _log_file, _base
+    global _port, _base, _last_activity, _usb_status
     _withdraw_mdns()
-    proc, _proc, _port = _proc, None, None
-    if proc is not None and proc.poll() is None:
-        try:
-            proc.terminate()
-            proc.wait(timeout=5)
-        except Exception:
-            try:
-                proc.kill()
-            except Exception:
-                pass
-    if _log_file is not None:
-        try:
-            _log_file.close()
-        except Exception:
-            pass
-        _log_file = None
+    _discard_proc()
+    _port = None
+    _last_activity = None
+    _usb_status = _USB_STATUS_CHECKING
     if _base is not None:
         _remove_pidfile(_base)
         _base = None
@@ -451,6 +626,19 @@ def usb_tunnel_active(port: int | None = None) -> bool:
     return any(needle in line for line in out.stdout.splitlines())
 
 
+def set_usb_status(ok: bool, status: str) -> None:
+    """Record the latest USB tunnel result for the UI to read without an adb call."""
+    global _usb_status
+    _usb_status = (ok, status)
+
+
+def usb_status_cached() -> tuple[bool, str]:
+    """The last-known USB tunnel result, refreshed off-thread by the side-effect
+    task; used by the sidebar chip and Sync screen so rendering never blocks on
+    the adb subprocess timeouts."""
+    return _usb_status
+
+
 def setup_usb_tunnel(port: int | None = None) -> tuple[bool, str]:
     """Forward ``tcp:<port>`` on a USB-connected phone to this desktop.
 
@@ -479,7 +667,9 @@ def setup_usb_tunnel(port: int | None = None) -> tuple[bool, str]:
 
 def pairing_payload(mw: aqt.AnkiQt) -> dict:
     """The data the phone needs to pair, encoded into the QR (and shown as text
-    for manual fallback). Includes ``usb_url`` for adb-reverse sync."""
+    for manual fallback). Includes ``usb_url`` for adb-reverse sync and ``exp``,
+    a short-lived deadline (epoch millis) the phone enforces at scan time so a
+    stale screenshot of the code cannot pair later."""
     user, token = creds(mw.col)
     return {
         "v": 1,
@@ -487,6 +677,7 @@ def pairing_payload(mw: aqt.AnkiQt) -> dict:
         "usb_url": local_url(),
         "user": user,
         "token": token,
+        "exp": int(time.time() * 1000) + PAIRING_CODE_TTL_MS,
     }
 
 
@@ -498,7 +689,8 @@ def pairing_payload(mw: aqt.AnkiQt) -> dict:
 def status(mw: aqt.AnkiQt) -> dict:
     """State for the sidebar sync chip."""
     if is_running():
-        if usb_tunnel_active():
+        usb_ok, _ = usb_status_cached()
+        if usb_ok:
             return {
                 "state": "ok",
                 "label": "USB sync ready",

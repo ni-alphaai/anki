@@ -200,7 +200,8 @@ class TestPracticeBody:
                 "key": "cars",
                 "short": "CARS",
                 "full": "Reasoning",
-                "subjects": [],
+                "subjects": ["cars"],
+                "reasoning": True,
                 "count": 0,
             },
             {
@@ -226,10 +227,10 @@ class TestPracticeBody:
         assert "speedrun:pr:go:" in html  # the quick-start CTA
         assert "Chem/Phys" in html and "30 questions" in html
         assert "speedrun:pr:sec:bio_biochem" in html
-        # CARS has no discrete bank -> passage practice, not a drill link
-        assert "Passage practice" in html
+        # CARS is a reasoning section with no imported bank yet -> it prompts to
+        # import a pack rather than exposing a drill link.
         assert "speedrun:pr:sec:cars" not in html
-        # a content section with 0 questions routes to the library, not a drill
+        # a section with 0 questions routes to the library, not a drill
         assert "No questions — import a pack" in html
 
     def test_empty_landing_prompts_import(self) -> None:
@@ -257,6 +258,51 @@ class TestPracticeBody:
         assert "speedrun:pr:go:biology'" in html  # single-subject start
         assert "Biology" in html and "50 questions" in html
         assert "speedrun:pr:home" in html  # back to sections
+
+
+class TestPracticeVoice:
+    """The in-webview practice card must offer voice self-explanation everywhere a
+    student can explain their reasoning, degrading to text-only when on-device
+    transcription isn't available."""
+
+    def _runner(self, voice: bool) -> dict:
+        return {
+            "empty": False,
+            "mode": "runner",
+            "index": 0,
+            "total": 3,
+            "answered": False,
+            "selected": None,
+            "q": {
+                "topic": "biochemistry",
+                "stem": "Which residue is most likely protonated at pH 7?",
+                "options": ["Glycine", "Histidine", "Serine"],
+                "correct_index": 1,
+            },
+            "verdict": None,
+            "verdict_text": "",
+            "feedback": "",
+            "ai": None,
+            "is_last": False,
+            "voice": voice,
+        }
+
+    def test_shows_mic_when_voice_available(self) -> None:
+        html = theme.practice_body(self._runner(True))
+        # the mic affordance, its command, and the on-device privacy note
+        assert 'id="sr-pq-voice"' in html
+        assert "Speak your reasoning" in html
+        assert "srVoice()" in html
+        assert "Captured on-device" in html
+        # text fallback is always kept alongside the mic
+        assert 'id="sr-explain"' in html
+
+    def test_text_only_when_voice_unavailable(self) -> None:
+        html = theme.practice_body(self._runner(False))
+        # no mic button, but the textarea (text fallback) still renders
+        assert "sr-pq-voice" not in html
+        assert "Speak your reasoning" not in html
+        assert 'id="sr-explain"' in html
 
 
 class TestDiagnosticBody:
@@ -317,6 +363,82 @@ class TestDiagnosticBody:
         html = theme.diagnostic_report_body(data)
         assert "Initial readiness: 512" in html
         assert "505" in html and "520" in html
+
+
+class TestSyncPairBody:
+    """The Sync-with-phone screen: one primary action, and the directional
+    "use phone / use desktop" choice surfaces only on a real conflict (via a
+    prompt in speedrun.py), never as always-visible buttons. The persisted
+    on-conflict preference shows as a segmented control while hosting."""
+
+    def _running(self, policy: str = "ask") -> dict:
+        return {
+            "running": True,
+            "conflict_policy": policy,
+            "qr_svg": "<svg></svg>",
+            "url": "http://192.168.1.5:27701",
+            "usb_url": "http://127.0.0.1:27701/",
+            "user": "speedrun",
+            "token": "abc123",
+            "usb_ready": True,
+            "usb_status": "USB ready",
+            "exp": 1234567890,
+        }
+
+    def test_single_primary_action_no_directional_buttons(self) -> None:
+        html = theme.sync_pair_body(self._running())
+        assert "speedrun:syncnow" in html
+        assert "Sync now" in html
+        # The clutter the phone removed must be gone on the default screen.
+        assert "Use phone data" not in html
+        assert "Use desktop data" not in html
+        assert "speedrun:syncpull" not in html
+        assert "speedrun:syncpush" not in html
+
+    def test_shows_on_conflict_selector_with_all_options(self) -> None:
+        html = theme.sync_pair_body(self._running("ask"))
+        assert "On conflict" in html
+        assert "speedrun:syncpolicy:ask" in html
+        assert "speedrun:syncpolicy:phone" in html
+        assert "speedrun:syncpolicy:desktop" in html
+        # the apostrophe is HTML-escaped in the rendered caption
+        assert "be asked which copy to keep." in html
+
+    def test_selector_marks_the_active_preference(self) -> None:
+        html = theme.sync_pair_body(self._running("phone"))
+        # exactly one option is active, and it is the saved one
+        assert html.count("sr-seg-btn active") == 1
+        assert (
+            'class="sr-seg-btn active" onclick="pycmd(\'speedrun:syncpolicy:phone\')"'
+            in html
+        )
+        assert "Auto-keeps the phone; overwrites the desktop copy." in html
+
+    def test_not_hosting_state_has_no_selector(self) -> None:
+        html = theme.sync_pair_body({"running": False, "conflict_policy": "ask"})
+        assert "Start" in html
+        assert "On conflict" not in html
+        assert "speedrun:syncpolicy" not in html
+
+    def test_ankiweb_is_the_primary_sync_option(self) -> None:
+        html = theme.sync_pair_body(self._running())
+        # AnkiWeb leads and routes to the cloud sync...
+        assert "Sync with AnkiWeb (recommended)" in html
+        assert "speedrun:syncankiweb" in html
+        # ...and phone pairing is demoted into a collapsible section below it.
+        assert "Sync with phone (offline" in html
+        assert "<details" in html
+        assert html.index("speedrun:syncankiweb") < html.index("<details")
+
+    def test_ankiweb_signed_in_state(self) -> None:
+        signed = self._running()
+        signed["ankiweb_signed_in"] = True
+        html = theme.sync_pair_body(signed)
+        assert "Signed in to AnkiWeb" in html
+        assert "Sync with AnkiWeb</button>" in html  # not "Sign in & sync"
+        out = theme.sync_pair_body(self._running())
+        assert "Not signed in yet" in out
+        assert "Sign in" in out
 
 
 class TestLibraryBody:
@@ -383,6 +505,23 @@ class TestProgressBody:
         html = theme.progress_body(data)
         assert "No graded predictions yet" in html
 
+    def test_calibration_graph_is_labeled_and_readable(self) -> None:
+        html = theme.progress_body(self.PROG)
+        # numbered, titled axes
+        assert "Predicted confidence (%)" in html
+        assert "Actual accuracy (%)" in html
+        assert ">100<" in html  # a 0/50/100 axis tick label
+        # the diagonal is labeled and the caption explains above/below the line
+        assert "perfectly calibrated" in html
+        assert "under-confident" in html
+        assert "over-confident" in html
+
+    def test_misses_count_never_wraps(self) -> None:
+        html = theme.progress_body(self.PROG)
+        # two-digit miss counts must not wrap onto two lines
+        assert "white-space:nowrap" in html
+        assert "min-width:32px" in html
+
 
 class TestTopicDashboard:
     DASH = {
@@ -422,6 +561,7 @@ class TestTopicDashboard:
                 "key": "cars",
                 "short": "CARS",
                 "full": "Critical Analysis & Reasoning Skills",
+                "reasoning": True,
                 "disabled": True,
                 "total": 0,
                 "covered": 0,
@@ -438,7 +578,7 @@ class TestTopicDashboard:
         assert "MCAT topics" in html
         assert "Bio/Biochem" in html  # section card
         assert "speedrun:section:bio_biochem" in html  # tap drills into the section
-        assert "Passage practice" in html  # CARS shown disabled
+        assert "Memory N/A" in html  # CARS is a reasoning section: memory is N/A
         # subtopics are NOT inlined on the dashboard (they live in the drill-in)
         assert "speedrun:topic:1A" not in html
 
@@ -494,3 +634,191 @@ class TestTopicDashboard:
         html = theme.topic_detail_body(topic)
         assert "No review cards yet" in html
         assert "No questions answered yet" in html
+
+
+def _card_inner(html: str) -> str:
+    """Return the inner HTML of the single ``.sr-card`` element, walking div
+    nesting to find its matching close tag. Used to assert that content is
+    actually *contained* by the card element, not merely present on the page."""
+    open_tag = '<div class="sr-card">'
+    start = html.index(open_tag)
+    i = start + len(open_tag)
+    depth = 1
+    while depth:
+        nxt_open = html.find("<div", i)
+        nxt_close = html.find("</div>", i)
+        assert nxt_close != -1, "unbalanced .sr-card"
+        if nxt_open != -1 and nxt_open < nxt_close:
+            depth += 1
+            i = nxt_open + 4
+        else:
+            depth -= 1
+            i = nxt_close + 6
+    return html[start + len(open_tag) : i - len("</div>")]
+
+
+class TestDeckListBody:
+    """The all-decks list must line the New/Learn/Due counts up under their
+    column headers. The header is a ``<div>`` and each row is a ``<button>``;
+    without a shared box model the button's padding lands outside its width and
+    the flexible name column pushes the counts a column to the right."""
+
+    DATA = {
+        "studied": "Your decks, by New / Learn / Due - tap to study.",
+        "decks": [
+            {
+                "id": 1,
+                "name": "MCAT Content Library",
+                "new": 20,
+                "learn": 0,
+                "review": 0,
+            },
+            {
+                "id": 2,
+                "name": "MileDown's MCAT Decks",
+                "new": 20,
+                "learn": 0,
+                "review": 6,
+            },
+        ],
+    }
+
+    def test_header_and_rows_share_identical_grid_geometry(self) -> None:
+        html = theme.deck_list_body(self.DATA)
+        # header + one <button> row per deck, all four-column grids
+        assert '<div class="sr-deck-head">' in html
+        assert html.count('class="sr-deck-row"') == 2
+        # the shared rule defines the columns once for BOTH selectors, and pins
+        # the box model so the <div> head and <button> rows measure identically
+        rule = theme._WORKSPACE_CSS.split(".sr-deck-head, .sr-deck-row {")[1].split(
+            "}"
+        )[0]
+        assert "grid-template-columns:1fr 52px 52px 52px" in rule
+        assert "box-sizing:border-box" in rule
+        assert "width:100%" in rule
+        assert "margin:0" in rule
+
+    def test_header_and_row_have_matching_cell_counts(self) -> None:
+        html = theme.deck_list_body(self.DATA)
+        # header: Deck + New + Learn + Due = 4 cells
+        head = html.split('<div class="sr-deck-head">')[1].split("</div>")[0]
+        assert head.count("<span") == 4
+        # each row: one name cell + three count cells = 4 cells, matching the
+        # four grid tracks so a count sits under each header
+        row = html.split('class="sr-deck-row"')[1].split("</button>")[0]
+        assert 'class="sr-deck-name"' in row
+        assert row.count('class="sr-deck-c') == 3
+
+    def test_name_cell_can_shrink_so_it_never_blows_out_the_track(self) -> None:
+        # min-width:0 lets the 1fr name track ellipsize instead of forcing the
+        # fixed count columns rightward on a long deck name.
+        assert (
+            "min-width:0"
+            in theme._WORKSPACE_CSS.split(".sr-deck-name {")[1].split("}")[0]
+        )
+
+
+class TestPracticeCarsContainment:
+    """A CARS/passage question renders the passage, stem, options, confidence and
+    self-explain inside ONE ``.sr-card``. The scrollable passage must not share
+    the card's own elevated fill, or the card's boundary visually collapses onto
+    the passage and the stem below reads as if it spilled onto the page."""
+
+    def _cars(self, answered: bool = False) -> dict:
+        return {
+            "empty": False,
+            "mode": "runner",
+            "index": 0,
+            "total": 9,
+            "answered": answered,
+            "selected": (1 if answered else None),
+            "q": {
+                "topic": "cars",
+                "passage_title": "A Vindication of the Rights of Woman (1792)",
+                "passage": "First paragraph of the passage.\n\nSecond paragraph.",
+                "stem": "The author's argument depends most on which assumption?",
+                "options": [
+                    "Roles are identical",
+                    "Reason grounds dignity",
+                    "Strength",
+                    "Sentiment",
+                ],
+                "correct_index": 1,
+                "explanation": "Reason is the stated basis of dignity.",
+            },
+            "verdict": ("good" if answered else None),
+            "verdict_text": ("Correct" if answered else ""),
+            "feedback": ("Answer: B" if answered else ""),
+            "ai": None,
+            "is_last": False,
+            "voice": True,
+        }
+
+    def test_whole_question_is_inside_one_card(self) -> None:
+        html = theme.practice_body(self._cars())
+        assert html.count('class="sr-card"') == 1
+        inner = _card_inner(html)
+        # passage + stem + every option + confidence + self-explain live in the card
+        assert "sr-pq-passage" in inner
+        assert "sr-pq-stem" in inner
+        # one lettered option button per choice (the JS also mentions .sr-pq-opt,
+        # so count the per-option letter badge instead)
+        assert inner.count("sr-pq-letter") == 4
+        assert 'id="sr-conf-row"' in inner
+        assert 'id="sr-explain"' in inner
+
+    def test_self_explain_and_confidence_are_mandatory(self) -> None:
+        html = theme.practice_body(self._cars())
+        # No opt-outs: confidence is a forced Low/Medium/High (no "(skip)") and
+        # self-explain is no longer "(optional)".
+        assert "(skip)" not in html
+        assert "(optional)" not in html
+        assert 'data-conf="1"' in html and 'data-conf="3"' in html
+        # The textarea drives the progressive reveal + submit gate, and submit
+        # starts disabled until answer + explanation + confidence are all present.
+        assert 'oninput="srUpdate()"' in html
+        assert 'disabled onclick="srSubmit()"' in html
+
+    def test_passage_is_recessed_not_the_card_fill(self) -> None:
+        passage_rule = theme._WORKSPACE_CSS.split(".sr-pq-passage {")[1].split("}")[0]
+        # recessed page surface, never the card's own elevated fill
+        assert "background:var(--sr-canvas)" in passage_rule
+        assert "var(--sr-elevated)" not in passage_rule
+
+
+class TestPracticeQuit:
+    """An in-progress practice session offers an unobtrusive Quit control so a
+    student can leave without answering every question."""
+
+    def _runner(self, answered: bool) -> dict:
+        return {
+            "empty": False,
+            "mode": "runner",
+            "index": 1,
+            "total": 5,
+            "answered": answered,
+            "selected": (0 if answered else None),
+            "q": {
+                "topic": "biochemistry",
+                "stem": "Which residue is most likely protonated at pH 7?",
+                "options": ["Glycine", "Histidine", "Serine"],
+                "correct_index": 1,
+                "explanation": "Histidine's imidazole pKa is near 6.",
+            },
+            "verdict": ("bad" if answered else None),
+            "verdict_text": ("Not quite" if answered else ""),
+            "feedback": ("Answer: B" if answered else ""),
+            "ai": None,
+            "is_last": False,
+            "voice": False,
+        }
+
+    def test_quit_present_and_wired_in_both_states(self) -> None:
+        for answered in (False, True):
+            html = theme.practice_body(self._runner(answered))
+            assert "speedrun:pq:quit" in html
+            assert ">Quit<" in html
+            # the control sits inside the question card, next to the progress
+            inner = _card_inner(html)
+            assert "speedrun:pq:quit" in inner
+            assert "sr-pq-head" in inner

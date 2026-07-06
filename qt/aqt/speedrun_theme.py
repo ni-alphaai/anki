@@ -50,12 +50,16 @@ _FONTS = """
 # separator; ``hairline`` is the opaque value Qt needs (QSS ignores rgba borders
 # inconsistently). ``on_signal`` is dark ink for text/icons on amber/green fills
 # (white is used directly on blue/red).
-# Palette: a warm "paper & print" identity. Light = Pampas cream paper (#FAF9F5)
-# with charcoal ink and the signature Crail peach accent; Dark = charcoal paper
-# (#141413) with Pampas text and a muted accent blue (the print/dark pairing).
-# The data-signal hues (memory/perf/coverage/reasoning/passage) stay distinct
-# functional colors so the brand accent never doubles as a chart encoding and the
-# readiness gauge's memory/performance arcs read apart.
+# Palette: a warm "paper & print" identity tuned to sit beside Anthropic's Claude
+# desktop. Light = Pampas cream paper (#FAF9F5) with charcoal ink and the
+# signature Crail clay accent; Dark = a warm charcoal paper (#1C1B17, lifted off
+# pure black so it reads warm, never cold) with Pampas text on a legible
+# elevation ladder. ``accent_strong`` is a deeper/lighter clay used only for
+# accent text sitting on a tint (nav pill, eyebrows) so contrast stays WCAG-safe
+# while the solid CTA keeps the brighter ``accent``. The data-signal hues
+# (memory/perf/coverage/reasoning/passage) stay distinct functional colors so the
+# brand accent never doubles as a chart encoding and the readiness gauge's
+# memory/performance arcs read apart.
 _LIGHT: dict[str, str] = {
     "canvas": "#FAF9F5",
     "surface": "#FFFFFF",
@@ -63,9 +67,10 @@ _LIGHT: dict[str, str] = {
     "ink": "#141413",
     "secondary": "#6B6862",
     "tertiary": "#A6A299",
-    "hairline_web": "#E8E6DC",
-    "hairline": "#E8E6DC",
+    "hairline_web": "#E9E6DC",
+    "hairline": "#E9E6DC",
     "accent": "#CC785C",
+    "accent_strong": "#9E4E33",
     "memory": "#2E7BF6",
     "perf": "#22C55E",
     "coverage": "#8A94A6",
@@ -77,22 +82,23 @@ _LIGHT: dict[str, str] = {
     "field": "#FFFFFF",
     # Precomputed clay tints for Qt QSS (Qt Style Sheets have no color-mix()):
     # a soft selected/highlight peach and a fainter hover wash over white.
-    "sel_tint": "#F4E2DB",
+    "sel_tint": "#F5E7E0",
     "hover_tint": "#FBF4F1",
     "shadow_sm": "0 1px 2px rgba(60,50,30,.05)",
     "shadow": "0 1px 2px rgba(60,50,30,.04), 0 8px 24px rgba(60,50,30,.07)",
     "shadow_lg": "0 12px 32px rgba(60,50,30,.12)",
 }
 _DARK: dict[str, str] = {
-    "canvas": "#100F0D",
-    "surface": "#1C1B18",
-    "elevated": "#232220",
-    "ink": "#FAF9F5",
+    "canvas": "#1C1B17",
+    "surface": "#262521",
+    "elevated": "#2E2C27",
+    "ink": "#F5F3EC",
     "secondary": "#B0AEA5",
-    "tertiary": "#7C7970",
-    "hairline_web": "rgba(255,255,255,.09)",
-    "hairline": "#33312D",
+    "tertiary": "#817D73",
+    "hairline_web": "rgba(255,255,255,.08)",
+    "hairline": "#3A3730",
     "accent": "#D98A6B",
+    "accent_strong": "#E7A98C",
     "memory": "#4B93FF",
     "perf": "#788C5D",
     "coverage": "#6B7280",
@@ -101,13 +107,13 @@ _DARK: dict[str, str] = {
     "amber": "#FBBF24",
     "danger": "#FF6B6B",
     "on_signal": "#141413",
-    "field": "#232220",
+    "field": "#2A2822",
     # Precomputed clay tints for Qt QSS over the dark field (no color-mix()).
-    "sel_tint": "#47352D",
-    "hover_tint": "#2E2823",
-    "shadow_sm": "0 1px 2px rgba(0,0,0,.3)",
-    "shadow": "0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.45)",
-    "shadow_lg": "0 14px 40px rgba(0,0,0,.5)",
+    "sel_tint": "#4A372E",
+    "hover_tint": "#332C24",
+    "shadow_sm": "0 1px 2px rgba(0,0,0,.28)",
+    "shadow": "0 1px 2px rgba(0,0,0,.28), 0 10px 30px rgba(0,0,0,.4)",
+    "shadow_lg": "0 14px 40px rgba(0,0,0,.46)",
 }
 
 # Unified radii (spec): card 20, control/input 12, primary CTA + chips pill.
@@ -121,6 +127,7 @@ def _css_vars(t: dict[str, str]) -> str:
         f"--sr-elevated:{t['elevated']}; --sr-ink:{t['ink']}; "
         f"--sr-secondary:{t['secondary']}; --sr-tertiary:{t['tertiary']}; "
         f"--sr-hairline:{t['hairline_web']}; --sr-accent:{t['accent']}; "
+        f"--sr-accent-strong:{t['accent_strong']}; "
         f"--sr-memory:{t['memory']}; --sr-perf:{t['perf']}; "
         f"--sr-coverage:{t['coverage']}; --sr-reasoning:{t['reasoning']}; "
         f"--sr-passage:{t['passage']}; --sr-amber:{t['amber']}; "
@@ -156,7 +163,7 @@ _COMPONENTS = """
 
 .sr-card { background: var(--sr-elevated); border: 1px solid var(--sr-hairline);
   border-radius: var(--sr-radius); box-shadow: var(--sr-shadow); padding: 18px 20px; }
-.sr-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+.sr-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
   color: var(--sr-secondary); margin: 0 0 6px; }
 
 /* honest abstention text: one clean caption + a "weakest" chip (no stacked,
@@ -232,7 +239,7 @@ _COMPONENTS = """
 .sr-mini .sr-k { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .sr-mini .sr-s { font-size: 12px; color: var(--sr-secondary); }
 .sr-mini-edit { margin-left: auto; align-self: flex-start; border: none; background: none;
-  padding: 2px 4px; font: 600 11.5px var(--sr-font); color: var(--sr-accent); cursor: pointer; }
+  padding: 2px 4px; font: 600 11.5px var(--sr-font); color: var(--sr-accent-strong); cursor: pointer; }
 .sr-mini-edit:hover { text-decoration: underline; }
 
 /* next action — the single primary CTA of the panel, visually distinguished */
@@ -240,7 +247,7 @@ _COMPONENTS = """
   background: color-mix(in srgb, var(--sr-accent) 6%, var(--sr-elevated));
   border: 1px solid color-mix(in srgb, var(--sr-accent) 24%, var(--sr-hairline));
   border-left: 3px solid var(--sr-accent); }
-.sr-next .sr-eyebrow { color: var(--sr-accent); }
+.sr-next .sr-eyebrow { color: var(--sr-accent-strong); }
 .sr-next .sr-t { font-weight: 600; font-size: 16px; }
 .sr-next .sr-d { font-size: 13px; color: var(--sr-secondary); margin-top: 3px; line-height: 1.5; }
 
@@ -299,7 +306,7 @@ _COMPONENTS = """
 _RESKIN = """
 body { background: var(--sr-canvas) !important; color: var(--sr-ink);
   font-family: var(--sr-font); -webkit-font-smoothing: antialiased; }
-a { color: var(--sr-accent); }
+a { color: var(--sr-accent-strong); }
 button, .btn { font-family: var(--sr-font) !important;
   border-radius: var(--sr-radius-input) !important; cursor: pointer; }
 /* deck list: calm rows on the canvas, hairline separators, subtle hover */
@@ -716,11 +723,25 @@ def _bridge(data: dict) -> str:
             "compares against new-question performance."
         )
     elif not perf_ok:
-        span = '<div class="sr-span"><em>gathering question data</em></div>'
-        caption = (
-            f"You recall {m}% of the facts. Answer more held-out exam-style "
-            "questions to measure whether that transfers to new questions."
-        )
+        answered = int(data.get("exam_attempts", 0) or 0)
+        needed = int(data.get("exam_needed", 20) or 20)
+        if answered > 0:
+            perf_disp = f"{answered}/{needed}"
+            span = (
+                f'<div class="sr-span"><em>measuring · {answered}/{needed}</em></div>'
+            )
+            caption = (
+                f"You recall {m}% of the facts. You have answered {answered} of "
+                f"{needed} exam-style questions needed to measure whether that "
+                "transfers - keep practising to unlock your performance score."
+            )
+        else:
+            span = '<div class="sr-span"><em>gathering question data</em></div>'
+            caption = (
+                f"You recall {m}% of the facts. Answer held-out exam-style "
+                "questions in Practice to measure whether that transfers to new "
+                "questions."
+            )
     elif g > 2:
         span = f'<div class="sr-span"><em>{g:+d} pts</em></div>'
         caption = (
@@ -743,7 +764,7 @@ def _bridge(data: dict) -> str:
     return (
         '<div class="sr-card"><p class="sr-eyebrow">Recall &rarr; performance bridge</p>'
         '<div class="sr-bridge">'
-        f'<div class="sr-node"><b>{recall_disp}</b><span>Recall</span></div>'
+        f'<div class="sr-node"><b>{recall_disp}</b><span>Memory</span></div>'
         f"{span}"
         f'<div class="sr-node"><b>{perf_disp}</b><span>New questions</span></div>'
         "</div>"
@@ -1053,12 +1074,31 @@ def _pct_or_dash(v: float | None) -> str:
     return f"{round(v * 100)}%" if v is not None else "–"
 
 
+def _signal_or_note(v: float | None, empty: str) -> str:
+    """A percentage, or an honest 'nothing yet' phrase (never a bare dash) for a
+    signal with no evidence, so 100% never reads as ready and 'no data' never
+    reads as a failure."""
+    return f"{round(v * 100)}%" if v is not None else empty
+
+
+def _back_pill(cmd: str, label: str) -> str:
+    """A calm, self-contained back control: a hairline pill with a leading
+    chevron. Shared by the section, topic, and practice drill-in headers so the
+    'back to sections' affordance reads identically across every content page."""
+    return (
+        f'<button class="sr-pr-back" onclick="pycmd(\'{escape(cmd)}\')">'
+        '<span class="sr-pr-back-chev" aria-hidden="true">\u2039</span>'
+        f"<span>{escape(label)}</span></button>"
+    )
+
+
 def _topic_row(t: dict) -> str:
     kind = _TOPIC_KIND_CLASS.get(t.get("kind", "muted"), "sr-k-muted")
+    name = escape(str(t.get("name", "")))
     return (
         f'<button class="sr-trow" onclick="pycmd(\'speedrun:topic:{escape(str(t["id"]))}\')">'
         '<span class="sr-trow-main">'
-        f'<span class="sr-trow-name">{escape(str(t.get("name", "")))}</span>'
+        f'<span class="sr-trow-name" title="{name}">{name}</span>'
         f'<span class="sr-trow-status {kind}">{escape(str(t.get("status", "")))}</span>'
         "</span>"
         '<span class="sr-trow-metrics">'
@@ -1072,13 +1112,29 @@ def _topic_row(t: dict) -> str:
 
 
 def _section_metrics(sec: dict) -> str:
-    if sec.get("disabled"):
-        return '<div class="sr-tsec-metrics"><span class="sr-tm">Passage practice</span></div>'
+    # "Coverage" is relabeled "Cards" (share of this section's topics that have
+    # study cards) so a full bar never reads as "ready"; the real readiness lives
+    # in the top hero. CARS is a reasoning section: memory + coverage are N/A,
+    # only performance is measured.
+    perf = _signal_or_note(sec.get("performance"), "no practice yet")
+    if sec.get("reasoning"):
+        return (
+            '<div class="sr-tsec-metrics">'
+            '<span class="sr-tm" title="CARS has no content-category cards to '
+            'cover">Cards N/A</span>'
+            '<span class="sr-tm" title="Nothing to memorize in a reading section">'
+            "Memory N/A</span>"
+            f'<span class="sr-tm"><i style="background:var(--sr-perf)"></i>Perf {perf}</span>'
+            "</div>"
+        )
+    cov = sec.get("coverage")
+    cov_txt = f"{round(cov * 100)}%" if cov is not None else "–"
     return (
         '<div class="sr-tsec-metrics">'
-        f'<span class="sr-tm"><i style="background:var(--sr-coverage)"></i>Coverage {round(sec.get("coverage", 0) * 100)}%</span>'
-        f'<span class="sr-tm"><i style="background:var(--sr-memory)"></i>Memory {_pct_or_dash(sec.get("memory"))}</span>'
-        f'<span class="sr-tm"><i style="background:var(--sr-perf)"></i>Perf {_pct_or_dash(sec.get("performance"))}</span>'
+        f'<span class="sr-tm" title="Share of this section\u2019s topics that have '
+        f'study cards \u2014 not a readiness score"><i style="background:var(--sr-coverage)"></i>Cards {cov_txt}</span>'
+        f'<span class="sr-tm"><i style="background:var(--sr-memory)"></i>Memory {_signal_or_note(sec.get("memory"), "not studied yet")}</span>'
+        f'<span class="sr-tm"><i style="background:var(--sr-perf)"></i>Perf {perf}</span>'
         "</div>"
     )
 
@@ -1093,11 +1149,12 @@ def _section_card(sec: dict) -> str:
         f'<div class="sr-tsec-full">{escape(str(sec.get("full", "")))}</div>'
         f"</div>{_section_metrics(sec)}</div>"
     )
-    if sec.get("disabled"):
+    if sec.get("reasoning"):
         return (
             f'<div class="sr-tsec disabled">{head}'
-            '<div class="sr-tsec-empty">CARS is passage-based reading practice '
-            "— no content-category cards.</div></div>"
+            '<div class="sr-tsec-empty">CARS is reading &amp; reasoning practice '
+            "\u2014 no content-category cards to memorize. Practice passages from "
+            "the Practice tab.</div></div>"
         )
     n = len(sec.get("topics", []))
     foot = (
@@ -1119,7 +1176,7 @@ def _topic_sections_html(dash: dict) -> str:
     return "".join(
         _section_card(s)
         for s in dash.get("sections", [])
-        if s.get("topics") or s.get("disabled")
+        if s.get("topics") or s.get("reasoning") or s.get("attempts")
     )
 
 
@@ -1134,8 +1191,22 @@ def topic_dashboard_html(dash: dict) -> str:
         '<div class="sr-topics"><div>'
         '<h2 class="sr-topics-title">MCAT topics</h2>'
         '<div class="sr-topics-sub">By MCAT section — tap a section to see its '
-        "topics and their recall.</div></div>"
+        "topics and their recall.</div>"
+        f"{_reconciliation_caption(dash)}</div>"
         f"{body}</div>"
+    )
+
+
+def _reconciliation_caption(dash: dict) -> str:
+    """A calm note reconciling a thin per-section table with a real overall
+    score: general practice questions that aren't tied to one section still move
+    the projected score, so a sparse section is not 'broken'."""
+    if not int(dash.get("general_practice", 0) or 0):
+        return ""
+    return (
+        '<div class="sr-topics-note">Your projected score also counts general '
+        "practice questions that aren\u2019t linked to a specific section yet, so "
+        "a section can look sparse here while your overall score is real.</div>"
     )
 
 
@@ -1151,10 +1222,13 @@ def section_detail_body(sec: dict) -> str:
         )
     return (
         '<div class="sr-topics">'
-        '<button class="sr-pr-back" onclick="pycmd(\'speedrun:decks\')">‹ All sections</button>'
-        f'<div><h2 class="sr-topics-title">{escape(str(sec.get("short", "")))}</h2>'
+        '<div class="sr-topics-head">'
+        + _back_pill("speedrun:decks", "All sections")
+        + f'<h2 class="sr-topics-title">{escape(str(sec.get("short", "")))}</h2>'
         f'<div class="sr-topics-sub">{escape(str(sec.get("full", "")))}</div></div>'
-        f'<div class="sr-tsec">{_section_metrics(sec)}{rows}</div>'
+        '<div class="sr-tsec sr-tsec-list">'
+        f'<div class="sr-tsec-legend">{_section_metrics(sec)}</div>'
+        f"{rows}</div>"
         "</div>"
     )
 
@@ -1240,11 +1314,23 @@ def deck_list_body(data: dict) -> str:
     )
 
 
-def _tstat(value: str, label: str, sub: str, color_var: str) -> str:
+def _tstat(
+    value: str, label: str, sub: str, color_var: str, muted: bool | None = None
+) -> str:
+    # An empty signal reads as "no evidence yet"; keep it calm (tertiary) rather
+    # than a loud signal color, but the metric dot on the label still names the
+    # signal. Callers pass an explicit honest phrase (e.g. "Not studied yet")
+    # instead of a bare dash and flag it muted.
+    if muted is None:
+        muted = value in ("\u2013", "-", "")
+    kcolor = "var(--sr-tertiary)" if muted else f"var({color_var})"
+    kcls = "sr-tstat-k mut" if muted else "sr-tstat-k"
     return (
-        '<div class="sr-card">'
-        f'<div class="sr-tstat-k" style="color:var({color_var})">{escape(value)}</div>'
-        f'<div class="sr-tstat-lbl">{escape(label)}</div>'
+        '<div class="sr-card sr-tstat">'
+        f'<div class="{kcls}" style="color:{kcolor}">{escape(value)}</div>'
+        '<div class="sr-tstat-lbl">'
+        f'<span class="sr-tstat-dot" style="background:var({color_var})"></span>'
+        f"{escape(label)}</div>"
         f'<div class="sr-tstat-sub">{escape(sub)}</div></div>'
     )
 
@@ -1260,16 +1346,20 @@ def topic_detail_body(t: dict) -> str:
 
     if t.get("review"):
         mem_v = _pct_or_dash(t.get("memory"))
+        mem_muted: bool | None = None
         mem_sub = f"{t.get('mature', 0)} mature of {t.get('review', 0)} review cards"
     else:
-        mem_v = "–"
+        mem_v = "Not studied yet"
+        mem_muted = True
         mem_sub = "No review cards yet — study these to build recall."
 
     if t.get("attempts"):
         perf_v = _pct_or_dash(t.get("performance"))
+        perf_muted: bool | None = None
         perf_sub = f"{t.get('correct', 0)} of {t.get('attempts', 0)} questions correct"
     else:
-        perf_v = "–"
+        perf_v = "No practice yet"
+        perf_muted = True
         perf_sub = "No questions answered yet — practice to measure it."
 
     cov_sub = "cards in your library" if t.get("covered") else "not in your decks yet"
@@ -1297,16 +1387,15 @@ def topic_detail_body(t: dict) -> str:
     )
     section_key = str(t.get("section_key") or "")
     back_cmd = f"speedrun:section:{section_key}" if section_key else "speedrun:decks"
-    back_label = "‹ " + (section or "All topics")
     return (
         '<div class="sr-tdetail">'
-        f'<button class="sr-pr-back" onclick="pycmd(\'{back_cmd}\')">{escape(back_label)}</button>'
-        f'<p class="sr-eyebrow">{escape(eyebrow)}</p>'
+        + _back_pill(back_cmd, section or "All topics")
+        + f'<p class="sr-eyebrow">{escape(eyebrow)}</p>'
         f'<h1 class="sr-dash-title">{escape(str(t.get("name", "")))}</h1>'
         '<div class="sr-tstats">'
         + _tstat(str(t.get("cards", 0)), "Cards", cov_sub, "--sr-coverage")
-        + _tstat(mem_v, "Memory", mem_sub, "--sr-memory")
-        + _tstat(perf_v, "Performance", perf_sub, "--sr-perf")
+        + _tstat(mem_v, "Memory", mem_sub, "--sr-memory", mem_muted)
+        + _tstat(perf_v, "Performance", perf_sub, "--sr-perf", perf_muted)
         + "</div>"
         '<div class="sr-actions">'
         f"{review_btn}{practice_btn}{browse_btn}"
@@ -1359,6 +1448,23 @@ _WORKSPACE_CSS = """
   background:#fff; box-shadow:var(--sr-shadow-sm); transition:left .18s; }
 .sr-switch.on i { left:23px; }
 /* practice */
+/* The passage is a recessed reading well INSIDE the card, so it must not share
+   the card's own --sr-elevated fill (in both light and dark modes elevated ==
+   the card colour, which erased the card's boundary and made the stem/options
+   below the passage read as if they had spilled onto the page). --sr-canvas is
+   the recessed page surface, so the card visibly contains the whole question. */
+.sr-pq-passage { margin:8px 0 16px; padding:14px 16px; background:var(--sr-canvas);
+  border:1px solid var(--sr-hairline); border-radius:14px; max-height:340px; overflow:auto; }
+.sr-pq-passage-title { font-size:12px; font-weight:600; letter-spacing:.02em;
+  text-transform:uppercase; color:var(--sr-secondary); margin-bottom:6px; }
+.sr-pq-passage-body { font-size:15px; line-height:1.6; color:var(--sr-ink); white-space:pre-wrap; }
+.sr-pq-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:2px; }
+.sr-pq-head .sr-eyebrow { margin:0; }
+.sr-pq-quit { flex:none; -webkit-appearance:none; appearance:none; border:1px solid var(--sr-hairline);
+  background:var(--sr-surface); color:var(--sr-secondary); font-family:var(--sr-font); font-size:12px;
+  font-weight:600; padding:5px 13px; border-radius:var(--sr-radius-pill); cursor:pointer;
+  transition:color .12s, border-color .12s; }
+.sr-pq-quit:hover { color:var(--sr-danger); border-color:var(--sr-danger); }
 .sr-pq-stem { font-family:var(--sr-display); font-size:22px; font-weight:600; line-height:1.35;
   margin:6px 0 18px; }
 .sr-pq-opt { display:flex; align-items:center; gap:13px; width:100%; text-align:left;
@@ -1383,6 +1489,25 @@ _WORKSPACE_CSS = """
 .sr-pq-explain { width:100%; box-sizing:border-box; min-height:66px; font-family:var(--sr-font);
   font-size:14px; border:1px solid var(--sr-hairline); border-radius:var(--sr-radius-input); padding:12px;
   background:var(--sr-field); color:var(--sr-ink); resize:vertical; margin:6px 0 4px; }
+.sr-pq-explain-head { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:16px 0 2px; }
+.sr-pq-voicebtn { display:inline-flex; align-items:center; gap:8px; padding:9px 15px; border-radius:999px;
+  border:1px solid var(--sr-accent); background:color-mix(in srgb, var(--sr-accent) 12%, transparent);
+  color:var(--sr-accent); font-family:var(--sr-font); font-size:13.5px; font-weight:600; cursor:pointer;
+  transition:background .14s; }
+.sr-pq-voicebtn:hover { background:color-mix(in srgb, var(--sr-accent) 22%, transparent); }
+.sr-pq-voicebtn.captured { border-color:var(--sr-perf); color:var(--sr-perf);
+  background:color-mix(in srgb, var(--sr-perf) 12%, transparent); }
+.sr-pq-explain-note { color:var(--sr-tertiary); font-size:12px; }
+.sr-pq-conf { display:flex; align-items:center; gap:12px; margin:14px 0 2px;
+  color:var(--sr-secondary); font-size:14px; }
+.sr-pq-confbtns { display:inline-flex; gap:8px; }
+.sr-pq-confbtns button { font-family:var(--sr-font); font-size:13.5px; font-weight:600;
+  padding:8px 16px; border-radius:var(--sr-radius-input); border:1px solid var(--sr-hairline);
+  background:var(--sr-surface); color:var(--sr-secondary); cursor:pointer;
+  transition:border-color .14s, color .14s, background .14s; }
+.sr-pq-confbtns button:hover { border-color:var(--sr-accent); }
+.sr-pq-confbtns button.sel { border-color:var(--sr-accent); color:var(--sr-accent);
+  background:color-mix(in srgb, var(--sr-accent) 12%, transparent); }
 .sr-pq-verdict { font-family:var(--sr-display); font-size:22px; font-weight:600; margin:14px 0 6px; }
 .sr-pq-verdict.good { color:var(--sr-perf); }
 .sr-pq-verdict.bad { color:var(--sr-danger); }
@@ -1390,23 +1515,35 @@ _WORKSPACE_CSS = """
 .sr-pq-feedback { color:var(--sr-secondary); line-height:1.55; white-space:pre-line; }
 .sr-pq-foot { display:flex; justify-content:flex-end; margin-top:22px; }
 /* practice landing: MCAT section cards + drill-down */
-.sr-pr-sections { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+.sr-pr-sections { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
 @media (max-width:560px) { .sr-pr-sections { grid-template-columns:1fr; } }
-.sr-pr-sec { display:flex; flex-direction:column; gap:4px; text-align:left; width:100%;
+.sr-pr-sec { display:flex; flex-direction:column; text-align:left; width:100%; min-height:128px;
   background:var(--sr-elevated); border:1px solid var(--sr-hairline);
-  border-radius:var(--sr-radius); box-shadow:var(--sr-shadow); padding:18px 20px;
-  cursor:pointer; font-family:var(--sr-font); transition:border-color .12s, box-shadow .12s; }
-.sr-pr-sec:hover { border-color:var(--sr-accent); box-shadow:var(--sr-shadow-sm); }
+  border-radius:var(--sr-radius); box-shadow:var(--sr-shadow); padding:20px 22px;
+  cursor:pointer; font-family:var(--sr-font);
+  transition:border-color .14s, box-shadow .14s, transform .14s, background .14s; }
+.sr-pr-sec:hover { border-color:var(--sr-accent); box-shadow:var(--sr-shadow-lg);
+  background:color-mix(in srgb, var(--sr-accent) 5%, var(--sr-elevated)); transform:translateY(-1px); }
+.sr-pr-sec:active { transform:translateY(0); }
 .sr-pr-sec.disabled { cursor:default; }
-.sr-pr-sec.disabled:hover { border-color:var(--sr-hairline); box-shadow:var(--sr-shadow); }
-.sr-pr-sec-short { font-size:18px; font-weight:600; color:var(--sr-ink); }
-.sr-pr-sec-full { font-size:12.5px; color:var(--sr-secondary); line-height:1.45; }
-.sr-pr-sec-count { margin-top:6px; font-size:13px; font-weight:600; color:var(--sr-accent);
-  font-variant-numeric:tabular-nums; }
-.sr-pr-sec.disabled .sr-pr-sec-count { color:var(--sr-tertiary); }
-.sr-pr-back { border:none; background:none; padding:0; margin:0 0 10px; cursor:pointer;
-  font:600 13px var(--sr-font); color:var(--sr-accent); }
-.sr-pr-back:hover { text-decoration:underline; }
+.sr-pr-sec.disabled:hover { border-color:var(--sr-hairline); box-shadow:var(--sr-shadow);
+  background:var(--sr-elevated); transform:none; }
+.sr-pr-sec-short { font-size:18px; font-weight:600; color:var(--sr-ink); letter-spacing:-.01em; }
+.sr-pr-sec-full { margin-top:6px; font-size:12.5px; color:var(--sr-secondary); line-height:1.5; }
+.sr-pr-sec-count { margin-top:auto; padding-top:14px; font-size:13px; font-weight:600;
+  color:var(--sr-accent-strong); font-variant-numeric:tabular-nums; }
+.sr-pr-sec.disabled .sr-pr-sec-count { color:var(--sr-tertiary); font-weight:500; }
+@media (prefers-reduced-motion: reduce) {
+  .sr-pr-sec { transition:border-color .14s, box-shadow .14s; } .sr-pr-sec:hover { transform:none; }
+}
+.sr-pr-back { display:inline-flex; align-items:center; gap:7px; align-self:flex-start;
+  margin:0 0 16px; padding:6px 14px 6px 11px; cursor:pointer; font:600 13px var(--sr-font);
+  color:var(--sr-accent-strong); background:var(--sr-surface); border:1px solid var(--sr-hairline);
+  border-radius:var(--sr-radius-pill); box-shadow:var(--sr-shadow-sm);
+  transition:border-color .12s, background .12s; }
+.sr-pr-back:hover { border-color:color-mix(in srgb, var(--sr-accent) 55%, var(--sr-hairline));
+  background:color-mix(in srgb, var(--sr-accent) 7%, var(--sr-surface)); }
+.sr-pr-back-chev { font-size:15px; line-height:1; margin-top:-1px; }
 /* inputs (sync) */
 .sr-field-label { display:block; font-size:13px; font-weight:600; color:var(--sr-secondary);
   margin:14px 0 6px; }
@@ -1428,6 +1565,14 @@ _WORKSPACE_CSS = """
   border-radius:var(--sr-radius-input); padding:12px 14px; margin-top:6px; word-break:break-all;
   line-height:1.7; }
 .sr-creds b { color:var(--sr-ink); }
+/* segmented control (e.g. the on-conflict preference) */
+.sr-seg { display:inline-flex; background:var(--sr-canvas); border:1px solid var(--sr-hairline);
+  border-radius:var(--sr-radius-pill); padding:3px; gap:2px; }
+.sr-seg-btn { font:500 13px var(--sr-font); color:var(--sr-secondary); cursor:pointer;
+  background:transparent; border:none; border-radius:var(--sr-radius-pill); padding:6px 14px;
+  transition:background .15s, color .15s; }
+.sr-seg-btn:hover { color:var(--sr-ink); }
+.sr-seg-btn.active { background:var(--sr-accent); color:#fff; font-weight:600; }
 /* feedback report */
 .sr-fb-score { display:flex; align-items:baseline; gap:10px; }
 .sr-fb-sub { color:var(--sr-secondary); font-size:15px; }
@@ -1445,10 +1590,20 @@ _WORKSPACE_CSS = """
 .sr-topics-title { font-family:var(--sr-display); font-weight:600; font-size:22px; letter-spacing:-.01em;
   margin:0; color:var(--sr-ink); }
 .sr-topics-sub { font-size:13px; color:var(--sr-secondary); margin-top:2px; }
+.sr-topics-note { font-size:12.5px; line-height:1.5; color:var(--sr-secondary);
+  margin-top:10px; padding:10px 12px; background:var(--sr-elevated);
+  border:1px solid var(--sr-hairline); border-radius:12px; max-width:62ch; }
+.sr-topics-head { margin-bottom:2px; }
 .sr-tsec { background:var(--sr-elevated); border:1px solid var(--sr-hairline); border-radius:var(--sr-radius);
   box-shadow:var(--sr-shadow); overflow:hidden; }
+/* section-detail list: a right-aligned legend band (color key + section
+   aggregate) sits above the per-topic rows; kill the first row's own top rule so
+   the legend divider does not double up. */
+.sr-tsec-legend { display:flex; justify-content:flex-end; padding:11px 40px 11px 18px;
+  border-bottom:1px solid var(--sr-hairline); }
+.sr-tsec-legend + .sr-trow { border-top:none; }
 .sr-tsec-head { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; padding:16px 18px 13px; }
-.sr-tsec-name { font-size:16px; font-weight:700; color:var(--sr-ink); }
+.sr-tsec-name { font-size:16px; font-weight:600; color:var(--sr-ink); }
 .sr-tsec-full { font-size:12px; color:var(--sr-secondary); margin-top:2px; line-height:1.4; }
 .sr-tsec-metrics { display:flex; flex-wrap:wrap; gap:12px; flex:none; justify-content:flex-end; }
 .sr-tm { display:inline-flex; align-items:center; gap:5px; font-size:12px; color:var(--sr-secondary);
@@ -1459,19 +1614,20 @@ _WORKSPACE_CSS = """
   font-family:var(--sr-font); transition:background .12s; }
 .sr-trow:hover { background:color-mix(in srgb, var(--sr-accent) 7%, transparent); }
 .sr-trow-main { flex:1; min-width:0; display:flex; align-items:center; gap:10px; }
-.sr-trow-name { font-size:14px; color:var(--sr-ink); font-weight:500; overflow:hidden;
+.sr-trow-name { font-size:14.5px; color:var(--sr-ink); font-weight:500; overflow:hidden;
   text-overflow:ellipsis; white-space:nowrap; }
-.sr-trow-status { flex:none; font-size:11px; font-weight:600; padding:2px 9px; border-radius:var(--sr-radius-pill);
-  color:var(--sr-secondary); background:var(--sr-canvas); }
-.sr-trow-status.sr-k-perf { color:var(--sr-perf); background:color-mix(in srgb, var(--sr-perf) 15%, transparent); }
+.sr-trow-status { flex:none; font-size:11px; font-weight:600; padding:3px 10px; border-radius:var(--sr-radius-pill);
+  letter-spacing:.005em; color:var(--sr-secondary); background:color-mix(in srgb, var(--sr-ink) 6%, transparent); }
+.sr-trow-status.sr-k-perf { color:var(--sr-perf); background:color-mix(in srgb, var(--sr-perf) 16%, transparent); }
 .sr-trow-status.sr-k-memory { color:var(--sr-memory); background:color-mix(in srgb, var(--sr-memory) 15%, transparent); }
 .sr-trow-status.sr-k-danger { color:var(--sr-danger); background:color-mix(in srgb, var(--sr-danger) 15%, transparent); }
-.sr-trow-status.sr-k-amber { color:var(--sr-amber); background:color-mix(in srgb, var(--sr-amber) 17%, transparent); }
-.sr-trow-status.sr-k-muted { color:var(--sr-tertiary); background:var(--sr-canvas); }
-.sr-trow-metrics { display:flex; gap:14px; flex:none; }
-.sr-tmini { display:inline-flex; align-items:center; gap:5px; font-size:12px; color:var(--sr-secondary);
-  font-variant-numeric:tabular-nums; min-width:44px; }
-.sr-trow-chev { flex:none; color:var(--sr-tertiary); font-size:18px; line-height:1; }
+.sr-trow-status.sr-k-amber { color:var(--sr-amber); background:color-mix(in srgb, var(--sr-amber) 18%, transparent); }
+.sr-trow-status.sr-k-muted { color:var(--sr-secondary); background:color-mix(in srgb, var(--sr-ink) 5%, transparent); }
+/* fixed-width stat columns keep every row's dot + value in a clean vertical line */
+.sr-trow-metrics { display:flex; gap:0; flex:none; }
+.sr-tmini { display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--sr-secondary);
+  font-variant-numeric:tabular-nums; width:62px; }
+.sr-trow-chev { flex:none; margin-left:2px; color:var(--sr-tertiary); font-size:18px; line-height:1; }
 .sr-tsec.disabled .sr-tsec-name { color:var(--sr-secondary); }
 .sr-tsec-btn { display:block; width:100%; text-align:left; cursor:pointer; font-family:var(--sr-font);
   padding:0; transition:border-color .12s, box-shadow .12s; }
@@ -1489,24 +1645,35 @@ _WORKSPACE_CSS = """
 .sr-tdetail { max-width:760px; margin:0 auto; }
 .sr-tstats { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:16px 0 20px; }
 @media (max-width:560px) { .sr-tstats { grid-template-columns:1fr; } }
+.sr-tstat-k.mut { font-size:15px; font-weight:600; letter-spacing:0; }
 .sr-tstat-k { font-family:var(--sr-display); font-size:30px; font-weight:600; line-height:1.1;
   font-variant-numeric:tabular-nums; }
-.sr-tstat-lbl { font-size:13px; font-weight:600; color:var(--sr-ink); margin-top:6px; }
-.sr-tstat-sub { font-size:12px; color:var(--sr-secondary); margin-top:3px; line-height:1.45; }
+.sr-tstat-lbl { display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600;
+  color:var(--sr-ink); margin-top:10px; }
+.sr-tstat-dot { width:8px; height:8px; border-radius:2px; flex:none; display:inline-block; }
+.sr-tstat-sub { font-size:12px; color:var(--sr-secondary); margin-top:4px; line-height:1.5; }
 /* all-decks list (Speedrun-styled replacement for the native deck browser) */
 .sr-alldecks { max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:14px; }
 .sr-deck-tbl { background:var(--sr-elevated); border:1px solid var(--sr-hairline);
   border-radius:var(--sr-radius); box-shadow:var(--sr-shadow); overflow:hidden; }
+/* The head is a <div> and each row is a <button>: without an explicit
+   box-sizing/width/margin reset the button inherits webview.css's
+   `*{box-sizing:content-box}` + the base `button{margin:0 4px}`, so its 18px
+   padding lands OUTSIDE its 100% width and its grid content box ends up ~36px
+   wider than the head's. That extra width is absorbed by the flexible 1fr name
+   track, shifting the New/Learn/Due cells a column to the right of their
+   headers. Pinning both to border-box + width:100% + margin:0 gives them
+   identical grid geometry so the cells sit under their headers. */
 .sr-deck-head, .sr-deck-row { display:grid; grid-template-columns:1fr 52px 52px 52px; gap:8px;
-  align-items:center; padding:12px 18px; }
+  align-items:center; padding:12px 18px; box-sizing:border-box; width:100%; margin:0; }
 .sr-deck-head { font-size:11px; font-weight:600; letter-spacing:.05em; text-transform:uppercase;
   color:var(--sr-secondary); border-bottom:1px solid var(--sr-hairline); }
 .sr-deck-head span:not(:first-child) { text-align:center; }
-.sr-deck-row { width:100%; background:none; border:none; border-top:1px solid var(--sr-hairline);
+.sr-deck-row { background:none; border:none; border-top:1px solid var(--sr-hairline);
   cursor:pointer; font-family:var(--sr-font); }
 .sr-deck-row:hover { background:color-mix(in srgb, var(--sr-accent) 7%, transparent); }
 .sr-deck-name { text-align:left; font-size:14px; color:var(--sr-ink); font-weight:500;
-  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .sr-deck-c { text-align:center; font-size:14px; font-variant-numeric:tabular-nums; color:var(--sr-tertiary); }
 .sr-deck-c.sr-new.nz { color:var(--sr-memory); }
 .sr-deck-c.sr-learn.nz { color:var(--sr-danger); }
@@ -1619,37 +1786,39 @@ _SIDEBAR_CSS = """
 button { -webkit-appearance:none !important; appearance:none !important; margin:0;
   border:none; background:transparent; box-shadow:none; outline:none; font:inherit; }
 html,body { height:100%; margin:0; background:var(--sr-canvas); }
-.sr-sb { display:flex; flex-direction:column; height:100%; padding:14px 10px;
+.sr-sb { display:flex; flex-direction:column; height:100%; padding:16px 10px;
   font-family:var(--sr-font); border-right:1px solid var(--sr-hairline); }
-.sr-sb-brand { display:flex; align-items:center; gap:9px; padding:8px 12px 18px; }
+.sr-sb-brand { display:flex; align-items:center; gap:10px; padding:10px 12px 22px; }
 .sr-sb-logo { width:24px; height:24px; flex:none; color:var(--sr-accent);
   display:flex; align-items:center; justify-content:center; }
 .sr-sb-logo svg { width:24px; height:24px; }
-.sr-sb-word { font-family:var(--sr-display); font-size:19px; font-weight:600;
-  color:var(--sr-ink); letter-spacing:-.01em; }
-.sr-sb-nav { display:flex; flex-direction:column; gap:1px; }
+.sr-sb-word { font-family:var(--sr-display); font-size:20px; font-weight:500;
+  color:var(--sr-ink); letter-spacing:-.015em; }
+.sr-sb-nav { display:flex; flex-direction:column; gap:2px; }
 .sr-sb-item { display:flex; align-items:center; gap:11px; width:100%; text-align:left;
-  border:none; background:transparent; color:var(--sr-secondary); font-family:var(--sr-font);
-  font-size:14px; font-weight:500; padding:8px 12px; border-radius:9px;
+  border:none; background:transparent; font-family:var(--sr-font);
+  color:color-mix(in srgb, var(--sr-ink) 60%, var(--sr-secondary));
+  font-size:14px; font-weight:500; padding:9px 12px; border-radius:10px;
   cursor:pointer; transition:background .12s, color .12s; }
-.sr-sb-item:hover { background:color-mix(in srgb, var(--sr-ink) 6%, transparent);
+.sr-sb-item:hover { background:color-mix(in srgb, var(--sr-ink) 5%, transparent);
   color:var(--sr-ink); }
-.sr-sb-item.active { background:color-mix(in srgb, var(--sr-accent) 13%, transparent);
-  color:var(--sr-accent); font-weight:600; }
-.sr-sb-item svg { flex:none; width:18px; height:18px; opacity:.9; }
-.sr-sb-grouplabel { font-size:10.5px; font-weight:600; letter-spacing:.06em; text-transform:uppercase;
-  color:var(--sr-tertiary); padding:16px 12px 5px; }
-.sr-sb-div { height:1px; background:var(--sr-hairline); margin:10px 12px; opacity:.7; }
+.sr-sb-item.active { background:color-mix(in srgb, var(--sr-accent) 11%, transparent);
+  color:var(--sr-accent-strong); font-weight:600; }
+.sr-sb-item svg { flex:none; width:18px; height:18px; opacity:.85; }
+.sr-sb-item:hover svg, .sr-sb-item.active svg { opacity:1; }
+.sr-sb-grouplabel { font-size:10.5px; font-weight:600; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--sr-tertiary); padding:18px 12px 6px; }
+.sr-sb-div { height:1px; background:var(--sr-hairline); margin:12px 12px; opacity:.6; }
 .sr-sb-spacer { flex:1; min-height:12px; }
 /* Compact footer utility rail: AI coach, appearance, and sync fold from three
    bulky stacked cards into one slim row of icon buttons. Status reads as a small
    dot on the icon; the full label + detail live in the button's tooltip. */
-.sr-sb-utility { display:flex; justify-content:center; gap:6px; padding:9px 6px 2px;
-  border-top:1px solid var(--sr-hairline); margin-top:6px; }
+.sr-sb-utility { display:flex; justify-content:center; gap:8px; padding:12px 6px 4px;
+  border-top:1px solid var(--sr-hairline); margin-top:8px; }
 .sr-sb-ubtn { position:relative; width:48px; height:36px; display:flex; align-items:center;
   justify-content:center; border:none; background:transparent; color:var(--sr-secondary);
-  border-radius:9px; cursor:pointer; transition:background .12s, color .12s; }
-.sr-sb-ubtn:hover { background:color-mix(in srgb, var(--sr-ink) 6%, transparent); color:var(--sr-ink); }
+  border-radius:10px; cursor:pointer; transition:background .12s, color .12s; }
+.sr-sb-ubtn:hover { background:color-mix(in srgb, var(--sr-ink) 5%, transparent); color:var(--sr-ink); }
 .sr-sb-ubtn:disabled { opacity:.38; cursor:default; }
 .sr-sb-ubtn svg { width:19px; height:19px; }
 .sr-sb-ubtn.on { color:var(--sr-accent); }
@@ -1848,16 +2017,79 @@ def feedback_report_body(fb: dict) -> str:
     return f'<div class="sr-panel sr-dash">{header}{summary}{misses}{weak_card}</div>'
 
 
+# Live countdown for the pairing code's expiry. Runs on the desktop webview,
+# reading the epoch-ms deadline embedded by sync_pair_body, so there is no clock
+# skew. When it hits zero it prompts for a refresh rather than silently lying.
+_CODE_EXPIRY_JS = """
+<script>
+(function(){
+  var el = document.getElementById('sr-code-exp');
+  if(!el){ return; }
+  var exp = parseInt(el.getAttribute('data-exp') || '0', 10);
+  if(!exp){ return; }
+  function tick(){
+    var ms = exp - Date.now();
+    if(ms <= 0){
+      el.textContent = 'Pairing code expired - tap Refresh code for a new one.';
+      el.style.color = 'var(--sr-amber)';
+      return;
+    }
+    var s = Math.floor(ms/1000), m = Math.floor(s/60);
+    s = s % 60;
+    el.textContent = 'Pairing code expires in ' + m + ':' + (s<10?'0':'') + s;
+    setTimeout(tick, 1000);
+  }
+  tick();
+})();
+</script>
+"""
+
+
+# The persisted "on conflict" preference, mirroring the phone's SegmentedControl:
+# (key, button label, plain-language effect). Ask is the safe default.
+_CONFLICT_POLICY_OPTIONS = (
+    ("ask", "Ask", "You'll be asked which copy to keep."),
+    ("phone", "Prefer phone", "Auto-keeps the phone; overwrites the desktop copy."),
+    (
+        "desktop",
+        "Prefer desktop",
+        "Auto-keeps the desktop; overwrites the phone's copy.",
+    ),
+)
+
+
+def _conflict_policy_selector(policy: str) -> str:
+    """The on-conflict preference as a compact segmented control. The caption
+    spells out the overwrite so choosing an auto-resolve is an informed act."""
+    if policy not in ("ask", "phone", "desktop"):
+        policy = "ask"
+    buttons = "".join(
+        f'<button class="sr-seg-btn{" active" if key == policy else ""}" '
+        f"onclick=\"pycmd('speedrun:syncpolicy:{key}')\">{escape(label)}</button>"
+        for key, label, _desc in _CONFLICT_POLICY_OPTIONS
+    )
+    caption = next(
+        (desc for key, _label, desc in _CONFLICT_POLICY_OPTIONS if key == policy), ""
+    )
+    return (
+        '<div class="sr-eyebrow" style="margin-top:20px">On conflict</div>'
+        f'<div class="sr-seg">{buttons}</div>'
+        f'<p class="sr-sync-status" style="margin-top:8px">{escape(caption)}</p>'
+    )
+
+
 def sync_pair_body(data: dict) -> str:
     """The "Sync with phone" screen: USB pairing (recommended), QR, and LAN fallback."""
     header = (
-        '<div class="sr-dash-head"><h1 class="sr-dash-title">Sync with phone</h1>'
-        '<p class="sr-dash-sub">USB is the most reliable path on guest Wi-Fi. '
-        "Plug in your phone, enable USB debugging, then pair once.</p></div>"
+        '<div class="sr-dash-head"><h1 class="sr-dash-title">Sync</h1>'
+        '<p class="sr-dash-sub">Sync to AnkiWeb over the cloud - no desktop or '
+        "same-network needed. Phone/LAN pairing is still available below.</p></div>"
     )
     running = bool(data.get("running"))
     qr = data.get("qr_svg") or ""
     status = escape(data.get("status") or "")
+    exp = int(data.get("exp") or 0)
+    policy = str(data.get("conflict_policy") or "ask")
     if running and qr:
         lan_url = escape(data.get("url") or "")
         usb_url = escape(data.get("usb_url") or "")
@@ -1884,7 +2116,10 @@ def sync_pair_body(data: dict) -> str:
             f'<div class="sr-creds">Phone server URL: <b>{usb_url}</b><br>'
             f"user <b>{user}</b><br>key <b>{token}</b></div></div>"
             f'<div class="sr-qr">{qr}</div>'
-            '<p class="sr-sync-status" style="margin-top:12px">'
+            f'<p class="sr-sync-status" id="sr-code-exp" data-exp="{exp}" '
+            'style="margin-top:10px;font-weight:600">Pairing code active.</p>'
+            + _CODE_EXPIRY_JS
+            + '<p class="sr-sync-status" style="margin-top:12px">'
             "The QR includes both USB and Wi-Fi URLs. On the phone, tap "
             "<b>Sync via USB</b> so it uses the USB address.</p>"
             '<details style="margin-top:14px;color:var(--sr-secondary)">'
@@ -1909,18 +2144,13 @@ def sync_pair_body(data: dict) -> str:
     if running:
         actions += (
             '<div class="sr-actions" style="margin-top:10px">'
+            '<button class="sr-btn" onclick="pycmd(\'speedrun:syncrefresh\')">'
+            "Refresh code</button>"
             '<button class="sr-btn" onclick="pycmd(\'speedrun:syncusb\')">'
             "Refresh USB tunnel</button></div>"
-            '<p class="sr-sync-status" style="margin-top:14px">'
-            "Or pick which copy wins:</p>"
-            '<div class="sr-actions" style="margin-top:10px">'
-            '<button class="sr-btn" onclick="pycmd(\'speedrun:syncpull\')">'
-            "Use phone data</button>"
-            '<button class="sr-btn" onclick="pycmd(\'speedrun:syncpush\')">'
-            "Use desktop data</button>"
-            "</div>"
-            '<p class="sr-sync-status" style="margin-top:18px">'
-            "Testing sync again? Clear local study history, then pull from the phone.</p>"
+            + _conflict_policy_selector(policy)
+            + '<p class="sr-sync-status" style="margin-top:18px">'
+            "Testing sync again? Clear local study history, then sync.</p>"
             '<div class="sr-actions" style="margin-top:10px">'
             '<button class="sr-btn" style="border-color:var(--sr-danger);color:var(--sr-danger)" '
             "onclick=\"pycmd('speedrun:syncclear')\">"
@@ -1928,10 +2158,35 @@ def sync_pair_body(data: dict) -> str:
             "</div>"
         )
     status_html = f'<p class="sr-sync-status">{status}</p>' if status else ""
-    return (
-        f'<div class="sr-panel sr-dash">{header}'
-        f'<div class="sr-card">{inner}{actions}{status_html}</div></div>'
+
+    # AnkiWeb (recommended, primary) leads; phone/LAN pairing collapses below it.
+    ankiweb_signed_in = bool(data.get("ankiweb_signed_in"))
+    ankiweb_status = (
+        '<span style="color:var(--sr-perf);font-weight:600">Signed in to AnkiWeb</span>'
+        if ankiweb_signed_in
+        else '<span style="color:var(--sr-secondary)">Not signed in yet</span>'
     )
+    ankiweb_cta = "Sync with AnkiWeb" if ankiweb_signed_in else "Sign in &amp; sync"
+    ankiweb_card = (
+        '<div class="sr-card" style="margin-bottom:16px">'
+        '<div class="sr-eyebrow">Sync with AnkiWeb (recommended)</div>'
+        '<p style="color:var(--sr-secondary);line-height:1.6;margin:8px 0 12px">'
+        "Sync over the cloud so your reviews and practice history reach every "
+        "device - no desktop running, no shared network. Sign in with your "
+        "AnkiWeb account (Anki asks for it the first time).</p>"
+        f'<p class="sr-sync-status">{ankiweb_status}</p>'
+        '<div class="sr-actions" style="margin-top:14px">'
+        '<button class="sr-btn sr-primary" onclick="pycmd(\'speedrun:syncankiweb\')">'
+        f"{ankiweb_cta}</button></div></div>"
+    )
+    phone_section = (
+        '<details class="sr-card">'
+        '<summary style="cursor:pointer;font-weight:600;color:var(--sr-primary)">'
+        "Sync with phone (offline / same network)</summary>"
+        f'<div style="margin-top:16px">{inner}{actions}{status_html}</div>'
+        "</details>"
+    )
+    return f'<div class="sr-panel sr-dash">{header}{ankiweb_card}{phone_section}</div>'
 
 
 def settings_body(items: list[dict], sync: dict | None = None) -> str:
@@ -2032,6 +2287,13 @@ def library_body(status: str, decks: list[dict]) -> str:
             "Add pack",
             "speedrun:lib:mmlu",
         )
+        + _lib_row(
+            "CARS starter pack",
+            "Author-written questions on public-domain / CC passages "
+            "(topic \u201ccars\u201d). Makes CARS a real practice section.",
+            "Add pack",
+            "speedrun:lib:cars",
+        )
         + "</div>"
     )
     own = (
@@ -2082,20 +2344,44 @@ def _sync_section(sync: dict) -> str:
 _PRACTICE_JS = """
 <script>
 window._srSel = (typeof window._srSel === 'undefined') ? null : window._srSel;
+window._srConf = (typeof window._srConf === 'undefined') ? null : window._srConf;
+function srExplained(){
+  var ex = document.getElementById('sr-explain');
+  return !!(ex && ex.value.trim().length > 0);
+}
+function srUpdate(){
+  // Reveal the confidence choice only once the student has self-explained, and
+  // enable submit only when answer + explanation + confidence are all present.
+  var row = document.getElementById('sr-conf-row');
+  if(row){ row.style.display = srExplained() ? '' : 'none'; }
+  var ok = window._srSel !== null && window._srConf !== null && srExplained();
+  var b = document.getElementById('sr-pq-submit');
+  if(b){ if(ok){ b.removeAttribute('disabled'); } else { b.setAttribute('disabled','1'); } }
+}
 function srSel(el, i){
   window._srSel = i;
   var opts = document.querySelectorAll('.sr-pq-opt');
   for (var k=0;k<opts.length;k++){ opts[k].classList.remove('sel'); }
   el.classList.add('sel');
-  var b = document.getElementById('sr-pq-submit'); if(b){ b.removeAttribute('disabled'); }
+  srUpdate();
+}
+function srConf(el, v){
+  window._srConf = v;
+  var btns = document.querySelectorAll('.sr-pq-confbtns button');
+  for (var k=0;k<btns.length;k++){ btns[k].classList.remove('sel'); }
+  el.classList.add('sel');
+  srUpdate();
 }
 function srSubmit(){
-  if(window._srSel===null){ return; }
-  var conf = document.getElementById('sr-conf');
+  if(window._srSel===null || window._srConf===null || !srExplained()){ return; }
   var ex = document.getElementById('sr-explain');
-  var payload = {sel: window._srSel, conf: conf?parseInt(conf.value):0, explain: ex?ex.value:''};
-  window._srSel = null;
+  var payload = {sel: window._srSel, conf: window._srConf, explain: ex?ex.value:''};
+  window._srSel = null; window._srConf = null;
   pycmd('speedrun:pq:submit:'+encodeURIComponent(JSON.stringify(payload)));
+}
+function srVoice(){
+  var ex = document.getElementById('sr-explain');
+  pycmd('speedrun:pq:voice:'+encodeURIComponent(ex?ex.value:''));
 }
 </script>
 """
@@ -2134,23 +2420,26 @@ def _practice_landing_body(s: dict) -> str:
     cards = ""
     for sec in s.get("sections", []):
         count = int(sec.get("count", 0))
-        has_bank = bool(sec.get("subjects"))
-        if not has_bank:
-            # CARS: passage/reasoning practice, no discrete-question bank.
-            cards += (
-                '<div class="sr-pr-sec disabled">'
-                f'<div class="sr-pr-sec-short">{escape(sec["short"])}</div>'
-                f'<div class="sr-pr-sec-full">{escape(sec["full"])}</div>'
-                '<div class="sr-pr-sec-count">Passage practice \u2014 from reading</div>'
-                "</div>"
-            )
-        elif count:
+        reasoning = bool(sec.get("reasoning"))
+        # Gate on a real bank (count > 0), not on whether the section defines
+        # subjects: CARS now carries a passage bank and is practiceable once one
+        # is imported.
+        if count:
+            unit = "passage question" if reasoning else "question"
             cards += (
                 f'<button class="sr-pr-sec" onclick="pycmd(\'speedrun:pr:sec:{sec["key"]}\')">'
                 f'<div class="sr-pr-sec-short">{escape(sec["short"])}</div>'
                 f'<div class="sr-pr-sec-full">{escape(sec["full"])}</div>'
-                f'<div class="sr-pr-sec-count">{count} question'
+                f'<div class="sr-pr-sec-count">{count} {unit}'
                 f"{'s' if count != 1 else ''}</div></button>"
+            )
+        elif reasoning:
+            cards += (
+                '<button class="sr-pr-sec" onclick="pycmd(\'speedrun:library\')">'
+                f'<div class="sr-pr-sec-short">{escape(sec["short"])}</div>'
+                f'<div class="sr-pr-sec-full">{escape(sec["full"])}</div>'
+                '<div class="sr-pr-sec-count">Reading practice \u2014 import a CARS '
+                "pack</div></button>"
             )
         else:
             cards += (
@@ -2172,9 +2461,8 @@ def _practice_section_body(s: dict) -> str:
     subjects = s.get("subjects", [])
     header = (
         '<div class="sr-dash-head">'
-        '<button class="sr-pr-back" onclick="pycmd(\'speedrun:pr:home\')">'
-        "\u2190 All sections</button>"
-        f'<h1 class="sr-dash-title">{escape(sec["short"])}</h1>'
+        + _back_pill("speedrun:pr:home", "All sections")
+        + f'<h1 class="sr-dash-title">{escape(sec["short"])}</h1>'
         f'<p class="sr-dash-sub">{escape(sec["full"])}</p></div>'
     )
     all_topics = ",".join(
@@ -2261,22 +2549,62 @@ def practice_body(s: dict) -> str:
             f"<span>{escape(str(opt))}</span></button>"
         )
 
+    # CARS/passage items carry their reading passage; pin it above the stem so it
+    # stays visible across every question that shares the passage.
+    passage_html = ""
+    if q.get("passage"):
+        ptitle = escape(str(q.get("passage_title") or "Passage"))
+        passage_html = (
+            '<div class="sr-pq-passage">'
+            f'<div class="sr-pq-passage-title">{ptitle}</div>'
+            f'<div class="sr-pq-passage-body">{escape(str(q["passage"]))}</div>'
+            "</div>"
+        )
+
+    # The progress eyebrow shares its row with an unobtrusive Quit control so a
+    # student can leave an in-progress session without answering every question
+    # (speedrun:pq:quit tears the runner down cleanly - no half-recorded attempt).
+    head = (
+        '<div class="sr-pq-head">'
+        f'<p class="sr-eyebrow">{progress}</p>'
+        '<button type="button" class="sr-pq-quit" '
+        "onclick=\"pycmd('speedrun:pq:quit')\">Quit</button></div>"
+    )
     inner = [
-        f'<p class="sr-eyebrow">{progress}</p>',
+        head,
+        passage_html,
         f'<div class="sr-pq-stem">{escape(str(q["stem"]))}</div>',
         opts,
     ]
 
     if not answered:
+        # Learning-science flow: self-explanation is MANDATORY and comes first,
+        # then a FORCED Low/Medium/High confidence choice, then submit. The
+        # confidence row stays hidden until the student has explained, and submit
+        # stays disabled until an answer is selected AND explained AND confidence
+        # chosen. Voice-first self-explanation runs the same on-device capture
+        # (faster-whisper) the reviewer uses; hidden when voice isn't available.
+        if s.get("voice"):
+            inner.append(
+                '<div class="sr-pq-explain-head">'
+                '<button type="button" id="sr-pq-voice" class="sr-pq-voicebtn" '
+                'onclick="srVoice()"><span aria-hidden="true">\U0001f399\ufe0f</span>'
+                " Speak your reasoning</button>"
+                '<span class="sr-pq-explain-note">Captured on-device - '
+                "nothing is uploaded</span></div>"
+            )
         inner.append(
-            '<div class="sr-pq-row"><span>Confidence</span>'
-            '<select id="sr-conf"><option value="0">(skip)</option>'
-            '<option value="1">Low</option><option value="2">Medium</option>'
-            '<option value="3">High</option></select></div>'
+            '<textarea id="sr-explain" class="sr-pq-explain" oninput="srUpdate()" '
+            'placeholder="Self-explain your reasoning before answering"></textarea>'
         )
         inner.append(
-            '<textarea id="sr-explain" class="sr-pq-explain" '
-            'placeholder="Self-explain your reasoning (optional)"></textarea>'
+            '<div id="sr-conf-row" class="sr-pq-conf" style="display:none">'
+            "<span>How confident?</span>"
+            '<div class="sr-pq-confbtns">'
+            '<button type="button" data-conf="1" onclick="srConf(this,1)">Low</button>'
+            '<button type="button" data-conf="2" onclick="srConf(this,2)">Medium</button>'
+            '<button type="button" data-conf="3" onclick="srConf(this,3)">High</button>'
+            "</div></div>"
         )
         inner.append(
             '<div class="sr-pq-foot"><button id="sr-pq-submit" class="sr-btn sr-primary" '
@@ -2373,13 +2701,16 @@ def diagnostic_report_body(data: dict) -> str:
         pct = int(sec.get("pct", 0))
         rows += (
             '<div style="margin:14px 0">'
-            '<div style="display:flex;justify-content:space-between;font-weight:600">'
+            '<div style="display:flex;justify-content:space-between;align-items:baseline;'
+            'font-weight:600">'
             f"<span>{escape(str(sec.get('short', '')))}</span>"
-            f"<span>{int(sec.get('correct', 0))}/{int(sec.get('total', 0))} "
+            '<span style="color:var(--sr-secondary);font-variant-numeric:tabular-nums">'
+            f"{int(sec.get('correct', 0))}/{int(sec.get('total', 0))} "
             f"· {pct}%</span></div>"
-            '<div style="height:8px;border-radius:6px;background:var(--sr-elevated);'
-            'margin-top:6px;overflow:hidden">'
-            f'<div style="height:100%;width:{pct}%;background:var(--sr-perf)"></div>'
+            '<div style="height:8px;border-radius:6px;background:var(--sr-hairline);'
+            'margin-top:7px;overflow:hidden">'
+            f'<div style="height:100%;width:{pct}%;background:var(--sr-perf);'
+            'border-radius:6px"></div>'
             "</div></div>"
         )
     sections = f'<div class="sr-card"><p class="sr-eyebrow">By section</p>{rows}</div>'
@@ -2421,51 +2752,110 @@ def diagnostic_report_body(data: dict) -> str:
 def _progress_signal_tile(label: str, value: float, ok: bool, color: str) -> str:
     pct = _pct(value)
     shown = f"{pct}%" if ok else "thin"
+    val_color = "var(--sr-ink)" if ok else "var(--sr-tertiary)"
     bar = color if ok else "var(--sr-tertiary)"
     return (
         '<div class="sr-card" style="flex:1;min-width:0">'
-        f'<div style="font-size:30px;font-weight:700;color:var(--sr-ink)">{shown}</div>'
-        f'<div class="sr-eyebrow" style="margin:2px 0 10px">{escape(label)}</div>'
-        '<div style="height:6px;border-radius:4px;background:var(--sr-hairline);overflow:hidden">'
-        f'<div style="height:100%;width:{pct}%;background:{bar}"></div></div></div>'
+        f'<div class="sr-readout" style="font-size:30px;color:{val_color};'
+        'font-variant-numeric:tabular-nums;line-height:1.1">'
+        f"{shown}</div>"
+        '<div class="sr-eyebrow" style="display:flex;align-items:center;gap:6px;'
+        'margin:6px 0 11px">'
+        f'<span style="width:8px;height:8px;border-radius:2px;background:{color}"></span>'
+        f"{escape(label)}</div>"
+        '<div style="height:6px;border-radius:3px;background:var(--sr-hairline);overflow:hidden">'
+        f'<div style="height:100%;width:{pct}%;background:{bar};border-radius:3px"></div></div></div>'
     )
 
 
 def _reliability_svg(bins: list[dict]) -> str:
-    w = h = 180
-    pad = 22
+    """A readable reliability curve: numbered 0–100% axes with tick labels, a
+    labelled "perfectly calibrated" diagonal (with a soft band + gridlines so a
+    dot's distance from the line reads at a glance), and outlined dots whose size
+    encodes how many predictions fell in each bin."""
+    w, h = 280, 240
+    left, right, top, bottom = 52, 16, 18, 46
+    x0, x1 = left, w - right  # plot left / right edges
+    y_bot, y_top = h - bottom, top  # plot bottom (0%) / top (100%)
+    span_x, span_y = x1 - x0, y_bot - y_top
+
+    def fx(p: float) -> float:
+        return x0 + max(0.0, min(1.0, p)) * span_x
+
+    def fy(q: float) -> float:
+        return y_bot - max(0.0, min(1.0, q)) * span_y
+
+    # Faint gridlines at the quarter marks so position is readable.
+    grid = ""
+    for t in (0.25, 0.5, 0.75):
+        gx, gy = fx(t), fy(t)
+        grid += (
+            f'<line x1="{gx:.1f}" y1="{y_top}" x2="{gx:.1f}" y2="{y_bot}" '
+            'stroke="var(--sr-hairline)" stroke-width="1" stroke-opacity="0.55"/>'
+            f'<line x1="{x0}" y1="{gy:.1f}" x2="{x1}" y2="{gy:.1f}" '
+            'stroke="var(--sr-hairline)" stroke-width="1" stroke-opacity="0.55"/>'
+        )
+    # Soft band hugging the diagonal = "close enough to well-calibrated".
+    band = (
+        f'<line x1="{x0}" y1="{y_bot}" x2="{x1}" y2="{y_top}" '
+        'stroke="var(--sr-accent)" stroke-opacity="0.10" stroke-width="20" '
+        'stroke-linecap="round"/>'
+    )
+    axes = (
+        f'<line x1="{x0}" y1="{y_top}" x2="{x0}" y2="{y_bot}" '
+        'stroke="var(--sr-secondary)" stroke-width="1.5"/>'
+        f'<line x1="{x0}" y1="{y_bot}" x2="{x1}" y2="{y_bot}" '
+        'stroke="var(--sr-secondary)" stroke-width="1.5"/>'
+    )
+    diag = (
+        f'<line x1="{x0}" y1="{y_bot}" x2="{x1}" y2="{y_top}" '
+        'stroke="var(--sr-secondary)" stroke-width="1.5" stroke-dasharray="5 4"/>'
+    )
+    # Caption rotated to sit along the diagonal, placed low-left of the usual
+    # high-confidence dot cluster.
+    angle = math.degrees(math.atan2(y_top - y_bot, x1 - x0))
+    cx, cy = fx(0.32), fy(0.32) - 9
+    caption = (
+        f'<text x="{cx:.1f}" y="{cy:.1f}" fill="var(--sr-secondary)" font-size="9" '
+        f'text-anchor="middle" transform="rotate({angle:.0f} {cx:.1f} {cy:.1f})">'
+        "perfectly calibrated</text>"
+    )
+    ticks = ""
+    for frac, lab in ((0.0, "0"), (0.5, "50"), (1.0, "100")):
+        tx, ty = fx(frac), fy(frac)
+        ticks += (
+            f'<text x="{tx:.1f}" y="{y_bot + 15}" fill="var(--sr-tertiary)" '
+            f'font-size="9" text-anchor="middle">{lab}</text>'
+            f'<text x="{x0 - 8}" y="{ty + 3:.1f}" fill="var(--sr-tertiary)" '
+            f'font-size="9" text-anchor="end">{lab}</text>'
+        )
+    mid_x, mid_y = (x0 + x1) / 2, (y_top + y_bot) / 2
+    titles = (
+        f'<text x="{mid_x:.0f}" y="{h - 6}" fill="var(--sr-secondary)" '
+        'font-size="10" text-anchor="middle">Predicted confidence (%)</text>'
+        f'<text x="14" y="{mid_y:.0f}" fill="var(--sr-secondary)" font-size="10" '
+        f'text-anchor="middle" transform="rotate(-90 14 {mid_y:.0f})">'
+        "Actual accuracy (%)</text>"
+    )
     max_count = max((int(b.get("count", 0)) for b in bins), default=1) or 1
     dots = ""
     for b in bins:
-        px = max(0.0, min(1.0, float(b.get("mean_predicted", 0.0))))
-        py = max(0.0, min(1.0, float(b.get("mean_outcome", 0.0))))
-        x = pad + px * (w - 2 * pad)
-        y = (h - pad) - py * (h - 2 * pad)
-        r = 3 + 6 * (int(b.get("count", 0)) / max_count)
+        px = float(b.get("mean_predicted", 0.0))
+        py = float(b.get("mean_outcome", 0.0))
+        x, y = fx(px), fy(py)
+        r = 4 + 6 * (int(b.get("count", 0)) / max_count)
         dots += (
             f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r:.1f}" fill="var(--sr-accent)" '
-            f'fill-opacity="0.85"><title>predicted {px:.0%}, actual {py:.0%}, '
+            'fill-opacity="0.9" stroke="var(--sr-surface)" stroke-width="1.5">'
+            f"<title>predicted {px:.0%}, actual {py:.0%}, "
             f"n={int(b.get('count', 0))}</title></circle>"
         )
-    diag = (
-        f'<line x1="{pad}" y1="{h - pad}" x2="{w - pad}" y2="{pad}" '
-        'stroke="var(--sr-hairline)" stroke-width="1.5" stroke-dasharray="5 5"/>'
-    )
-    axes = (
-        f'<line x1="{pad}" y1="{pad}" x2="{pad}" y2="{h - pad}" '
-        'stroke="var(--sr-hairline)" stroke-width="1.5"/>'
-        f'<line x1="{pad}" y1="{h - pad}" x2="{w - pad}" y2="{h - pad}" '
-        'stroke="var(--sr-hairline)" stroke-width="1.5"/>'
-    )
-    labels = (
-        f'<text x="{w / 2:.0f}" y="{h - 4}" fill="var(--sr-tertiary)" font-size="10" '
-        'text-anchor="middle">predicted</text>'
-        f'<text x="11" y="{h / 2:.0f}" fill="var(--sr-tertiary)" font-size="10" '
-        f'text-anchor="middle" transform="rotate(-90 11 {h / 2:.0f})">observed</text>'
-    )
     return (
-        f'<svg viewBox="0 0 {w} {h}" width="200" height="200" role="img" '
-        f'aria-label="Calibration reliability curve">{diag}{axes}{dots}{labels}</svg>'
+        f'<svg viewBox="0 0 {w} {h}" width="260" height="223" role="img" '
+        'aria-label="Calibration reliability curve: predicted confidence on the '
+        "x-axis versus actual accuracy on the y-axis, with a perfectly-calibrated "
+        'diagonal">'
+        f"{grid}{band}{axes}{diag}{caption}{ticks}{titles}{dots}</svg>"
     )
 
 
@@ -2496,9 +2886,11 @@ def _progress_calibration(cal: dict | None) -> str:
     )
     caption = (
         '<p style="color:var(--sr-secondary);font-size:12px;margin-top:10px;line-height:1.5">'
-        "Each dot is a probability bin: x = predicted recall, y = what actually "
-        "happened. On the dashed diagonal means well-calibrated; dot size = how "
-        "many predictions fell in that bin.</p>"
+        "Each dot is a probability bin: x = how sure you were, y = how often you "
+        "were actually right. Dots <b>on</b> the dashed diagonal are well-calibrated; "
+        "<b>above</b> the line = right more often than you predicted (under-confident), "
+        "<b>below</b> = over-confident. Dot size = how many predictions fell in "
+        "that bin.</p>"
     )
     return (
         f'<div class="sr-card">{head}'
@@ -2535,8 +2927,8 @@ def _progress_misses(fb: dict) -> str:
             f'<span style="width:96px;color:var(--sr-secondary);font-size:13px">{name}</span>'
             '<div style="flex:1;height:14px;border-radius:5px;background:var(--sr-hairline);overflow:hidden">'
             f'<div style="height:100%;width:{width}%;background:{color};border-radius:5px"></div></div>'
-            '<span style="width:24px;text-align:right;color:var(--sr-ink);font-weight:600;'
-            f'font-variant-numeric:tabular-nums">{cnt}</span></div>'
+            '<span style="min-width:32px;text-align:right;color:var(--sr-ink);font-weight:600;'
+            f'white-space:nowrap;font-variant-numeric:tabular-nums">{cnt}</span></div>'
         )
     headline = (
         '<div style="margin-bottom:4px">'
@@ -2587,7 +2979,8 @@ def _progress_coverage(d: dict) -> str:
     weak_html = ""
     if weak:
         chips = "".join(
-            '<span style="background:var(--sr-elevated);border-radius:999px;padding:4px 11px;'
+            '<span style="background:color-mix(in srgb, var(--sr-ink) 5%, transparent);'
+            "border:1px solid var(--sr-hairline);border-radius:999px;padding:4px 11px;"
             f'font-size:12px;color:var(--sr-secondary)">{w}</span>'
             for w in weak
         )

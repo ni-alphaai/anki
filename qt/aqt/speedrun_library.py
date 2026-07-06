@@ -66,8 +66,17 @@ _POPULAR_DECKS = [
 ]
 
 _MMLU_PACK = "speedrun_mmlu_pack.json"
+_CARS_PACK = "speedrun_cars_pack.json"
 _E2E_PACK = "speedrun_e2e_biology.json"
-_PAYLOAD_KEYS = ("stem", "options", "correct_index", "explanation")
+_PAYLOAD_KEYS = (
+    "stem",
+    "options",
+    "correct_index",
+    "explanation",
+    "passage",
+    "passage_id",
+    "passage_title",
+)
 
 _CFG_ONBOARDED = "speedrunOnboarded"
 
@@ -625,7 +634,7 @@ def clear_study_data_for_sync_test(mw: aqt.AnkiQt, on_done=None) -> None:
     if not askUser(
         "Clear Speedrun study history on this desktop?\n\n"
         "Removes practice attempts and resets matured sample cards. "
-        'Imported decks stay. Then tap "Use phone data" to re-test sync.',
+        "Imported decks stay. Then tap Sync now to re-test sync.",
         title="Speedrun",
     ):
         return
@@ -658,7 +667,7 @@ def clear_study_data_for_sync_test(mw: aqt.AnkiQt, on_done=None) -> None:
         _refresh(mw)
         tooltip(
             f"Cleared {attempts} attempts and reset {cards} cards. "
-            'Tap "Use phone data" to pull from the phone.'
+            "Tap Sync now to pull the phone's data."
         )
         if callable(on_done):
             on_done(counts)
@@ -769,8 +778,40 @@ def import_mmlu_pack(mw: aqt.AnkiQt) -> None:
     _run_with_progress(mw, "Importing MMLU practice pack…", task, on_done)
 
 
+def import_cars_pack(mw: aqt.AnkiQt) -> None:
+    """One-tap import of the bundled CARS starter pack: a handful of public-
+    domain / openly-licensed passages with author-written passage questions
+    (topic ``cars``), so CARS becomes a real, honest practice section."""
+    if mw.col is None:
+        return
+    pack = _load_pack(_CARS_PACK)
+    if pack is None:
+        showWarning(
+            "The CARS starter pack isn't bundled with this build. Import a .json "
+            'pack with passage questions (topic "cars").'
+        )
+        return
+
+    def task() -> int:
+        return _import_question_pack(mw.col, pack)
+
+    def on_done(n: int) -> None:
+        _refresh(mw)
+        tooltip(f"Added {n} CARS passage questions to your held-out bank.")
+
+    _run_with_progress(mw, "Importing CARS starter pack…", task, on_done)
+
+
 def _refresh(mw: aqt.AnkiQt) -> None:
     try:
+        # If an in-place Speedrun screen owns the webview, repaint *it* rather
+        # than refreshing the native overview/deck list beneath it, which would
+        # otherwise flash the native surface over the Speedrun screen.
+        from aqt import speedrun
+
+        if speedrun.rerender_active_workspace(mw):
+            mw.toolbar.redraw()
+            return
         if mw.state == "overview":
             mw.overview.refresh()
         elif mw.state == "deckBrowser":

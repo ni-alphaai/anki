@@ -16,11 +16,13 @@ so they skip cleanly when it has not been built.
 
 from __future__ import annotations
 
+import http.server
 import importlib.util
 import os
 import socket
 import subprocess
 import sys
+import threading
 import time
 import types
 import urllib.request
@@ -189,3 +191,146 @@ def test_reap_ignores_unrelated_pid(tmp_path: Path) -> None:
     finally:
         other.kill()
         other.wait(timeout=5)
+
+
+class _NoHealthHandler(http.server.BaseHTTPRequestHandler):
+    """A listener that answers only ``/`` and ``/sync/*`` (404), never ``/health``
+    -- proving readiness detection does not depend on a health route."""
+
+    def do_GET(self) -> None:  # noqa: N802
+        self.send_response(404)
+        self.end_headers()
+
+    def do_POST(self) -> None:  # noqa: N802
+        self.send_response(404)
+        self.end_headers()
+
+    def log_message(self, *a: object) -> None:  # silence test noise
+        pass
+
+
+def test_accepting_detects_a_listener_without_a_health_route(tmp_path: Path) -> None:
+    """Readiness is a plain TCP connect, so it works even when the server serves
+    no ``/health`` (the original respawn-loop hypothesis), and returns False
+    fast when nothing is listening."""
+    ss = _load_module()
+
+    dead = _free_port()
+    assert ss._accepting(dead) is False
+
+    srv = http.server.HTTPServer(("127.0.0.1", 0), _NoHealthHandler)
+    port = srv.server_address[1]
+    thread = threading.Thread(target=srv.serve_forever, daemon=True)
+    thread.start()
+    try:
+        assert ss._accepting(port) is True
+    finally:
+        srv.shutdown()
+        thread.join(timeout=5)
+
+
+def test_start_server_is_idempotent(tmp_path: Path) -> None:
+    """A second start while one is already hosting must reuse the live child, not
+    reap-and-respawn it (the bug: repeated spawns leaking the previous process)."""
+    ss = _load_module()
+    base = tmp_path / "speedrun_syncserver"
+    base.mkdir()
+    port = _free_port()
+    proc, log = _spawn_server(base, port, "s.log")
+    try:
+        assert _wait_health(port), "server never came up"
+        # State as it is right after a first successful start_server.
+        ss._proc = proc
+        ss._port = port
+        ss._log_file = log
+        ss._base = str(base)
+        ss._write_pidfile(str(base), proc.pid)
+
+        class _Col:
+            path = str(base / "collection.anki2")
+
+            def get_config(self, key: str, default: object = None) -> object:
+                return {"speedrunServerPort": port}.get(key, default)
+
+            def set_config(self, key: str, value: object) -> None:
+                pass
+
+        mw = types.SimpleNamespace(col=_Col())
+
+        result = ss.start_server(mw)
+        assert result is True
+        assert ss._proc is proc, "idempotent start replaced the running child"
+        assert ss._proc.poll() is None, "idempotent start killed the running child"
+    finally:
+        ss._proc = None  # detach so the module's atexit stop_server is a no-op
+        ss._log_file = None
+        _kill(proc, log)
+
+
+def test_side_effects_run_off_the_ui_thread(monkeypatch) -> None:
+    """The Sync click must not block on adb: the mDNS advert + USB tunnel (the
+    slow ``adb devices``/``adb reverse`` subprocess calls) are dispatched to a
+    background task rather than run inline on the Qt thread. Regression guard for
+    the seconds-long freeze on Sync."""
+    ss = _load_module()
+
+    # A tunnel setup standing in for the adb subprocess timeouts; if it were run
+    # on the calling thread the click would stall, so it must only run when the
+    # captured background task is invoked.
+    ran = {"tunnel": False}
+
+    def fake_tunnel(port: object = None) -> tuple[bool, str]:
+        ran["tunnel"] = True
+        return True, "USB ready"
+
+    monkeypatch.setattr(ss, "setup_usb_tunnel", fake_tunnel)
+    monkeypatch.setattr(ss, "_advertise_mdns", lambda ip, port: None)
+    monkeypatch.setattr(ss, "lan_ip", lambda: "127.0.0.1")
+
+    captured: dict = {}
+
+    class _Taskman:
+        def run_in_background(self, task, on_done=None, uses_collection=True):
+            captured["task"] = task
+            captured["on_done"] = on_done
+            captured["uses_collection"] = uses_collection
+
+    fired = {"ready": False}
+    mw = types.SimpleNamespace(taskman=_Taskman())
+    ss._run_side_effects(mw, 27701, on_ready=lambda: fired.__setitem__("ready", True))
+
+    # Dispatch returned immediately, without touching adb on the calling thread,
+    # and off the collection executor so it never contends with a collection op.
+    assert ran["tunnel"] is False
+    assert captured["uses_collection"] is False
+    assert ss.usb_status_cached() == ss._USB_STATUS_CHECKING
+
+    # Running the background task performs the adb work and caches the result the
+    # UI reads.
+    captured["task"]()
+    assert ran["tunnel"] is True
+    assert ss.usb_status_cached() == (True, "USB ready")
+
+    # The done callback runs on the main thread and lets the caller refresh a
+    # status badge once the tunnel result is known.
+    captured["on_done"](None)
+    assert fired["ready"] is True
+
+
+def test_reap_spares_our_own_live_child(tmp_path: Path) -> None:
+    """The pidfile points at our live child; reaping must never terminate it."""
+    ss = _load_module()
+    base = tmp_path / "speedrun_syncserver"
+    base.mkdir()
+    port = _free_port()
+    proc, log = _spawn_server(base, port, "s.log")
+    try:
+        assert _wait_health(port), "server never came up"
+        ss._proc = proc
+        ss._port = port
+        ss._write_pidfile(str(base), proc.pid)
+        ss._reap_stale_server(str(base))
+        assert proc.poll() is None, "reap killed our own live child"
+    finally:
+        ss._proc = None
+        _kill(proc, log)

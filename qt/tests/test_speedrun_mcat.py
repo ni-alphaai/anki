@@ -17,8 +17,11 @@ class TestSections:
         assert mcat.section_by_key("bio_biochem")["short"] == "Bio/Biochem"
         assert mcat.section_by_key("nope") is None
 
-    def test_cars_has_no_discrete_subject_bank(self) -> None:
-        assert mcat.section_by_key("cars")["subjects"] == []
+    def test_cars_is_a_reasoning_section_with_a_bank(self) -> None:
+        # CARS now carries a passage-question bank (subject "cars") and is flagged
+        # reasoning, so memory/coverage render as N/A while performance is real.
+        assert mcat.section_by_key("cars")["subjects"] == ["cars"]
+        assert mcat.is_reasoning_section("cars") is True
 
 
 class TestSubjects:

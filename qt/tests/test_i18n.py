@@ -1,7 +1,20 @@
 # Copyright: Ankitects Pty Ltd and contributors
 # License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
+import pytest
+
 import anki.lang
+
+
+@pytest.fixture(autouse=True)
+def _restore_lang():
+    """Restore the process-global language after each test. These tests switch it
+    to non-English locales; without a reset it leaks into later tests in the same
+    process - e.g. a fresh collection then gets Japanese-named stock notetypes and
+    ``models.by_name("Basic")`` returns None."""
+    prev = anki.lang.current_lang
+    yield
+    anki.lang.set_lang(prev)
 
 
 def test_no_collection_i18n():

@@ -15,32 +15,38 @@ because both consume the same domain taxonomy.
 
 from __future__ import annotations
 
-# (key, short label, full name, subject tags). CARS is passage/reasoning practice
-# with no discrete-subject question bank, so it carries no subjects.
+# (key, short label, full name, subject tags). CARS is passage/reasoning
+# practice: it has a passage-question bank (subject tag ``cars``) but no
+# content-category cards to memorize, so ``reasoning`` flags it for N/A
+# memory/coverage rendering while its performance signal is still real.
 SECTIONS: list[dict] = [
     {
         "key": "chem_phys",
         "short": "Chem/Phys",
         "full": "Chemical & Physical Foundations of Biological Systems",
         "subjects": ["general_chemistry", "physics"],
+        "reasoning": False,
     },
     {
         "key": "cars",
         "short": "CARS",
         "full": "Critical Analysis & Reasoning Skills",
-        "subjects": [],
+        "subjects": ["cars"],
+        "reasoning": True,
     },
     {
         "key": "bio_biochem",
         "short": "Bio/Biochem",
         "full": "Biological & Biochemical Foundations of Living Systems",
         "subjects": ["biology", "biochemistry"],
+        "reasoning": False,
     },
     {
         "key": "psych_soc",
         "short": "Psych/Soc",
         "full": "Psychological, Social & Biological Foundations of Behavior",
         "subjects": ["psychology_sociology"],
+        "reasoning": False,
     },
 ]
 
@@ -50,7 +56,15 @@ _SUBJECT_LABELS = {
     "general_chemistry": "General Chemistry",
     "physics": "Physics",
     "psychology_sociology": "Psychology / Sociology",
+    "cars": "Critical Analysis & Reasoning",
 }
+
+
+def is_reasoning_section(key: str) -> bool:
+    """True for CARS: a reading/reasoning section with no content-category cards,
+    so memory and coverage are not applicable to it."""
+    sec = section_by_key(key)
+    return bool(sec and sec.get("reasoning"))
 
 
 def section_by_key(key: str) -> dict | None:
