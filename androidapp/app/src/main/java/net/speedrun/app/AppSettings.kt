@@ -7,8 +7,81 @@ import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import org.json.JSONObject
+import org.json.JSONTokener
 
 enum class ThemeMode { System, Light, Dark }
+
+/**
+ * How a two-sided sync conflict is resolved. [Ask] prompts each time (default);
+ * the others auto-resolve by always keeping one side and overwriting the other.
+ */
+enum class SyncConflictPolicy { Ask, PreferPhone, PreferDesktop }
+
+/**
+ * The synced-config contract shared with the desktop. These keys and value
+ * encodings MUST match qt/aqt/speedrun.py exactly: behavioral preferences live
+ * in the collection config, which rides Anki's native sync, so toggling one on
+ * either device and syncing converges it on the other. Encoding is pure JSON
+ * (the same shape `col.set_config` writes), kept as small pure functions so it
+ * can be round-tripped in a host unit test without the engine or a device.
+ */
+object SpeedrunConfig {
+    // Behavioral-preference keys (verified against qt/aqt/speedrun.py:
+    // _CFG_AUTO_ROUND, _CFG_DELAYED_FB, _CFG_SYNC_CONFLICT, _CFG_DIAGNOSTIC).
+    const val KEY_AUTO_ROUND = "speedrunAutoReasoningRound"
+    const val KEY_DELAYED_FB = "speedrunDelayedFeedbackExperiment"
+    const val KEY_SYNC_CONFLICT = "speedrunSyncConflictPolicy"
+    const val KEY_DIAGNOSTIC = "speedrunDiagnosticDone"
+
+    // Desktop's on-conflict string encoding (_SYNC_CONFLICT_* in speedrun.py).
+    const val CONFLICT_ASK = "ask"
+    const val CONFLICT_PHONE = "phone"
+    const val CONFLICT_DESKTOP = "desktop"
+
+    /** A bool config value as JSON (`true` / `false`), matching `col.set_config`. */
+    fun encodeBool(value: Boolean): String = if (value) "true" else "false"
+
+    /** Decode a JSON bool config value; [default] for unset/garbage. */
+    fun decodeBool(json: String?, default: Boolean): Boolean =
+        when (json?.trim()) {
+            "true" -> true
+            "false" -> false
+            else -> default
+        }
+
+    /** The desktop's plain string for a policy ("ask" / "phone" / "desktop"). */
+    fun policyToString(policy: SyncConflictPolicy): String = when (policy) {
+        SyncConflictPolicy.Ask -> CONFLICT_ASK
+        SyncConflictPolicy.PreferPhone -> CONFLICT_PHONE
+        SyncConflictPolicy.PreferDesktop -> CONFLICT_DESKTOP
+    }
+
+    /** Map the desktop's stored string back to a policy; defaults to [SyncConflictPolicy.Ask]. */
+    fun policyFromString(value: String?): SyncConflictPolicy = when (value?.trim()) {
+        CONFLICT_PHONE -> SyncConflictPolicy.PreferPhone
+        CONFLICT_DESKTOP -> SyncConflictPolicy.PreferDesktop
+        else -> SyncConflictPolicy.Ask
+    }
+
+    /** The conflict policy as a JSON string config value (e.g. `"ask"`, quoted). */
+    fun encodeConflictPolicy(policy: SyncConflictPolicy): String =
+        JSONObject.quote(policyToString(policy))
+
+    /** Decode a JSON string config value into a policy (unwraps the quotes). */
+    fun decodeConflictPolicy(json: String?): SyncConflictPolicy =
+        policyFromString(decodeString(json))
+
+    /** Parse a JSON string value (e.g. `"ask"` -> `ask`); null if not a string. */
+    fun decodeString(json: String?): String? {
+        if (json == null) return null
+        return runCatching { JSONTokener(json).nextValue() as? String }.getOrNull()
+    }
+}
 
 /** Tiny app-local preference store. */
 object AppSettings {
@@ -23,8 +96,17 @@ object AppSettings {
     private const val KEY_SYNC_USB_URL = "sync_usb_url"
     private const val KEY_SYNC_USER = "sync_username"
     private const val KEY_SYNC_TOKEN = "sync_token"
+    private const val KEY_ANKIWEB_EMAIL = "ankiweb_email"
     private const val KEY_SYNC_USB = "sync_via_usb"
     private const val KEY_LAST_SYNCED = "last_synced_ms"
+    private const val KEY_SYNC_CONFLICT_POLICY = "sync_conflict_policy"
+
+    // Background scope for the fire-and-forget config writes that back the
+    // synced behavioral settings. The in-memory state + SharedPreferences cache
+    // update synchronously (so the UI reflects a toggle instantly); the config
+    // write - which is what actually syncs - is enqueued here and serialized on
+    // the engine's own single-writer dispatcher inside [EngineRepository].
+    private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     var themeMode by mutableStateOf(ThemeMode.System)
         private set
@@ -66,6 +148,10 @@ object AppSettings {
     var syncUsername by mutableStateOf("")
         private set
 
+    /** AnkiWeb account email, remembered for convenience (password never stored). */
+    var ankiwebEmail by mutableStateOf("")
+        private set
+
     /**
      * Sync token from QR pairing (the server "password"). Stored so a paired
      * device syncs with one tap; blank when only a manual URL/user is set.
@@ -104,6 +190,14 @@ object AppSettings {
     var lastSyncedMs by mutableStateOf(0L)
         private set
 
+    /**
+     * What to do when a sync reports a genuine two-sided conflict. Default [Ask]
+     * preserves the explicit "use phone / use desktop" choice; the prefer options
+     * auto-resolve in one direction (and always report which copy was overwritten).
+     */
+    var syncConflictPolicy by mutableStateOf(SyncConflictPolicy.Ask)
+        private set
+
     fun load(context: Context) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         themeMode = runCatching {
@@ -126,9 +220,97 @@ object AppSettings {
         }
         scrubInvalidSyncUrls()
         syncUsername = prefs.getString(KEY_SYNC_USER, "") ?: ""
+        ankiwebEmail = prefs.getString(KEY_ANKIWEB_EMAIL, "") ?: ""
         syncToken = prefs.getString(KEY_SYNC_TOKEN, "") ?: ""
         syncViaUsb = prefs.getBoolean(KEY_SYNC_USB, true)
         lastSyncedMs = prefs.getLong(KEY_LAST_SYNCED, 0L)
+        syncConflictPolicy = runCatching {
+            SyncConflictPolicy.valueOf(
+                prefs.getString(KEY_SYNC_CONFLICT_POLICY, SyncConflictPolicy.Ask.name)!!,
+            )
+        }.getOrDefault(SyncConflictPolicy.Ask)
+    }
+
+    /**
+     * Reconcile the synced behavioral preferences with the collection config -
+     * the same keys the desktop uses. Call once the engine is open and again
+     * after every successful sync so a preference changed on the other device
+     * takes effect here.
+     *
+     * Per key: if config already holds a value, adopt it (config is the shared
+     * source of truth) and refresh the local cache. If config has no value yet,
+     * migrate a non-default local choice UP into config once so the user's
+     * current setting isn't lost and propagates on the next sync; a default
+     * local value is left unset so both platforms fall back to the same
+     * documented default (and the collection isn't needlessly marked dirty).
+     *
+     * Robust by construction: if the collection isn't open or a key is missing,
+     * [EngineRepository] returns null / no-ops and the local values stand.
+     */
+    suspend fun refreshFromConfig(context: Context) {
+        autoReasoningRound = reconcileBool(
+            context, SpeedrunConfig.KEY_AUTO_ROUND, KEY_AUTO_ROUND, autoReasoningRound, default = false,
+        )
+        delayedFeedbackExperiment = reconcileBool(
+            context, SpeedrunConfig.KEY_DELAYED_FB, KEY_DELAYED_FB, delayedFeedbackExperiment, default = false,
+        )
+        diagnosticDone = reconcileBool(
+            context, SpeedrunConfig.KEY_DIAGNOSTIC, KEY_DIAGNOSTIC_DONE, diagnosticDone, default = false,
+        )
+        syncConflictPolicy = reconcileConflictPolicy(context, syncConflictPolicy)
+    }
+
+    private suspend fun reconcileBool(
+        context: Context,
+        configKey: String,
+        prefKey: String,
+        localValue: Boolean,
+        default: Boolean,
+    ): Boolean {
+        val raw = EngineRepository.getConfigJson(configKey)
+        if (raw == null) {
+            if (localValue != default) {
+                EngineRepository.setConfigJson(configKey, SpeedrunConfig.encodeBool(localValue))
+            }
+            return localValue
+        }
+        val decoded = SpeedrunConfig.decodeBool(raw, default)
+        persistBool(context, prefKey, decoded)
+        return decoded
+    }
+
+    private suspend fun reconcileConflictPolicy(
+        context: Context,
+        localValue: SyncConflictPolicy,
+    ): SyncConflictPolicy {
+        val raw = EngineRepository.getConfigJson(SpeedrunConfig.KEY_SYNC_CONFLICT)
+        if (raw == null) {
+            if (localValue != SyncConflictPolicy.Ask) {
+                EngineRepository.setConfigJson(
+                    SpeedrunConfig.KEY_SYNC_CONFLICT,
+                    SpeedrunConfig.encodeConflictPolicy(localValue),
+                )
+            }
+            return localValue
+        }
+        val decoded = SpeedrunConfig.decodeConflictPolicy(raw)
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putString(KEY_SYNC_CONFLICT_POLICY, decoded.name).apply()
+        return decoded
+    }
+
+    private fun persistBool(context: Context, key: String, value: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(key, value).apply()
+    }
+
+    /**
+     * Enqueue a synced-config write (fire-and-forget). No-ops safely when the
+     * collection isn't open; the local cache still holds the choice, which a
+     * later [refreshFromConfig] migrates up.
+     */
+    private fun writeConfig(configKey: String, json: String) {
+        ioScope.launch { EngineRepository.setConfigJson(configKey, json) }
     }
 
     /** Record the time of a successful sync (drives the "last synced" affordance). */
@@ -136,6 +318,13 @@ object AppSettings {
         lastSyncedMs = ms
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putLong(KEY_LAST_SYNCED, ms).apply()
+    }
+
+    /** Remember the AnkiWeb email (the password is never stored). */
+    fun setAnkiwebEmail(context: Context, email: String) {
+        ankiwebEmail = email
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putString(KEY_ANKIWEB_EMAIL, email).apply()
     }
 
     fun setExampleLoaded(context: Context, on: Boolean) {
@@ -146,26 +335,35 @@ object AppSettings {
 
     fun setDiagnosticDone(context: Context, on: Boolean) {
         diagnosticDone = on
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putBoolean(KEY_DIAGNOSTIC_DONE, on).apply()
+        persistBool(context, KEY_DIAGNOSTIC_DONE, on)
+        writeConfig(SpeedrunConfig.KEY_DIAGNOSTIC, SpeedrunConfig.encodeBool(on))
     }
 
     fun setThemeMode(context: Context, mode: ThemeMode) {
+        // Device-local: appearance follows each device (and its OS theme), so it
+        // is deliberately NOT routed through the synced collection config.
         themeMode = mode
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putString(KEY_THEME, mode.name).apply()
     }
 
+    fun setSyncConflictPolicy(context: Context, policy: SyncConflictPolicy) {
+        syncConflictPolicy = policy
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putString(KEY_SYNC_CONFLICT_POLICY, policy.name).apply()
+        writeConfig(SpeedrunConfig.KEY_SYNC_CONFLICT, SpeedrunConfig.encodeConflictPolicy(policy))
+    }
+
     fun setAutoReasoningRound(context: Context, on: Boolean) {
         autoReasoningRound = on
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putBoolean(KEY_AUTO_ROUND, on).apply()
+        persistBool(context, KEY_AUTO_ROUND, on)
+        writeConfig(SpeedrunConfig.KEY_AUTO_ROUND, SpeedrunConfig.encodeBool(on))
     }
 
     fun setDelayedFeedbackExperiment(context: Context, on: Boolean) {
         delayedFeedbackExperiment = on
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putBoolean(KEY_DELAYED_FB, on).apply()
+        persistBool(context, KEY_DELAYED_FB, on)
+        writeConfig(SpeedrunConfig.KEY_DELAYED_FB, SpeedrunConfig.encodeBool(on))
     }
 
     fun setSyncViaUsb(context: Context, on: Boolean) {

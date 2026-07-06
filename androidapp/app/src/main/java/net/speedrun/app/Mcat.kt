@@ -13,12 +13,17 @@ package net.speedrun.app
  * one flat random list. Mirrors the desktop `qt/aqt/speedrun_mcat.py`.
  */
 object Mcat {
-    /** A scored MCAT section and the subject tags it draws from (CARS has none). */
+    /**
+     * A scored MCAT section and the subject tags it draws from. CARS is a
+     * reasoning section: it has a passage-question bank (subject "cars") but no
+     * content-category cards, so [reasoning] flags it for N/A memory/coverage.
+     */
     data class Section(
         val key: String,
         val short: String,
         val full: String,
         val subjects: List<String>,
+        val reasoning: Boolean = false,
     )
 
     val SECTIONS: List<Section> = listOf(
@@ -32,7 +37,8 @@ object Mcat {
             "cars",
             "CARS",
             "Critical Analysis & Reasoning Skills",
-            emptyList(),
+            listOf("cars"),
+            reasoning = true,
         ),
         Section(
             "bio_biochem",
@@ -54,9 +60,14 @@ object Mcat {
         "general_chemistry" to "General Chemistry",
         "physics" to "Physics",
         "psychology_sociology" to "Psychology / Sociology",
+        "cars" to "Critical Analysis & Reasoning",
     )
 
     fun sectionByKey(key: String): Section? = SECTIONS.firstOrNull { it.key == key }
+
+    /** The section a subject tag belongs to (mirrors desktop section_key_for_subject). */
+    fun sectionForSubject(subject: String): Section? =
+        SECTIONS.firstOrNull { subject in it.subjects }
 
     /**
      * The MCAT section a content-category id (e.g. "1A".."10E") belongs to,

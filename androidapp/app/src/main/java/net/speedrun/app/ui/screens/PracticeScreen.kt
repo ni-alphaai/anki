@@ -195,8 +195,10 @@ private fun PracticeLanding(
 @Composable
 private fun SectionCard(section: Mcat.Section, count: Int, onClick: () -> Unit) {
     val c = Speedrun.colors
-    val hasBank = section.subjects.isNotEmpty()
-    val enabled = hasBank && count > 0
+    // Gate on a real bank (count > 0), not on whether the section defines
+    // subjects: CARS now carries a passage bank and is practiceable once one is
+    // imported.
+    val enabled = count > 0
     SpeedrunCard(Modifier.clickable(enabled = enabled) { onClick() }) {
         Text(section.short, color = c.textPrimary, style = MaterialTheme.typography.subhead)
         Text(
@@ -205,10 +207,11 @@ private fun SectionCard(section: Mcat.Section, count: Int, onClick: () -> Unit) 
             style = MaterialTheme.typography.caption,
             modifier = Modifier.padding(top = 2.dp),
         )
+        val unit = if (section.reasoning) "passage question" else "question"
         val caption = when {
-            !hasBank -> "Passage practice — from reading"
-            count == 0 -> "No questions — add a pack from Library"
-            else -> "$count question${if (count != 1) "s" else ""}"
+            count > 0 -> "$count $unit${if (count != 1) "s" else ""}"
+            section.reasoning -> "Reading practice — add a CARS pack from Library"
+            else -> "No questions — add a pack from Library"
         }
         Text(
             caption,
@@ -409,6 +412,22 @@ private fun PracticeRunner(
                 ) {
                     Spacer(Modifier.height(Space.m))
                     SectionLabel(q.topic.replace('_', ' '))
+                    // CARS/passage items pin their reading passage above the stem
+                    // so it stays visible across every question that shares it.
+                    if (q.passage.isNotBlank()) {
+                        SpeedrunCard {
+                            if (q.passageTitle.isNotBlank()) {
+                                Text(
+                                    q.passageTitle.uppercase(),
+                                    color = c.textSecondary,
+                                    style = MaterialTheme.typography.label,
+                                )
+                                Spacer(Modifier.height(Space.xs))
+                            }
+                            Text(q.passage, color = c.textPrimary, style = MaterialTheme.typography.body)
+                        }
+                        Spacer(Modifier.height(Space.m))
+                    }
                     SpeedrunCard {
                         Text(q.stem, color = c.textPrimary, style = MaterialTheme.typography.subhead)
                     }
@@ -443,11 +462,22 @@ private fun PracticeRunner(
 
                 Column(Modifier.padding(horizontal = Space.l).padding(bottom = Space.l)) {
                     if (!answered) {
-                        ConfidencePicker(confidence) { confidence = it }
-                        Spacer(Modifier.height(Space.s))
+                        // Learning-science flow: self-explanation is mandatory and
+                        // comes first; the forced confidence choice appears once the
+                        // student has explained; submit needs answer + explanation +
+                        // confidence.
                         SelfExplainRow(pendingExplanation.isNotBlank()) { showVoice = true }
+                        if (pendingExplanation.isNotBlank()) {
+                            Spacer(Modifier.height(Space.s))
+                            ConfidencePicker(confidence) { confidence = it }
+                        }
                         Spacer(Modifier.height(Space.s))
-                        PrimaryButton("Submit answer", enabled = selected != null) {
+                        PrimaryButton(
+                            "Submit answer",
+                            enabled = selected != null &&
+                                pendingExplanation.isNotBlank() &&
+                                confidence != null,
+                        ) {
                             val sel = selected ?: return@PrimaryButton
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             answered = true
@@ -602,7 +632,7 @@ private fun SelfExplainRow(captured: Boolean, onClick: () -> Unit) {
         )
         Spacer(Modifier.width(Space.s))
         Text(
-            if (captured) "Reasoning captured — edit" else "Self-explain before answering (optional)",
+            if (captured) "Reasoning captured — edit" else "Self-explain before answering",
             color = c.accent,
             style = MaterialTheme.typography.body,
             fontWeight = FontWeight.SemiBold,

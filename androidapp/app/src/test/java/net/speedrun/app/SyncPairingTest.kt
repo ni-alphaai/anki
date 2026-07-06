@@ -4,7 +4,9 @@
 package net.speedrun.app
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** The QR pairing payload parser must accept the desktop's payload and reject
@@ -46,5 +48,29 @@ class SyncPairingTest {
     @Test
     fun rejectsNonJson() {
         assertNull(SyncPairing.parse("just some text"))
+    }
+
+    @Test
+    fun parsesExpiry() {
+        val p = SyncPairing.parse(
+            """{"url":"http://x:1","user":"speedrun","token":"tok","exp":1700000000000}""",
+        )!!
+        assertEquals(1700000000000L, p.expiresAtMs)
+    }
+
+    @Test
+    fun expiredCodeIsRejectedByClock() {
+        val p = SyncPairing.parse(
+            """{"url":"http://x:1","user":"speedrun","token":"tok","exp":1000}""",
+        )!!
+        assertTrue(p.isExpired(nowMs = 2000))
+        assertFalse(p.isExpired(nowMs = 500))
+    }
+
+    @Test
+    fun missingExpiryNeverExpires() {
+        val p = SyncPairing.parse("""{"url":"http://x:1","user":"speedrun","token":"tok"}""")!!
+        assertEquals(0L, p.expiresAtMs)
+        assertFalse(p.isExpired(nowMs = Long.MAX_VALUE))
     }
 }

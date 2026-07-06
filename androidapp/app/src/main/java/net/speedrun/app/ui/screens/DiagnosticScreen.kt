@@ -15,10 +15,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -48,6 +53,7 @@ import net.speedrun.app.ui.SectionLabel
 import net.speedrun.app.ui.SegmentedControl
 import net.speedrun.app.ui.SessionTopBar
 import net.speedrun.app.ui.SpeedrunCard
+import net.speedrun.app.ui.VoiceExplainSheet
 import net.speedrun.app.ui.theme.Radius
 import net.speedrun.app.ui.theme.Space
 import net.speedrun.app.ui.theme.Speedrun
@@ -153,6 +159,8 @@ private fun DiagQuiz(
     var selected by remember { mutableStateOf<Int?>(null) }
     var answered by remember { mutableStateOf(false) }
     var confidence by remember { mutableStateOf<Float?>(null) }
+    var pendingExplanation by remember { mutableStateOf("") }
+    var showVoice by remember { mutableStateOf(false) }
     var shownAt by remember { mutableStateOf(0L) }
     // Per-section tallies keyed by section short label.
     val stats = remember { mutableMapOf<String, IntArray>() }
@@ -253,6 +261,8 @@ private fun DiagQuiz(
                             onSelect = { i -> confidence = diagConfidence[i].second },
                         )
                         Spacer(Modifier.height(Space.s))
+                        SelfExplainRow(pendingExplanation.isNotBlank()) { showVoice = true }
+                        Spacer(Modifier.height(Space.s))
                         PrimaryButton("Submit answer", enabled = selected != null) {
                             val sel = selected ?: return@PrimaryButton
                             answered = true
@@ -263,10 +273,11 @@ private fun DiagQuiz(
                             if (correct) stat[0] += 1
                             val took = System.currentTimeMillis() - shownAt
                             val conf = confidence
+                            val expl = pendingExplanation
                             scope.launch {
                                 runCatching {
                                     EngineRepository.recordQuestionAttempt(
-                                        q, sel, took, conf, "", session = DIAGNOSTIC_SESSION,
+                                        q, sel, took, conf, expl, session = DIAGNOSTIC_SESSION,
                                     )
                                 }
                             }
@@ -277,12 +288,48 @@ private fun DiagQuiz(
                             selected = null
                             answered = false
                             confidence = null
+                            pendingExplanation = ""
                             shownAt = System.currentTimeMillis()
                         }
                     }
                 }
             }
         }
+    }
+
+    if (showVoice) {
+        VoiceExplainSheet(
+            initial = pendingExplanation,
+            onDismiss = { showVoice = false },
+            onCapture = { pendingExplanation = it; showVoice = false },
+        )
+    }
+}
+
+@Composable
+private fun SelfExplainRow(captured: Boolean, onClick: () -> Unit) {
+    val c = Speedrun.colors
+    Row(
+        Modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(Radius.control))
+            .background(c.accent.copy(alpha = 0.12f))
+            .clickable { onClick() }
+            .padding(vertical = 13.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            if (captured) Icons.Filled.Check else Icons.Filled.Mic,
+            contentDescription = null,
+            tint = c.accent,
+        )
+        Spacer(Modifier.width(Space.s))
+        Text(
+            if (captured) "Reasoning captured — edit" else "Self-explain before answering (optional)",
+            color = c.accent,
+            style = MaterialTheme.typography.body,
+            fontWeight = FontWeight.SemiBold,
+        )
     }
 }
 

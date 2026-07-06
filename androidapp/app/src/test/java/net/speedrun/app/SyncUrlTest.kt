@@ -20,4 +20,12 @@ class SyncUrlTest {
         assertTrue(SyncUrl.isValid("http://127.0.0.1:55413/"))
         assertTrue(SyncUrl.isValid("http://127.0.0.1:55413"))
     }
+
+    @Test
+    fun acceptsAnkiWebDefaultPort() {
+        // AnkiWeb (and any public host) uses the default port - no explicit port.
+        assertTrue(SyncUrl.isValid(SyncUrl.ANKIWEB_ENDPOINT))
+        assertTrue(SyncUrl.isValid("https://sync.ankiweb.net"))
+        assertTrue(SyncUrl.isValid("https://sync.ankiweb.net/"))
+    }
 }

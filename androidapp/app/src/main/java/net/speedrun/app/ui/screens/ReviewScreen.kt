@@ -7,6 +7,7 @@ import android.webkit.WebView
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -63,7 +64,6 @@ import net.speedrun.app.ui.theme.Space
 import net.speedrun.app.ui.theme.Speedrun
 import net.speedrun.app.ui.theme.body
 import net.speedrun.app.ui.theme.caption
-import net.speedrun.app.ui.theme.onColor
 
 @Composable
 fun ReviewScreen(onDone: () -> Unit, onPractice: (() -> Unit)? = null) {
@@ -207,20 +207,29 @@ fun ReviewScreen(onDone: () -> Unit, onPractice: (() -> Unit)? = null) {
 
         if (!loading && !finished && card != null) {
             Column(Modifier.padding(horizontal = Space.l).padding(bottom = Space.l)) {
+                // One-tap reveal + rate: the rating buttons show on the front, so a
+                // single tap reveals the answer, records that rating, and advances
+                // (grade from memory). Self-explain stays available before rating.
                 if (!showAnswer) {
                     SelfExplainButton(captured = pendingExplanation.isNotBlank()) { showVoice = true }
                     Spacer(Modifier.height(Space.s))
-                    PrimaryButton("Show answer") {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        showAnswer = true
+                }
+                val hints = card!!.intervals
+                // Colors mirror the desktop reviewer's data-ease mapping
+                // (danger / amber / performance / accent) so Again/Hard/Good/Easy
+                // read identically on both platforms.
+                Row(horizontalArrangement = Arrangement.spacedBy(Space.s)) {
+                    RatingButton("Again", hints.getOrElse(0) { "" }, c.readinessBad, Modifier.weight(1f)) {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress); showAnswer = true; onRate(Rating.AGAIN)
                     }
-                } else {
-                    val hints = card!!.intervals
-                    Row(horizontalArrangement = Arrangement.spacedBy(Space.s)) {
-                        RatingButton("Again", hints.getOrElse(0) { "" }, c.again, Modifier.weight(1f)) { onRate(Rating.AGAIN) }
-                        RatingButton("Hard", hints.getOrElse(1) { "" }, c.hard, Modifier.weight(1f)) { onRate(Rating.HARD) }
-                        RatingButton("Good", hints.getOrElse(2) { "" }, c.good, Modifier.weight(1f)) { onRate(Rating.GOOD) }
-                        RatingButton("Easy", hints.getOrElse(3) { "" }, c.easy, Modifier.weight(1f)) { onRate(Rating.EASY) }
+                    RatingButton("Hard", hints.getOrElse(1) { "" }, c.readinessWarn, Modifier.weight(1f)) {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress); showAnswer = true; onRate(Rating.HARD)
+                    }
+                    RatingButton("Good", hints.getOrElse(2) { "" }, c.performance, Modifier.weight(1f)) {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress); showAnswer = true; onRate(Rating.GOOD)
+                    }
+                    RatingButton("Easy", hints.getOrElse(3) { "" }, c.accent, Modifier.weight(1f)) {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress); showAnswer = true; onRate(Rating.EASY)
                     }
                 }
             }
@@ -271,20 +280,22 @@ private fun RatingButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    // Route the on-color through the token so amber/green get dark ink and
-    // blue/red get white - never hardcoded white (which failed on amber in dark).
-    val onc = Speedrun.colors.onColor(color)
+    // Outlined to match the desktop reviewer: a surface cell with a translucent
+    // colored border and colored label, rather than a saturated fill that clashed
+    // with the warm paper canvas. The interval sits below in secondary gray.
+    val c = Speedrun.colors
     Column(
         modifier
             .clip(RoundedCornerShape(Radius.control))
-            .background(color)
+            .background(c.surface)
+            .border(1.dp, color.copy(alpha = 0.55f), RoundedCornerShape(Radius.control))
             .clickable { onClick() }
             .padding(vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(label, color = onc, style = MaterialTheme.typography.body, fontWeight = FontWeight.SemiBold)
+        Text(label, color = color, style = MaterialTheme.typography.body, fontWeight = FontWeight.SemiBold)
         if (interval.isNotBlank()) {
-            Text(interval, color = onc.copy(alpha = 0.9f), style = MaterialTheme.typography.caption)
+            Text(interval, color = c.textSecondary, style = MaterialTheme.typography.caption)
         }
     }
 }

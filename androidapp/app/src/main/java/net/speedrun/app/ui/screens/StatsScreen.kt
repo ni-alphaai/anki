@@ -37,10 +37,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.atan2
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import kotlinx.coroutines.launch
@@ -48,7 +53,6 @@ import net.speedrun.app.CalibrationUi
 import net.speedrun.app.CoverageUi
 import net.speedrun.app.EngineRepository
 import net.speedrun.app.FeedbackReportUi
-import net.speedrun.app.PerformanceUi
 import net.speedrun.app.Readiness
 import net.speedrun.app.ui.KeyValueRow
 import net.speedrun.app.ui.ScreenHeader
@@ -70,7 +74,6 @@ fun StatsScreen() {
     var readiness by remember { mutableStateOf<Readiness?>(null) }
     var coverage by remember { mutableStateOf<CoverageUi?>(null) }
     var calibration by remember { mutableStateOf<CalibrationUi?>(null) }
-    var perf by remember { mutableStateOf<PerformanceUi?>(null) }
     var feedback by remember { mutableStateOf<FeedbackReportUi?>(null) }
 
     val scope = rememberCoroutineScope()
@@ -79,7 +82,6 @@ fun StatsScreen() {
             readiness = runCatching { EngineRepository.readiness() }.getOrNull()
             coverage = runCatching { EngineRepository.coverage() }.getOrNull()
             calibration = runCatching { EngineRepository.calibration() }.getOrNull()
-            perf = runCatching { EngineRepository.performance() }.getOrNull()
             feedback = runCatching { EngineRepository.feedbackReport() }.getOrNull()
         }
     }
@@ -113,7 +115,7 @@ fun StatsScreen() {
         Spacer(Modifier.height(Space.xl))
 
         SectionLabel("Recall → performance")
-        PerformanceCard(perf)
+        PerformanceCard(readiness)
         Spacer(Modifier.height(Space.xxl))
     }
 }
@@ -195,7 +197,7 @@ private fun MissesCard(fb: FeedbackReportUi?) {
                             .clip(RoundedCornerShape(Radius.control)).background(color),
                     )
                 }
-                Text("$count", color = c.textPrimary, style = MaterialTheme.typography.body, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = Space.s).width(20.dp))
+                Text("$count", color = c.textPrimary, style = MaterialTheme.typography.body, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false, modifier = Modifier.padding(start = Space.s).width(30.dp))
             }
         }
     }
@@ -292,11 +294,23 @@ private fun CalibrationCard(cal: CalibrationUi?) {
 
         ReliabilityChart(cal)
         Spacer(Modifier.height(Space.m))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(10.dp).clip(RoundedCornerShape(50)).background(c.accent))
+            Spacer(Modifier.width(Space.xs))
+            Text(
+                "Each dot is a confidence bin; bigger = more predictions.",
+                color = c.textSecondary,
+                style = MaterialTheme.typography.caption,
+            )
+        }
+        Spacer(Modifier.height(Space.m))
         KeyValueRow("Predictions", cal.n.toString())
         KeyValueRow("Brier", "%.3f".format(cal.brier))
         KeyValueRow("Log loss", "%.3f".format(cal.logLoss))
         Text(
-            "Dots on the diagonal mean predicted probability matched reality; dot size = number of predictions.",
+            "x = how sure you were, y = how often you were actually right. Dots above the " +
+                "dashed line mean you were right more often than you predicted (under-confident); " +
+                "below the line means over-confident.",
             color = c.textSecondary,
             style = MaterialTheme.typography.caption,
             modifier = Modifier.padding(top = Space.s),
@@ -308,53 +322,147 @@ private fun CalibrationCard(cal: CalibrationUi?) {
 private fun ReliabilityChart(cal: CalibrationUi) {
     val c = Speedrun.colors
     val maxCount = (cal.bins.maxOfOrNull { it.count } ?: 1).coerceAtLeast(1)
+    val density = LocalDensity.current
+    val axisColor = c.separator
+    val accent = c.accent
+    val surface = c.surface
+
+    // Native paints for the numbered axes, titles, and the diagonal caption
+    // (Compose Canvas has no text primitive of its own).
+    val tickTextArgb = c.textSecondary.toArgb()
+    val xTickPaint = remember(tickTextArgb, density) {
+        android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            color = tickTextArgb
+            textSize = with(density) { 10.sp.toPx() }
+            textAlign = android.graphics.Paint.Align.CENTER
+        }
+    }
+    val yTickPaint = remember(tickTextArgb, density) {
+        android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            color = tickTextArgb
+            textSize = with(density) { 10.sp.toPx() }
+            textAlign = android.graphics.Paint.Align.RIGHT
+        }
+    }
+    val titlePaint = remember(tickTextArgb, density) {
+        android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            color = tickTextArgb
+            textSize = with(density) { 11.sp.toPx() }
+            textAlign = android.graphics.Paint.Align.CENTER
+        }
+    }
+    val captionPaint = remember(tickTextArgb, density) {
+        android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            color = tickTextArgb
+            textSize = with(density) { 9.sp.toPx() }
+            textAlign = android.graphics.Paint.Align.CENTER
+        }
+    }
+
     Canvas(
-        Modifier.fillMaxWidth().aspectRatio(1.4f)
-            .padding(top = Space.s),
+        Modifier.fillMaxWidth().aspectRatio(1.35f).padding(top = Space.s),
     ) {
-        val w = size.width
-        val h = size.height
+        val leftPad = 40.dp.toPx()
+        val bottomPad = 42.dp.toPx()
+        val topPad = 8.dp.toPx()
+        val rightPad = 10.dp.toPx()
+        val plotW = size.width - leftPad - rightPad
+        val plotH = size.height - topPad - bottomPad
+        fun px(p: Float) = leftPad + p.coerceIn(0f, 1f) * plotW
+        fun py(q: Float) = topPad + (1f - q.coerceIn(0f, 1f)) * plotH
+
+        // Faint gridlines at the quarter marks.
+        listOf(0.25f, 0.5f, 0.75f).forEach { t ->
+            drawLine(axisColor.copy(alpha = 0.5f), Offset(px(t), topPad), Offset(px(t), topPad + plotH), 1f)
+            drawLine(axisColor.copy(alpha = 0.5f), Offset(leftPad, py(t)), Offset(leftPad + plotW, py(t)), 1f)
+        }
+        // Soft band + dashed "perfectly calibrated" diagonal.
         drawLine(
-            color = c.separator,
-            start = Offset(0f, h),
-            end = Offset(w, 0f),
-            strokeWidth = 2f,
-            pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 10f)),
+            accent.copy(alpha = 0.10f),
+            Offset(px(0f), py(0f)), Offset(px(1f), py(1f)),
+            strokeWidth = 16.dp.toPx(), cap = StrokeCap.Round,
         )
-        drawLine(c.separator, Offset(0f, 0f), Offset(0f, h), 2f)
-        drawLine(c.separator, Offset(0f, h), Offset(w, h), 2f)
+        drawLine(
+            axisColor, Offset(px(0f), py(0f)), Offset(px(1f), py(1f)),
+            strokeWidth = 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 10f)),
+        )
+        // Axes.
+        drawLine(axisColor, Offset(leftPad, topPad), Offset(leftPad, topPad + plotH), 2f)
+        drawLine(axisColor, Offset(leftPad, topPad + plotH), Offset(leftPad + plotW, topPad + plotH), 2f)
+
+        val canvas = drawContext.canvas.nativeCanvas
+        // Numbered ticks: 0 / 50 / 100 on both axes.
+        listOf(0f to "0", 0.5f to "50", 1f to "100").forEach { (frac, lab) ->
+            canvas.drawText(lab, px(frac), topPad + plotH + 15.dp.toPx(), xTickPaint)
+            canvas.drawText(lab, leftPad - 6.dp.toPx(), py(frac) + xTickPaint.textSize / 3f, yTickPaint)
+        }
+        // Axis titles.
+        canvas.drawText(
+            "Predicted confidence (%)",
+            leftPad + plotW / 2f, size.height - 6.dp.toPx(), titlePaint,
+        )
+        val ySave = canvas.save()
+        val yTitleX = 12.dp.toPx()
+        val yTitleY = topPad + plotH / 2f
+        canvas.rotate(-90f, yTitleX, yTitleY)
+        canvas.drawText("Actual accuracy (%)", yTitleX, yTitleY, titlePaint)
+        canvas.restoreToCount(ySave)
+        // Caption rotated to lie along the diagonal, low-left of the usual cluster.
+        val angle = Math.toDegrees(
+            atan2((py(1f) - py(0f)).toDouble(), (px(1f) - px(0f)).toDouble()),
+        ).toFloat()
+        val capX = px(0.3f)
+        val capY = py(0.3f)
+        val capSave = canvas.save()
+        canvas.rotate(angle, capX, capY)
+        canvas.drawText("perfectly calibrated", capX, capY - 7.dp.toPx(), captionPaint)
+        canvas.restoreToCount(capSave)
+
+        // Outlined dots: size encodes how many predictions fell in the bin.
         cal.bins.forEach { b ->
-            val x = b.meanPredicted.coerceIn(0f, 1f) * w
-            val y = (1f - b.meanOutcome.coerceIn(0f, 1f)) * h
-            val r = 4f + 8f * (b.count.toFloat() / maxCount)
-            drawCircle(color = c.accent, radius = r, center = Offset(x, y))
+            val x = px(b.meanPredicted)
+            val y = py(b.meanOutcome)
+            val r = 5.dp.toPx() + 7.dp.toPx() * (b.count.toFloat() / maxCount)
+            drawCircle(color = surface, radius = r + 2.5f, center = Offset(x, y))
+            drawCircle(color = accent, radius = r, center = Offset(x, y))
         }
     }
 }
 
 @Composable
-private fun PerformanceCard(perf: PerformanceUi?) {
+private fun PerformanceCard(r: Readiness?) {
     val c = Speedrun.colors
     SpeedrunCard {
-        if (perf == null) {
+        if (r == null) {
             Text("Loading…", color = c.textSecondary, style = MaterialTheme.typography.body)
             return@SpeedrunCard
         }
-        SignalBar("Recall", perf.recallRate, pct(perf.recallRate), c.memory)
+        // Read the SAME readiness snapshot the signal tiles use, so the bridge and
+        // the tiles never disagree (they previously pulled memory from the
+        // performance report vs the snapshot and showed different numbers).
+        SignalBar(
+            "Memory",
+            r.memory,
+            if (r.memorySufficient) pct(r.memory) else "thin",
+            c.memory,
+            dimmed = !r.memorySufficient,
+        )
         Spacer(Modifier.height(Space.m))
         SignalBar(
             "Performance",
-            perf.performanceRate,
-            if (perf.sufficient) pct(perf.performanceRate) else "thin",
+            r.performance,
+            if (r.performanceSufficient) pct(r.performance) else "thin",
             c.performance,
-            dimmed = !perf.sufficient,
+            dimmed = !r.performanceSufficient,
         )
         Spacer(Modifier.height(Space.m))
         Text(
-            if (perf.sufficient) {
-                "The gap (${pct(perf.gap)}) is what memory alone hides: recall without applied performance."
+            if (r.memorySufficient && r.performanceSufficient) {
+                "The gap (${pct(r.recallPerfGap)}) is what memory alone hides: recall " +
+                    "without applied performance."
             } else {
-                perf.note.ifBlank { "Add held-out exam-style questions to measure applied performance." }
+                "Answer held-out exam-style questions in Practice to measure whether " +
+                    "your recall transfers to new questions."
             },
             color = c.textSecondary,
             style = MaterialTheme.typography.caption,

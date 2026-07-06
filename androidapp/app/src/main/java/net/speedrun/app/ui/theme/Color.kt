@@ -51,20 +51,6 @@ data class SpeedrunColors(
     val isDark: Boolean,
 )
 
-/**
- * The correct on-color for text/icons sitting on a *filled data color*
- * (per spec `onSignal`): dark ink on amber/yellow and green, white on blue/red.
- * Fixes the white-on-amber contrast bug - never hardcode `Color.White` on a
- * rating fill. Matched semantically (amber == warn == hard, green == perf ==
- * good) so it holds in both light and dark.
- */
-fun SpeedrunColors.onColor(fill: Color): Color =
-    if (fill == hard || fill == good || fill == readinessWarn || fill == readinessGood) {
-        Color(0xFF1C1B19)
-    } else {
-        Color(0xFFFFFFFF)
-    }
-
 // "Paper & print" palette on an iOS-HIG structure (grouped canvas + cells,
 // three-tier text ramp, hairline separators). Light = Pampas cream paper with
 // the signature Crail peach accent; Dark = charcoal paper with an accent blue.

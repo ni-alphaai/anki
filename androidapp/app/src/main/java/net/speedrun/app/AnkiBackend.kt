@@ -9,6 +9,10 @@ import anki.card_rendering.RenderExistingCardRequest
 import anki.card_rendering.RenderedTemplateNode
 import anki.collection.OpChangesWithId
 import anki.collection.OpenCollectionRequest
+import anki.config.SetConfigJsonRequest
+import anki.generic.Json
+import anki.generic.String as GenericString
+import com.google.protobuf.ByteString
 import anki.decks.DeckId
 import anki.decks.DeckTreeNode
 import anki.decks.DeckTreeRequest
@@ -43,6 +47,8 @@ import anki.speedrun.SessionReasoningRoundRequest
 import anki.speedrun.SetTopicMapResponse
 import anki.speedrun.TopicMap
 import anki.speedrun.TopicMapEntry
+import anki.speedrun.TopicAttemptStat
+import anki.speedrun.TopicAttemptStats
 import anki.speedrun.TopicSignal
 import anki.speedrun.TopicSignalsReport
 import anki.sync.FullUploadOrDownloadRequest
@@ -78,6 +84,40 @@ class AnkiBackend private constructor(private var ptr: Long) {
 
     fun closeCollection() {
         run(SVC_COLLECTION, M_CLOSE_COLLECTION, ByteArray(0))
+    }
+
+    // --- Collection config (synced JSON key/value) ------------------------
+
+    /**
+     * Read a raw JSON config value from the collection by key, or null when the
+     * key is unset. Collection config rides Anki's native sync, so this is the
+     * same synced store the desktop uses via `col.get_config` - the two
+     * platforms share one source of truth for behavioral preferences.
+     *
+     * A missing key surfaces as a typed backend error (NotFound); we map that to
+     * null so callers can fall back to a documented default instead of crashing.
+     */
+    fun getConfigJson(key: String): String? = try {
+        val req = GenericString.newBuilder().setVal(key).build()
+        val bytes = run(SVC_CONFIG, M_GET_CONFIG_JSON, req.toByteArray())
+        Json.parseFrom(bytes).json.toStringUtf8()
+    } catch (_: BackendException) {
+        null
+    }
+
+    /**
+     * Write a raw JSON config value by key (non-undoable - a settings toggle
+     * shouldn't land on the review undo stack). Matches the desktop's
+     * `col.set_config`, so a value set here converges on the other device on the
+     * next sync.
+     */
+    fun setConfigJson(key: String, json: String) {
+        val req = SetConfigJsonRequest.newBuilder()
+            .setKey(key)
+            .setValueJson(ByteString.copyFromUtf8(json))
+            .setUndoable(false)
+            .build()
+        run(SVC_CONFIG, M_SET_CONFIG_JSON, req.toByteArray())
     }
 
     // --- Decks / scheduler ------------------------------------------------
@@ -234,6 +274,16 @@ class AnkiBackend private constructor(private var ptr: Long) {
             run(SVC_SPEEDRUN, M_GET_TOPIC_SIGNALS, ByteArray(0)),
         ).topicsList
 
+    /**
+     * Exam-style attempts grouped by stored topic for unlinked (cardId=0)
+     * practice questions, so the section dashboard can fold them into per-section
+     * performance even when they have no source card to join through.
+     */
+    fun getTopicAttemptStats(): List<TopicAttemptStat> =
+        TopicAttemptStats.parseFrom(
+            run(SVC_SPEEDRUN, M_GET_TOPIC_ATTEMPT_STATS, ByteArray(0)),
+        ).statsList
+
     /** Register one held-out question item; returns its stored id. */
     fun addQuestionItem(item: QuestionItem): Long =
         QuestionItemId.parseFrom(run(SVC_SPEEDRUN, M_ADD_QUESTION_ITEM, item.toByteArray())).id
@@ -266,6 +316,21 @@ class AnkiBackend private constructor(private var ptr: Long) {
 
     fun seedMcatTopicOutline() {
         run(SVC_SPEEDRUN, M_SEED_MCAT_OUTLINE, ByteArray(0))
+    }
+
+    /**
+     * Note-encoding sync (Phase 5): mirror sr_attempts into hidden "Speedrun
+     * Data" notes so exam-practice evidence rides the standard note sync every
+     * peer keeps - AnkiWeb and other stock servers drop the custom sr_attempts
+     * chunk. Idempotent; shares the exact rslib implementation with desktop.
+     */
+    fun encodeAttemptsAsNotes() {
+        run(SVC_SPEEDRUN, M_ENCODE_ATTEMPTS_AS_NOTES, ByteArray(0))
+    }
+
+    /** Decode attempts carried by notes back into sr_attempts (insert-if-absent). */
+    fun decodeNotesToAttempts() {
+        run(SVC_SPEEDRUN, M_DECODE_NOTES_TO_ATTEMPTS, ByteArray(0))
     }
 
     // --- Sync (self-hosted collection sync) -------------------------------
@@ -333,6 +398,11 @@ class AnkiBackend private constructor(private var ptr: Long) {
         private const val M_OPEN_COLLECTION = 0
         private const val M_CLOSE_COLLECTION = 1
 
+        // BackendConfigService (service index 9): GetConfigJson / SetConfigJson.
+        private const val SVC_CONFIG = 9
+        private const val M_GET_CONFIG_JSON = 0
+        private const val M_SET_CONFIG_JSON = 1
+
         private const val SVC_DECKS = 7
         private const val M_DECK_TREE = 4
         private const val M_SET_CURRENT_DECK = 22
@@ -372,6 +442,9 @@ class AnkiBackend private constructor(private var ptr: Long) {
         private const val M_GET_PRACTICE_BANK_SUMMARY = 25
         private const val M_SEED_SAMPLE_HISTORY = 26
         private const val M_GET_TOPIC_SIGNALS = 27
+        private const val M_GET_TOPIC_ATTEMPT_STATS = 28
+        private const val M_ENCODE_ATTEMPTS_AS_NOTES = 29
+        private const val M_DECODE_NOTES_TO_ATTEMPTS = 30
 
         // BackendSyncService (service index 1) - see out/pylib/anki/_backend_generated.py.
         private const val SVC_SYNC = 1

@@ -115,6 +115,27 @@ object EngineRepository {
         hasDeck || b.getPerformanceReport().questionItems > 0
     }
 
+    /**
+     * Read a raw JSON value from the synced collection config (the same store
+     * the desktop uses via `col.get_config`), or null when the key is unset or
+     * the collection isn't open yet. Behavioral settings converge across devices
+     * by riding this config through Anki's native sync - see [AppSettings].
+     */
+    suspend fun getConfigJson(key: String): String? = withContext(dispatcher) {
+        val b = backend ?: return@withContext null
+        runCatching { b.getConfigJson(key) }.getOrNull()
+    }
+
+    /**
+     * Write a raw JSON value into the synced collection config; a no-op when the
+     * collection isn't open. Mirrors `col.set_config`, so the value converges on
+     * the other device on the next sync.
+     */
+    suspend fun setConfigJson(key: String, json: String): Unit = withContext(dispatcher) {
+        val b = backend ?: return@withContext
+        runCatching { b.setConfigJson(key, json) }
+    }
+
     /** How many media files (images etc.) are present; 0 means cards show broken images. */
     fun mediaFileCount(): Int = runCatching { mediaDir?.listFiles()?.count { it.isFile } ?: 0 }.getOrDefault(0)
 
@@ -245,6 +266,17 @@ object EngineRepository {
     }
 
     suspend fun topicDashboard(): TopicDashboardUi = engine { b ->
+        // Unlinked (cardId=0) practice attempts grouped by subject, folded into
+        // each MCAT section's performance so a section backed only by the MMLU
+        // bank / CARS still shows a real Perf number instead of "-".
+        val sectionExtra = mutableMapOf<String, Pair<Int, Int>>()
+        runCatching {
+            for (st in b.getTopicAttemptStats()) {
+                val key = Mcat.sectionForSubject(st.topic)?.key ?: "other"
+                val acc = sectionExtra[key] ?: (0 to 0)
+                sectionExtra[key] = (acc.first + st.attempts) to (acc.second + st.correct)
+            }
+        }
         val topics = b.getTopicSignals().map { s ->
             TopicUi(
                 id = s.topic,
@@ -259,7 +291,7 @@ object EngineRepository {
                 correct = s.examCorrect,
             )
         }
-        buildTopicDashboard(topics)
+        buildTopicDashboard(topics, sectionExtra)
     }
 
     suspend fun calibration(): CalibrationUi = engine { b ->
@@ -357,6 +389,7 @@ object EngineRepository {
     }
 
     private const val QUESTION_TYPE_SRS = 0
+    private const val QUESTION_TYPE_PASSAGE = 1
     private const val QUESTION_TYPE_DISCRETE = 2
 
     /** Number of held-out question items currently in the bank. */
@@ -653,6 +686,9 @@ object EngineRepository {
             options = options,
             correctIndex = o.optInt("correct_index", 0),
             explanation = o.optString("explanation", ""),
+            passage = o.optString("passage", ""),
+            passageId = o.optString("passage_id", ""),
+            passageTitle = o.optString("passage_title", ""),
         )
     }.getOrNull()
 
@@ -670,13 +706,16 @@ object EngineRepository {
     ): Diagnosis? = engine { b ->
         val correct = selectedIndex == item.correctIndex
         val ms = tookMs.coerceIn(1, 600_000).toInt()
+        // CARS/passage items record as passage MCQ so a miss is diagnosed as a
+        // reasoning/passage gap, never as forgotten memory.
+        val qType = if (item.isPassage) QUESTION_TYPE_PASSAGE else QUESTION_TYPE_DISCRETE
         runCatching {
             val signals = ClassifyAttemptRequest.newBuilder()
                 .setCorrect(correct)
                 .setTookMs(ms)
                 .setRecallFailed(false)
                 .setPassageEvidenceMissed(false)
-                .setQuestionType(QUESTION_TYPE_DISCRETE)
+                .setQuestionType(qType)
                 .build()
             val data = JSONObject().put("self_explanation", selfExplanation).toString()
             val builder = RecordAttemptRequest.newBuilder()
@@ -685,9 +724,10 @@ object EngineRepository {
                 .setSessionId(session ?: sessionId)
                 .setAnsweredAtMs(System.currentTimeMillis())
                 .setTookMs(ms)
-                .setQuestionType(QUESTION_TYPE_DISCRETE)
+                .setQuestionType(qType)
                 .setSelected(selectedIndex)
                 .setCorrect(correct)
+                .setTopic(item.topic)
                 .setSignals(signals)
                 .setData(data)
             if (confidence != null) builder.setPredicted(confidence)
@@ -709,6 +749,10 @@ object EngineRepository {
             val b = backend ?: return@withContext SyncResult.Error("Collection is not open")
             try {
                 var session = beginSync(b, url, username, password)
+                // Note-encode Speedrun's sr_attempts before syncing so evidence
+                // rides the standard note sync a stock/AnkiWeb peer keeps (it drops
+                // the custom sr_attempts chunk). Idempotent; never block a sync.
+                runCatching { b.encodeAttemptsAsNotes() }
                 val resp = b.syncCollection(session.auth)
                 session = applyNewEndpoint(session, resp)
                 when (resp.required) {
@@ -729,14 +773,16 @@ object EngineRepository {
                         SyncResult.Ok("Mirrored the server's collection to this device")
                     }
                     else -> {
-                        // Both sides diverged (typically first pairing, since each
-                        // device seeds its own content library). The desktop is the
-                        // source of truth that seeds the server, so the phone mirrors
-                        // it instead of prompting -- pairing "just works".
-                        b.fullUploadOrDownload(session.auth, upload = false)
-                        reopenCollection(b)
-                        afterSyncRefresh()
-                        SyncResult.Ok("Mirrored the server's collection to this device")
+                        // FULL_SYNC: schemas differ AND both sides hold data, so the
+                        // engine can't pick a safe direction (the empty-server /
+                        // empty-phone cases already resolved to FULL_UPLOAD /
+                        // FULL_DOWNLOAD above). Surfacing a conflict lets the user
+                        // choose which copy wins instead of silently overwriting the
+                        // phone's data.
+                        SyncResult.Conflict(
+                            "This phone and the desktop have different data. Choose which " +
+                                "copy to keep - the other side will be replaced.",
+                        )
                     }
                 }
             } catch (e: Exception) {
@@ -786,6 +832,10 @@ object EngineRepository {
      */
     private suspend fun afterSyncRefresh() {
         val b = backend ?: return
+        // Decode attempts that arrived as notes back into sr_attempts (idempotent),
+        // then reconcile the topic map and recompute readiness so the Dashboard
+        // reflects cards and attempts from the other device.
+        runCatching { b.decodeNotesToAttempts() }
         ensureTopicMapFromAssets(b, appContext ?: return)
         runCatching { b.computeReadiness() }
         bumpReadinessRefresh()
@@ -829,14 +879,48 @@ object EngineRepository {
     private fun pinAuth(auth: SyncAuth, endpoint: String): SyncAuth =
         auth.toBuilder().setEndpoint(endpoint).build()
 
+    private const val CONNECTIVITY_MESSAGE =
+        "Couldn't reach the sync server. On the desktop open Sync with phone to host " +
+            "it, and make sure USB or Wi-Fi is connected."
+
+    // Substrings that mark a connectivity/timeout failure rather than a bad URL.
+    // Used only as a fallback for errors that arrive without a typed backend kind;
+    // note "error sending request for url ()" is a reqwest *network* failure, not
+    // an invalid-URL error, so it must map to connectivity.
+    private val CONNECTIVITY_HINTS = listOf(
+        "error sending request",
+        "url ()",
+        "connection refused",
+        "connection reset",
+        "connection timed out",
+        "timed out",
+        "timeout",
+        "failed to connect",
+        "network is unreachable",
+        "no route to host",
+        "could not resolve",
+        "dns error",
+    )
+
+    /**
+     * Map a raw sync exception to an accurate, actionable message. A genuinely
+     * invalid URL is only ever rejected by [beginSync]'s `require`, so that case
+     * keeps its own message; everything else is classified by the engine's typed
+     * error kind (network vs auth) so a timeout is never misreported as a bad URL.
+     */
     private fun syncErrorMessage(e: Exception): String {
-        val raw = e.message ?: e.toString()
-        return if (raw.contains("url ()") || raw.contains("Invalid sync server")) {
-            "Invalid sync server URL. Re-scan the desktop QR with Sync via USB on " +
-                "(plug in USB, enable USB debugging, tap Refresh USB tunnel on desktop)."
-        } else {
-            raw
+        if (e is IllegalArgumentException) {
+            return e.message ?: "Invalid sync server URL."
         }
+        when ((e as? BackendException)?.kind) {
+            "NETWORK_ERROR" -> return CONNECTIVITY_MESSAGE
+            "SYNC_AUTH_ERROR" -> return "The desktop rejected the pairing key. On the " +
+                "desktop open Sync with phone and scan the fresh code."
+        }
+        val raw = e.message ?: e.toString()
+        val lower = raw.lowercase()
+        if (CONNECTIVITY_HINTS.any { lower.contains(it) }) return CONNECTIVITY_MESSAGE
+        return raw
     }
 
     private fun ensureTopicMapFromAssets(b: AnkiBackend, context: Context) {

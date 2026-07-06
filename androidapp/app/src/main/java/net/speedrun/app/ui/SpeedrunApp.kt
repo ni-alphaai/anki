@@ -123,7 +123,14 @@ fun SpeedrunApp() {
     var open by remember { mutableStateOf<OpenState?>(null) }
 
     LaunchedEffect(Unit) {
-        open = EngineRepository.open(context)
+        val state = EngineRepository.open(context)
+        open = state
+        // Once the collection is open, adopt any behavioral preferences already
+        // stored in its synced config (and migrate this device's current choices
+        // up if the config has none yet), so settings converge with the desktop.
+        if (state is OpenState.Ready) {
+            runCatching { AppSettings.refreshFromConfig(context) }
+        }
     }
 
     when (val s = open) {

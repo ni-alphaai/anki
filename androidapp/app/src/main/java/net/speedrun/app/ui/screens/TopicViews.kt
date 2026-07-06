@@ -80,16 +80,33 @@ private fun MetricDot(color: Color, text: String) {
  *  section drills into its subtopics, so neither screen shows a 30-row wall. */
 @Composable
 fun TopicSections(dash: TopicDashboardUi, onOpenSection: (String) -> Unit) {
-    val sections = dash.sections.filter { it.topics.isNotEmpty() || it.disabled }
+    val sections = dash.sections.filter { it.topics.isNotEmpty() || it.reasoning || it.attempts > 0 }
     Column(verticalArrangement = Arrangement.spacedBy(Space.l)) {
         sections.forEach { sec -> SectionCard(sec, onOpenSection) }
+    }
+}
+
+/** Coverage is relabeled "Cards" (share of a section's topics that have study
+ *  cards) so a full bar never reads as "ready". CARS shows N/A for cards+memory. */
+@Composable
+private fun SectionMetrics(sec: TopicSectionUi) {
+    val c = Speedrun.colors
+    Row(horizontalArrangement = Arrangement.spacedBy(Space.m)) {
+        if (sec.reasoning) {
+            MetricDot(c.textTertiary, "Cards N/A")
+            MetricDot(c.textTertiary, "Mem N/A")
+        } else {
+            MetricDot(c.coverageTrack, "Cards ${pctOrDash(sec.coverage)}")
+            MetricDot(c.memory, "Mem ${pctOrDash(sec.memory)}")
+        }
+        MetricDot(c.performance, "Perf ${pctOrDash(sec.performance)}")
     }
 }
 
 @Composable
 private fun SectionCard(sec: TopicSectionUi, onOpenSection: (String) -> Unit) {
     val c = Speedrun.colors
-    val cardMod = if (sec.disabled) Modifier else Modifier.clickable { onOpenSection(sec.key) }
+    val cardMod = if (sec.reasoning) Modifier else Modifier.clickable { onOpenSection(sec.key) }
     SpeedrunCard(cardMod) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -101,7 +118,7 @@ private fun SectionCard(sec: TopicSectionUi, onOpenSection: (String) -> Unit) {
                     modifier = Modifier.padding(top = 2.dp),
                 )
             }
-            if (!sec.disabled) {
+            if (!sec.reasoning) {
                 Icon(
                     Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = "Open section",
@@ -110,27 +127,23 @@ private fun SectionCard(sec: TopicSectionUi, onOpenSection: (String) -> Unit) {
                 )
             }
         }
-        if (sec.disabled) {
-            Spacer(Modifier.height(Space.s))
+        Spacer(Modifier.height(Space.s))
+        SectionMetrics(sec)
+        Spacer(Modifier.height(Space.s))
+        if (sec.reasoning) {
             Text(
-                "Passage-based reading practice — no content-category cards.",
+                "CARS is reading & reasoning practice — no content-category cards. " +
+                    "Practice passages from the Practice tab.",
                 color = c.textTertiary,
                 style = MaterialTheme.typography.caption,
             )
-            return@SpeedrunCard
+        } else {
+            Text(
+                "${sec.topics.size} topic${if (sec.topics.size != 1) "s" else ""}",
+                color = c.textSecondary,
+                style = MaterialTheme.typography.caption,
+            )
         }
-        Spacer(Modifier.height(Space.s))
-        Row(horizontalArrangement = Arrangement.spacedBy(Space.m)) {
-            MetricDot(c.coverageTrack, "Cov ${(sec.coverage * 100).roundToInt()}%")
-            MetricDot(c.memory, "Mem ${pctOrDash(sec.memory)}")
-            MetricDot(c.performance, "Perf ${pctOrDash(sec.performance)}")
-        }
-        Spacer(Modifier.height(Space.s))
-        Text(
-            "${sec.topics.size} topic${if (sec.topics.size != 1) "s" else ""}",
-            color = c.textSecondary,
-            style = MaterialTheme.typography.caption,
-        )
     }
 }
 
@@ -159,11 +172,7 @@ fun TopicSectionDetailScreen(
         if (s == null) return@Column
         Text(s.full, color = c.textSecondary, style = MaterialTheme.typography.body)
         Spacer(Modifier.height(Space.m))
-        Row(horizontalArrangement = Arrangement.spacedBy(Space.m)) {
-            MetricDot(c.coverageTrack, "Cov ${(s.coverage * 100).roundToInt()}%")
-            MetricDot(c.memory, "Mem ${pctOrDash(s.memory)}")
-            MetricDot(c.performance, "Perf ${pctOrDash(s.performance)}")
-        }
+        SectionMetrics(s)
         Spacer(Modifier.height(Space.m))
         SpeedrunCard {
             s.topics.forEachIndexed { i, t ->

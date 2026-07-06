@@ -139,47 +139,71 @@ fun topicStatus(t: TopicUi): TopicStatus = when {
     else -> TopicStatus.BUILDING
 }
 
-/** A section (Bio/Biochem, Chem/Phys, Psych/Soc, CARS) + its topics and aggregate signals. */
+/**
+ * A section (Bio/Biochem, Chem/Phys, Psych/Soc, CARS) + its topics and aggregate
+ * signals. For CARS ([reasoning] = true) coverage and memory are N/A (null),
+ * never a misleading 0%; only performance is measured.
+ */
 data class TopicSectionUi(
     val key: String,
     val short: String,
     val full: String,
-    val disabled: Boolean,
+    val reasoning: Boolean,
     val total: Int,
     val covered: Int,
-    val coverage: Float,
+    val coverage: Float?,
     val memory: Float?,
     val performance: Float?,
+    val attempts: Int,
     val topics: List<TopicUi>,
 )
 
 data class TopicDashboardUi(val sections: List<TopicSectionUi>, val hasTopics: Boolean)
 
-/** Group per-topic signals under the four MCAT sections (mirrors desktop). */
-fun buildTopicDashboard(topics: List<TopicUi>): TopicDashboardUi {
+/**
+ * Group per-topic signals under the four MCAT sections (mirrors desktop).
+ * [sectionExtra] carries unlinked (cardId=0) practice attempts per section key
+ * as (attempts, correct), folded into each section's performance so a section
+ * backed only by the MMLU bank / CARS still shows a real Perf number.
+ */
+fun buildTopicDashboard(
+    topics: List<TopicUi>,
+    sectionExtra: Map<String, Pair<Int, Int>> = emptyMap(),
+): TopicDashboardUi {
     val sections = Mcat.SECTIONS.map { sec ->
         val rows = topics.asSequence()
             .filter { it.sectionKey == sec.key }
             .sortedWith(compareByDescending<TopicUi> { it.weight }.thenBy { it.name })
             .toList()
+        val extra = sectionExtra[sec.key] ?: (0 to 0)
+        val sumAtt = rows.sumOf { it.attempts } + extra.first
+        val sumCor = rows.sumOf { it.correct } + extra.second
         TopicSectionUi(
             key = sec.key,
             short = sec.short,
             full = sec.full,
-            disabled = sec.subjects.isEmpty(),
+            reasoning = sec.reasoning,
             total = rows.size,
             covered = rows.count { it.covered },
-            coverage = if (rows.isNotEmpty()) rows.count { it.covered }.toFloat() / rows.size else 0f,
-            memory = rows.sumOf { it.review }.let { r ->
-                if (r > 0) rows.sumOf { it.mature }.toFloat() / r else null
+            coverage = when {
+                sec.reasoning -> null
+                rows.isNotEmpty() -> rows.count { it.covered }.toFloat() / rows.size
+                else -> 0f
             },
-            performance = rows.sumOf { it.attempts }.let { a ->
-                if (a > 0) rows.sumOf { it.correct }.toFloat() / a else null
+            memory = if (sec.reasoning) {
+                null
+            } else {
+                rows.sumOf { it.review }.let { r ->
+                    if (r > 0) rows.sumOf { it.mature }.toFloat() / r else null
+                }
             },
+            performance = if (sumAtt > 0) sumCor.toFloat() / sumAtt else null,
+            attempts = sumAtt,
             topics = rows,
         )
     }
-    return TopicDashboardUi(sections, sections.any { it.topics.isNotEmpty() })
+    val hasEvidence = sections.any { it.topics.isNotEmpty() || it.attempts > 0 }
+    return TopicDashboardUi(sections, hasEvidence)
 }
 
 data class CalibrationBinUi(
@@ -208,7 +232,13 @@ data class QuestionItemUi(
     val options: List<String>,
     val correctIndex: Int,
     val explanation: String,
-)
+    val passage: String = "",
+    val passageId: String = "",
+    val passageTitle: String = "",
+) {
+    /** CARS/passage item: a miss is a reasoning/passage gap, never forgotten memory. */
+    val isPassage: Boolean get() = passage.isNotBlank() || passageId.isNotBlank() || topic == "cars"
+}
 
 /** Per-subject question counts of the whole held-out bank (for the Practice landing). */
 data class PracticeBankSummaryUi(val total: Int, val byTopic: Map<String, Int>) {

@@ -26,8 +26,11 @@ class McatTest {
     }
 
     @Test
-    fun carsHasNoDiscreteBank() {
-        assertTrue(Mcat.sectionByKey("cars")?.subjects?.isEmpty() == true)
+    fun carsIsAReasoningSectionWithItsOwnBank() {
+        val cars = Mcat.sectionByKey("cars")
+        assertTrue(cars?.reasoning == true)
+        assertEquals(listOf("cars"), cars?.subjects)
+        assertEquals("cars", Mcat.sectionForSubject("cars")?.key)
     }
 
     @Test
@@ -131,8 +134,23 @@ class TopicSectionTest {
         assertEquals(1, bio.topics.size)
         assertEquals(0.9f, bio.memory!!, 0.001f)
         val cars = dash.sections.first { it.key == "cars" }
-        assertTrue(cars.disabled)
+        assertTrue(cars.reasoning)
+        assertNull(cars.memory)
+        assertNull(cars.coverage)
         assertTrue(cars.topics.isEmpty())
+    }
+
+    @Test
+    fun unlinkedAttemptsFoldIntoSectionPerformance() {
+        // A section with no per-topic rows still shows Perf from unlinked (MMLU/
+        // CARS) practice folded in by subject -> section.
+        val dash = buildTopicDashboard(
+            topics = emptyList(),
+            sectionExtra = mapOf("cars" to (4 to 3)),
+        )
+        val cars = dash.sections.first { it.key == "cars" }
+        assertEquals(0.75f, cars.performance!!, 0.001f)
+        assertTrue(dash.hasTopics)
     }
 
     @Test
