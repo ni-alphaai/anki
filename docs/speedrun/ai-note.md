@@ -13,7 +13,8 @@ Each mode maps to a concrete next action (resurface via spaced repetition, conce
 
 The coach lives in [anki/tools/speedrun_ai/](../../tools/speedrun_ai/): `coach.py` (the prompt and grounding), `llm.py` (a thin, cached OpenAI client), `taxonomy.py` (the rubric plus the two baselines), and `diagnose_cli.py` (the stdin/stdout entry point).
 The desktop app calls it through [qt/aqt/speedrun_ai.py](../../qt/aqt/speedrun_ai.py), which runs the coach as a short-lived subprocess in an isolated venv (`out/ai-venv`), off the UI thread.
-The model is `gpt-4o-mini` at `temperature=0` with a fixed `seed=7` and a JSON-only response format.
+Production uses `gpt-4o` at `temperature=0` with a fixed `seed=7` and a JSON-only response format (overridable per install via the `SPEEDRUN_AI_MODEL` env var).
+The held-out benchmark below is measured on that same `gpt-4o` and reproduces from the committed cache without an API key.
 
 ## Why we built it (and why it beats the baseline)
 
@@ -22,7 +23,8 @@ That classifier only sees behavioural signals: time taken, self-confidence, ques
 On a real exam-style multiple-choice question there is no "Again" signal and no view of which distractor was chosen, so signals alone cannot tell a genuine reasoning slip from a missing fact or a misread passage.
 
 The coach reads the item content and the answer explanation, so it can distinguish those cases.
-On our held-out gold set the payoff is clear: the deterministic baseline scores 59.4% and the coach scores 78.1%, and the coach also beats both "simpler methods" we were asked to compare against (keyword 75.0%, TF-IDF vector nearest-neighbour 71.9%).
+In the app it additionally receives the student's own self-explanation of their reasoning as its primary evidence - the offline gold set below does not yet carry self-explanations, so the benchmark measures the content-grounded coach and treats the self-explanation as an unmeasured production enrichment.
+On our held-out gold set the payoff is clear: the deterministic baseline scores 59.4% and the coach scores 87.5%, and the coach also beats both "simpler methods" we were asked to compare against (keyword 75.0%, TF-IDF vector nearest-neighbour 71.9%).
 The AI is strictly enrichment layered on the required deterministic path; it does not replace it.
 
 ## Every output traces to a named source
@@ -41,9 +43,10 @@ It scores 32 labeled misses with an abstain cutoff of **0.55** and reports accur
 | Deterministic (signals only, baseline) | 59.4%              | 40.6%             |
 | Keyword (baseline)                     | 75.0%              | 25.0%             |
 | Vector (TF-IDF cosine, LOO NN)         | 71.9%              | 28.1%             |
-| AI coach (source-grounded)             | 78.1%              | 21.9%             |
+| AI coach (source-grounded)             | 87.5%              | 12.5%             |
 
-Runs are deterministic: every model response is cached on disk keyed by (model, params, prompt), so a grader reproduces the exact scores from the committed cache without an API key.
+Runs are deterministic: every model response is cached on disk keyed by (model, params, prompt), so a grader reproduces the exact scores above from the committed cache without an API key (`./tools/speedrun_ai_eval.sh` reports `0 new API calls`).
+The cache is on the shipping `gpt-4o` coach with the current prompt, so the benchmark matches production.
 The held-out data is verified clean by a separate leakage scan (`./tools/speedrun_leakage_check.sh`, verdict CLEAN with a 7/7 detector self-test), which matters because a leaked test item would zero this model in grading.
 
 ## The app still scores with AI off
@@ -52,13 +55,18 @@ AI is off by default; the deterministic classifier is the required path and the 
 On any error, missing venv, missing key, or low confidence, the coach returns an abstention and the caller falls back to the deterministic classifier, so the reviewer and practice flows never depend on the model.
 The full readiness pipeline runs AI-off end to end (`./tools/speedrun_e2e_full.sh`): it abstains on thin data and then commits to a real in-range score (517, likely range 506-527) with three separate signals, entirely without the AI layer.
 
+## What leaves the device
+
+The coach is off by default, and with AI off nothing leaves the device: the deterministic classifier and the self-explanation capture (on-device faster-whisper for the voice path) both run entirely locally.
+Turning the coach on sends, per miss, the current item (stem, options, correct answer, the chosen answer, and the answer explanation), coarse behavioural signals, and the student's own self-explanation for that item to the model.
+The self-explanation is included on purpose: it is the coach's primary evidence, which is what lets it locate the misconception in the student's actual reasoning rather than guessing from behaviour.
+This is a deliberate accuracy-for-privacy tradeoff that each install opts into by enabling AI diagnosis.
+We keep the surface minimal - only the current item and its self-explanation, with no study history and no student identifier - and every request/response is cached, so the same input is never re-sent.
+
 ## What we deliberately skipped
 
 We kept the AI off the review hot path.
 The coach is asynchronous and never blocks grading or the next-card transition, and it has a hard 30-second subprocess timeout that degrades to abstain, so it cannot threaten the latency budgets.
-
-We do not transmit the student's private self-explanation transcript to the model.
-The coach receives only the question content (stem, options, correct answer, chosen answer, explanation) and coarse behavioural signals; the self-explanation stays on-device.
 
 We did not ship generative features as a dependency.
 There is no always-on card generator and no freeform chatbot tutor; the AI card-check gold set exists as a safety gate (challenge 7f) but generation is not part of the shipping default path.
