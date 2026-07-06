@@ -13,6 +13,7 @@ use crate::speedrun::classify;
 use crate::speedrun::coverage::summarize_coverage;
 use crate::speedrun::coverage::TopicCoverageRow;
 use crate::speedrun::coverage::MCAT_FOUNDATIONAL_CONCEPTS;
+use crate::speedrun::coverage::MIN_CARDS_PER_TOPIC;
 use crate::speedrun::exam::compute_exam_plan;
 use crate::speedrun::exam::ExamPlanInputs;
 use crate::speedrun::performance::summarize_performance;
@@ -94,6 +95,7 @@ impl crate::services::SpeedrunService for Collection {
             usn: Usn(-1),
             data: input.data,
             predicted,
+            topic: input.topic,
         };
         let id = self.storage.add_sr_attempt(&attempt)?;
 
@@ -265,7 +267,7 @@ impl crate::services::SpeedrunService for Collection {
                     label,
                     weight,
                     cards,
-                    covered: cards > 0,
+                    covered: cards >= MIN_CARDS_PER_TOPIC,
                 },
             )
             .collect();
@@ -298,7 +300,7 @@ impl crate::services::SpeedrunService for Collection {
                     label,
                     weight,
                     cards,
-                    covered: cards > 0,
+                    covered: cards >= MIN_CARDS_PER_TOPIC,
                     review_cards,
                     mature_cards,
                     exam_attempts,
@@ -307,6 +309,24 @@ impl crate::services::SpeedrunService for Collection {
             )
             .collect();
         Ok(anki_proto::speedrun::TopicSignalsReport { topics })
+    }
+
+    fn get_topic_attempt_stats(
+        &mut self,
+    ) -> error::Result<anki_proto::speedrun::TopicAttemptStats> {
+        let stats = self
+            .storage
+            .sr_topic_attempt_stats()?
+            .into_iter()
+            .map(
+                |(topic, attempts, correct)| anki_proto::speedrun::TopicAttemptStat {
+                    topic,
+                    attempts,
+                    correct,
+                },
+            )
+            .collect();
+        Ok(anki_proto::speedrun::TopicAttemptStats { stats })
     }
 
     fn get_review_order(
@@ -782,6 +802,18 @@ impl crate::services::SpeedrunService for Collection {
             attempts_recorded: recorded,
         })
     }
+
+    fn encode_attempts_as_notes(&mut self) -> error::Result<anki_proto::generic::UInt32> {
+        Ok(anki_proto::generic::UInt32 {
+            val: self.note_encode_attempts()?,
+        })
+    }
+
+    fn decode_notes_to_attempts(&mut self) -> error::Result<anki_proto::generic::UInt32> {
+        Ok(anki_proto::generic::UInt32 {
+            val: self.note_decode_attempts()?,
+        })
+    }
 }
 
 impl Collection {
@@ -822,6 +854,11 @@ impl Collection {
     fn persist_topic_map_config(&mut self, entries: &[SrTopicMapEntry]) -> error::Result<()> {
         let vec = entries.to_vec();
         self.set_config(CFG_TOPIC_MAP, &vec)?;
+        // `set_config` here bypasses `col.transact`, so it never bumps `col.mod`;
+        // without that, a topic-map change on a device that is already level with
+        // the server would leave "Sync now" reporting NoChanges and never
+        // propagate (config only rides sync when the collection looks modified).
+        self.storage.mark_collection_modified_for_speedrun()?;
         Ok(())
     }
 
@@ -837,6 +874,9 @@ impl Collection {
     fn persist_question_items_config(&mut self) -> error::Result<()> {
         let items = self.storage.get_all_sr_question_items()?;
         self.set_config(CFG_QUESTION_ITEMS, &items)?;
+        // See `persist_topic_map_config`: mark the collection modified so the
+        // question bank actually rides the next "Sync now".
+        self.storage.mark_collection_modified_for_speedrun()?;
         Ok(())
     }
 
@@ -853,6 +893,9 @@ impl Collection {
 
     fn persist_exam_profile_config(&mut self, profile: &SrProfile) -> error::Result<()> {
         self.set_config(CFG_EXAM_PROFILE, profile)?;
+        // See `persist_topic_map_config`: mark the collection modified so the
+        // exam profile actually rides the next "Sync now".
+        self.storage.mark_collection_modified_for_speedrun()?;
         Ok(())
     }
 
@@ -1000,6 +1043,7 @@ mod test {
     use crate::collection::CollectionBuilder;
     use crate::error::Result;
     use crate::services::SpeedrunService;
+    use crate::speedrun::coverage::MIN_CARDS_PER_TOPIC;
     use crate::speedrun::ACTION_RESURFACE;
     use crate::speedrun::DIAGNOSIS_MEMORY;
 
@@ -1028,6 +1072,7 @@ mod test {
             }),
             data: "{}".to_string(),
             predicted: None,
+            topic: String::new(),
         })?;
 
         // recall_failed -> memory gap, routed to resurface
@@ -1137,19 +1182,28 @@ mod test {
         assert_eq!(report.topics_total, 10);
         assert_eq!(report.topics_covered, 0);
 
-        // add a note tagged with topic "fc1"
+        // Tag notes with topic "fc1" one at a time: the topic only counts as
+        // covered once it reaches MIN_CARDS_PER_TOPIC tagged cards.
         let nt = col.get_notetype_by_name("Basic")?.unwrap();
-        let mut note = nt.new_note();
-        note.set_field(0, "an amino acid fact")?;
-        note.tags = vec!["fc1".to_string()];
-        col.add_note(&mut note, DeckId(1))?;
+        for i in 0..MIN_CARDS_PER_TOPIC {
+            let mut note = nt.new_note();
+            note.set_field(0, "an amino acid fact")?;
+            note.tags = vec!["fc1".to_string()];
+            col.add_note(&mut note, DeckId(1))?;
 
-        let report = col.get_coverage_report()?;
-        assert_eq!(report.topics_covered, 1);
-        assert!((report.coverage - 0.1).abs() < 1e-6);
-        let fc1 = report.topics.iter().find(|t| t.topic == "fc1").unwrap();
-        assert!(fc1.covered);
-        assert_eq!(fc1.cards, 1);
+            let report = col.get_coverage_report()?;
+            let fc1 = report.topics.iter().find(|t| t.topic == "fc1").unwrap();
+            let cards = i + 1;
+            assert_eq!(fc1.cards, cards);
+            if cards < MIN_CARDS_PER_TOPIC {
+                assert!(!fc1.covered);
+                assert_eq!(report.topics_covered, 0);
+            } else {
+                assert!(fc1.covered);
+                assert_eq!(report.topics_covered, 1);
+                assert!((report.coverage - 0.1).abs() < 1e-6);
+            }
+        }
         Ok(())
     }
 
@@ -1417,7 +1471,7 @@ mod test {
         let nt = col.get_notetype_by_name("Basic")?.unwrap();
         for i in 0..30 {
             let mut note = nt.new_note();
-            note.set_field(0, &format!("fact {i}"))?;
+            note.set_field(0, format!("fact {i}"))?;
             note.tags = vec![format!("fc{}", i % 10 + 1)];
             col.add_note(&mut note, DeckId(1))?;
         }
@@ -1518,9 +1572,10 @@ mod test {
         assert_eq!(fc1.exam_attempts, 3);
         assert_eq!(fc1.exam_correct, 2);
 
+        // fc2 has only 2 cards, below MIN_CARDS_PER_TOPIC, so it is not covered.
         let fc2 = sig("fc2");
         assert_eq!(fc2.cards, 2);
-        assert!(fc2.covered);
+        assert!(!fc2.covered);
         assert_eq!(fc2.review_cards, 0);
         assert_eq!(fc2.mature_cards, 0);
         assert_eq!(fc2.exam_attempts, 1);
@@ -1531,6 +1586,41 @@ mod test {
         assert_eq!(fc3.cards, 0);
         assert!(!fc3.covered);
         assert_eq!(fc3.exam_attempts, 0);
+        Ok(())
+    }
+
+    #[test]
+    fn unlinked_attempts_attribute_by_topic_and_skip_gap() -> Result<()> {
+        let tempfile = new_tempfile()?;
+        let mut col = CollectionBuilder::default()
+            .set_collection_path(tempfile.path())
+            .build()?;
+
+        // Unlinked (card_id=0) MMLU-style attempts carrying a subject topic:
+        // two biology (1 correct), one CARS passage question.
+        for (correct, topic) in [(true, "biology"), (false, "biology"), (true, "cars")] {
+            let _ = col.record_attempt(anki_proto::speedrun::RecordAttemptRequest {
+                card_id: 0,
+                note_id: 0,
+                question_type: 1,
+                correct,
+                topic: topic.to_string(),
+                ..Default::default()
+            })?;
+        }
+
+        // The stored topic is what lets the section dashboard attribute them.
+        let stats = col.get_topic_attempt_stats()?.stats;
+        let by_topic = |t: &str| stats.iter().find(|s| s.topic == t);
+        let bio = by_topic("biology").expect("biology attributed");
+        assert_eq!((bio.attempts, bio.correct), (2, 1));
+        let cars = by_topic("cars").expect("cars attributed");
+        assert_eq!((cars.attempts, cars.correct), (1, 1));
+
+        // ...but they never enter the per-card recall-vs-performance gap, which
+        // would otherwise collapse them all onto pseudo-card 0.
+        let report = col.get_performance_report()?;
+        assert_eq!(report.cards_evaluated, 0);
         Ok(())
     }
 

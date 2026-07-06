@@ -22,7 +22,11 @@ CREATE TABLE IF NOT EXISTS sr_attempts (
   data text NOT NULL DEFAULT '',
   -- model's pre-answer predicted probability of a correct/recall outcome
   -- (0..1); NULL when no prediction was captured. Used for calibration.
-  predicted real
+  predicted real,
+  -- subject/content-category the attempt belongs to (e.g. "biology", "cars"),
+  -- so unlinked (cid=0) practice questions can attribute to an MCAT section
+  -- even when they have no source card to join through.
+  topic text NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS ix_sr_attempts_cid ON sr_attempts (cid);
 CREATE INDEX IF NOT EXISTS ix_sr_attempts_usn ON sr_attempts (usn);

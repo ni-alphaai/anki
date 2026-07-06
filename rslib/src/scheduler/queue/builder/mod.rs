@@ -690,6 +690,7 @@ mod test {
             usn: Usn(-1),
             data: String::new(),
             predicted: None,
+            topic: String::new(),
         };
         // weak card missed; strong card correct
         col.storage.add_sr_attempt(&attempt(1, weak_id, false))?;
@@ -768,6 +769,7 @@ mod test {
             usn: Usn(-1),
             data: String::new(),
             predicted: None,
+            topic: String::new(),
         };
         col.storage.add_sr_attempt(&attempt(1, weak_id, false))?;
         col.storage.add_sr_attempt(&attempt(2, strong_id, true))?;

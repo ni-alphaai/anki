@@ -39,6 +39,10 @@ pub struct SrAttempt {
     /// Pre-answer predicted probability of a correct/recall outcome (0..1);
     /// None when no prediction was captured. Used for calibration.
     pub predicted: Option<f32>,
+    /// Subject/content-category tag for the attempt (e.g. "biology", "cars").
+    /// Empty when unknown. Lets unlinked (cid=0) practice questions attribute
+    /// to an MCAT section without a source card to join through.
+    pub topic: String,
 }
 
 /// A held-out exam-style question that paraphrases a source card's concept.
@@ -140,6 +144,7 @@ fn row_to_sr_attempt(row: &Row) -> Result<SrAttempt> {
         usn: row.get(13)?,
         data: row.get(14)?,
         predicted: row.get(15)?,
+        topic: row.get(16)?,
     })
 }
 
@@ -147,9 +152,27 @@ impl SqliteStorage {
     /// Create the Speedrun tables if they don't yet exist. Safe to call on
     /// every open.
     pub(crate) fn create_speedrun_tables(&self) -> Result<()> {
-        self.db
-            .execute_batch(include_str!("tables.sql"))
-            .map_err(Into::into)
+        self.db.execute_batch(include_str!("tables.sql"))?;
+        self.ensure_sr_attempt_topic_column()?;
+        Ok(())
+    }
+
+    /// Additively add the `topic` column to `sr_attempts` for collections
+    /// created before it existed. `CREATE TABLE IF NOT EXISTS` leaves an older
+    /// table untouched, so guard the `ALTER` on the column being absent.
+    fn ensure_sr_attempt_topic_column(&self) -> Result<()> {
+        let has_topic: bool = self
+            .db
+            .prepare("select count(*) from pragma_table_info('sr_attempts') where name = 'topic'")?
+            .query_row([], |r| r.get::<_, i64>(0))?
+            > 0;
+        if !has_topic {
+            self.db.execute(
+                "alter table sr_attempts add column topic text not null default ''",
+                [],
+            )?;
+        }
+        Ok(())
     }
 
     /// Append an attempt. If `id` is 0, SQLite assigns one (avoids collisions
@@ -161,8 +184,8 @@ impl SqliteStorage {
                 .prepare_cached(
                     "insert into sr_attempts (cid, nid, session_id, answered_at_ms, took_ms, \
                      question_type, selected, correct, diagnosis_kind, diagnosis_confidence, \
-                     routed_action, action_status, usn, data, predicted) \
-                     values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                     routed_action, action_status, usn, data, predicted, topic) \
+                     values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 )?
                 .execute(params![
                     attempt.cid,
@@ -180,6 +203,7 @@ impl SqliteStorage {
                     attempt.usn,
                     attempt.data,
                     attempt.predicted,
+                    attempt.topic,
                 ])?;
         } else {
             self.db
@@ -201,8 +225,12 @@ impl SqliteStorage {
                     attempt.usn,
                     attempt.data,
                     attempt.predicted,
+                    attempt.topic,
                 ])?;
         }
+        // A freshly recorded attempt is pending sync (usn = -1); mark the
+        // collection modified so "Sync now" actually gathers and uploads it.
+        self.mark_collection_modified_for_speedrun()?;
         Ok(self.db.last_insert_rowid())
     }
 
@@ -237,8 +265,34 @@ impl SqliteStorage {
                 attempt.usn,
                 attempt.data,
                 attempt.predicted,
+                attempt.topic,
             ])?;
         Ok(())
+    }
+
+    /// Mark the collection modified so the next sync detects local changes.
+    ///
+    /// Speedrun evidence rows (`sr_attempts`) carry their own `usn` and ride
+    /// Anki's incremental chunk sync, but - unlike a card review, which also
+    /// updates the card row and so bumps `col.mod` - recording or editing an
+    /// attempt otherwise leaves `col.mod` untouched. Once a device is level
+    /// with the server, `sync_meta` would then report the same `mod` and
+    /// "Sync now" returns `NoChanges` *before* it ever gathers the pending
+    /// attempts, stranding the evidence on the device (so a readiness score
+    /// built from that evidence never reaches the other device). Bumping `mod`
+    /// restores the invariant that `mod` reflects unsynced local changes.
+    ///
+    /// The stamp is advanced strictly past the current `mod` so an attempt
+    /// recorded in the same millisecond as the last sync still registers as a
+    /// change.
+    ///
+    /// Also used by the Speedrun service's config round-trip writers
+    /// (`sr_question_items` / `sr_profile` / topic map), which persist via
+    /// `set_config` and otherwise share the same "no mod bump" gap.
+    pub(crate) fn mark_collection_modified_for_speedrun(&self) -> Result<()> {
+        let current = self.get_collection_timestamps()?.collection_change.0;
+        let now = TimestampMillis::now().0;
+        self.set_modified_time(TimestampMillis(now.max(current + 1)))
     }
 
     /// Reset the pending-sync marker after a full upload, mirroring
@@ -264,6 +318,15 @@ impl SqliteStorage {
     pub(crate) fn get_sr_attempts_by_ids(&self, ids: &[i64]) -> Result<Vec<SrAttempt>> {
         ids.iter()
             .filter_map(|id| self.get_sr_attempt(*id).transpose())
+            .collect()
+    }
+
+    /// Every recorded attempt, oldest first. Used by note-encoding sync to
+    /// mirror the append-only evidence into hidden notes.
+    pub(crate) fn all_sr_attempts(&self) -> Result<Vec<SrAttempt>> {
+        self.db
+            .prepare_cached(concat!(include_str!("get.sql"), " order by id"))?
+            .query_and_then([], row_to_sr_attempt)?
             .collect()
     }
 
@@ -516,6 +579,9 @@ impl SqliteStorage {
                  where id = ?",
             )?
             .execute(params![diagnosis_kind, routed_action, id])?;
+        // The edit marks the row pending sync (usn = -1); mark the collection
+        // modified so a later "Sync now" propagates it.
+        self.mark_collection_modified_for_speedrun()?;
         Ok(())
     }
 
@@ -525,6 +591,9 @@ impl SqliteStorage {
         self.db
             .prepare_cached("update sr_attempts set action_status = ?, usn = -1 where id = ?")?
             .execute(params![action_status, id])?;
+        // The edit marks the row pending sync (usn = -1); mark the collection
+        // modified so a later "Sync now" propagates it.
+        self.mark_collection_modified_for_speedrun()?;
         Ok(())
     }
 
@@ -568,15 +637,44 @@ impl SqliteStorage {
     /// Per source card with exam-style attempts: (card id, attempts, correct,
     /// source-card interval). Used to compute the recall-vs-performance gap.
     pub(crate) fn sr_performance_rows(&self) -> Result<Vec<(i64, u32, u32, i64)>> {
+        // Only attempts linked to a real source card (cid != 0) feed the
+        // recall-vs-performance gap: it is a per-card memory->application
+        // measure. Unlinked practice (the MMLU bank, CARS passages; cid=0) has
+        // no SRS card to measure recall against and would otherwise collapse
+        // onto a single pseudo-card 0, so it is routed out of the gap here (it
+        // still counts toward the global performance signal and per-section
+        // attribution).
         self.db
             .prepare_cached(
                 "select a.cid, count(*), \
                  coalesce(sum(case when a.correct = 1 then 1 else 0 end), 0), \
                  coalesce((select c.ivl from cards c where c.id = a.cid), 0) \
-                 from sr_attempts a where a.question_type != 0 group by a.cid",
+                 from sr_attempts a where a.question_type != 0 and a.cid != 0 group by a.cid",
             )?
             .query_and_then([], |row| -> Result<(i64, u32, u32, i64)> {
                 Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
+            })?
+            .collect()
+    }
+
+    /// Exam-style attempts grouped by the attempt's stored `topic`, restricted
+    /// to unlinked attempts (cid=0) with a non-empty topic. These are the
+    /// practice questions (e.g. the MMLU bank, CARS passages) that carry no
+    /// source card, so the card-tag join in `sr_topic_signals` drops them; the
+    /// presentation layer maps each topic to its MCAT section and folds these
+    /// into the section's performance so per-section Perf is no longer "-".
+    /// Returns (topic, exam attempts, correct exam attempts).
+    pub(crate) fn sr_topic_attempt_stats(&self) -> Result<Vec<(String, u32, u32)>> {
+        self.db
+            .prepare_cached(
+                "select topic, count(*), \
+                 coalesce(sum(case when correct = 1 then 1 else 0 end), 0) \
+                 from sr_attempts \
+                 where question_type != 0 and cid = 0 and topic != '' \
+                 group by topic order by topic",
+            )?
+            .query_and_then([], |row| -> Result<(String, u32, u32)> {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?))
             })?
             .collect()
     }
@@ -785,6 +883,7 @@ mod test {
             usn: Usn(-1),
             data: "{}".to_string(),
             predicted: Some(0.9),
+            topic: "biology".to_string(),
         };
         col.storage.add_sr_attempt(&attempt)?;
 
@@ -855,7 +954,51 @@ mod test {
             usn: Usn(-1),
             data: String::new(),
             predicted: None,
+            topic: String::new(),
         }
+    }
+
+    fn attempt_topic(id: i64, cid: i64, correct: bool, topic: &str) -> SrAttempt {
+        let mut a = attempt_qt(id, cid, correct, 2);
+        a.topic = topic.to_string();
+        a
+    }
+
+    #[test]
+    fn topic_attempt_stats_group_unlinked_by_topic() -> Result<()> {
+        let tempfile = new_tempfile()?;
+        let col = CollectionBuilder::default()
+            .set_collection_path(tempfile.path())
+            .build()?;
+
+        // unlinked (cid=0) practice attempts carrying a subject topic
+        col.storage
+            .add_sr_attempt(&attempt_topic(1, 0, true, "biology"))?;
+        col.storage
+            .add_sr_attempt(&attempt_topic(2, 0, false, "biology"))?;
+        col.storage
+            .add_sr_attempt(&attempt_topic(3, 0, true, "physics"))?;
+        // a card-linked attempt and an SRS attempt must NOT appear here
+        col.storage
+            .add_sr_attempt(&attempt_topic(4, 77, true, "biology"))?;
+        col.storage.add_sr_attempt(&attempt_qt(5, 0, true, 0))?;
+
+        let stats = col.storage.sr_topic_attempt_stats()?;
+        assert_eq!(
+            stats,
+            vec![("biology".to_string(), 2, 1), ("physics".to_string(), 1, 1),]
+        );
+
+        // the linked attempt still feeds the per-card gap rows; the unlinked
+        // ones are routed out of them.
+        let perf: Vec<i64> = col
+            .storage
+            .sr_performance_rows()?
+            .into_iter()
+            .map(|(cid, _, _, _)| cid)
+            .collect();
+        assert_eq!(perf, vec![77]);
+        Ok(())
     }
 
     #[test]

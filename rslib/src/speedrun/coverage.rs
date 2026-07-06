@@ -6,7 +6,14 @@
 //! Speedrun maps the user's deck onto a topic outline (e.g., the MCAT content
 //! outline) so it can report how much of the exam the deck actually covers, and
 //! so readiness can abstain when coverage is too thin. A topic is "covered"
-//! when at least one note is tagged with it.
+//! only when it holds at least `MIN_CARDS_PER_TOPIC` tagged cards, so a lone
+//! incidental card cannot light up a whole topic and inflate coverage.
+
+/// Minimum tagged cards before a topic counts as "covered". One (or two)
+/// incidental cards do not represent a topic's breadth, so the bar sits at a
+/// small but non-trivial floor: high enough to reject topics that are merely
+/// touched, low enough not to penalise a genuinely (if lightly) studied topic.
+pub const MIN_CARDS_PER_TOPIC: u32 = 3;
 
 /// One topic's coverage evidence.
 #[derive(Debug, Clone, Copy)]
@@ -32,7 +39,7 @@ pub fn summarize_coverage(rows: &[TopicCoverageRow]) -> CoverageSummary {
     let mut covered_weight = 0.0f32;
 
     for row in rows {
-        let covered = row.cards > 0;
+        let covered = row.cards >= MIN_CARDS_PER_TOPIC;
         if covered {
             topics_covered += 1;
             covered_weight += row.weight;
@@ -92,17 +99,29 @@ mod test {
 
     #[test]
     fn coverage_counts_topics_with_cards() {
+        // Only the topic at/above MIN_CARDS_PER_TOPIC counts; the 1-card topic
+        // is too thin to be covered.
         let rows = [row(1.0, 3), row(1.0, 0), row(1.0, 1), row(1.0, 0)];
         let summary = summarize_coverage(&rows);
         assert_eq!(summary.topics_total, 4);
-        assert_eq!(summary.topics_covered, 2);
-        assert!((summary.coverage - 0.5).abs() < 1e-6);
+        assert_eq!(summary.topics_covered, 1);
+        assert!((summary.coverage - 0.25).abs() < 1e-6);
+    }
+
+    #[test]
+    fn thin_topics_below_the_bar_are_not_covered() {
+        let rows = [row(1.0, 1), row(1.0, 2), row(1.0, MIN_CARDS_PER_TOPIC)];
+        let summary = summarize_coverage(&rows);
+        assert_eq!(summary.topics_total, 3);
+        assert_eq!(summary.topics_covered, 1);
+        assert!((summary.coverage - 1.0 / 3.0).abs() < 1e-6);
     }
 
     #[test]
     fn weighted_coverage_respects_weights() {
-        // heavy topic covered, light topic not -> weighted > unweighted
-        let rows = [row(3.0, 5), row(1.0, 0)];
+        // Heavy topic clears the bar, light topic is below it (2 < 3) -> the
+        // weighted figure outruns the unweighted one.
+        let rows = [row(3.0, 5), row(1.0, 2)];
         let summary = summarize_coverage(&rows);
         assert!((summary.coverage - 0.5).abs() < 1e-6);
         assert!((summary.weighted_coverage - 0.75).abs() < 1e-6);

@@ -50,10 +50,18 @@ pub struct Chunk {
     pub sr_attempts: Vec<SrAttemptEntry>,
 }
 
-/// Wire representation of an [`SrAttempt`], mirroring the
-/// `CardEntry`/`NoteEntry` pattern: a compact positional tuple that keeps the
-/// storage struct decoupled from the sync format.
-#[derive(Serialize_tuple, Deserialize, Debug)]
+/// Wire representation of an [`SrAttempt`]. Unlike the stock `CardEntry` /
+/// `NoteEntry` positional tuples, this Speedrun-owned struct is serialized as a
+/// *named-field object*, which makes appending a field forward- and
+/// backward-compatible in both directions: a peer that predates a field ignores
+/// the unknown key, and a peer that expects it falls back to
+/// `#[serde(default)]`. (A positional tuple breaks the moment two peers
+/// disagree on the field count - serde's `visit_seq` errors on an extra
+/// trailing element, which is exactly how appending `topic` broke sync between
+/// a fresh client and a stale server.) It rides inside `Chunk.sr_attempts`, a
+/// named field that vanilla-Anki peers drop wholesale, so there is no
+/// AnkiWeb-compat concern. See ADR 0001.
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SrAttemptEntry {
     pub id: i64,
     pub cid: CardId,
@@ -70,7 +78,12 @@ pub struct SrAttemptEntry {
     pub action_status: u8,
     pub usn: Usn,
     pub data: String,
+    #[serde(default)]
     pub predicted: Option<f32>,
+    // Any field appended below must carry `#[serde(default)]` so older peers
+    // that omit it still deserialize.
+    #[serde(default)]
+    pub topic: String,
 }
 
 #[derive(Serialize_tuple, Deserialize, Debug)]
@@ -489,6 +502,7 @@ impl From<SrAttempt> for SrAttemptEntry {
             usn: a.usn,
             data: a.data,
             predicted: a.predicted,
+            topic: a.topic,
         }
     }
 }
@@ -512,6 +526,7 @@ impl From<SrAttemptEntry> for SrAttempt {
             usn: e.usn,
             data: e.data,
             predicted: e.predicted,
+            topic: e.topic,
         }
     }
 }

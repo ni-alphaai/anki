@@ -15,6 +15,7 @@ pub mod exam;
 pub mod feedback;
 pub mod interleave;
 pub mod leakage;
+pub(crate) mod notesync;
 pub mod performance;
 pub mod points_at_stake;
 pub mod readiness;

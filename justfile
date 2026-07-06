@@ -7,15 +7,21 @@ default:
     @just --list
 
 # Build the project
-build:
+build: sync-server
     {{ ninja }} pylib qt
 
+# Build the embedded phone-sync server and stage it into out/bin. Kept in
+# lockstep with the collection wire format so phone sync can't break on a stale
+# binary (see build/configure/src/rust.rs).
+sync-server:
+    {{ ninja }} anki:sync-server
+
 # Build and run Anki in development mode
-run *args:
+run *args: sync-server
     {{ run_script }} {{ args }}
 
 # Build and run Anki in optimized (release) mode
-run-optimized *args:
+run-optimized *args: sync-server
     {{ if os() == "windows" { "$env:RELEASE='1'; .\\run.bat" } else { "RELEASE=1 ./run" } }} {{ args }}
 
 # Watch web sources and rebuild/reload Anki's web stack on change (macOS/Linux)

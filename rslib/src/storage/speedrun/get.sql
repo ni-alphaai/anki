@@ -13,5 +13,6 @@ SELECT id,
   action_status,
   usn,
   data,
-  predicted
+  predicted,
+  topic
 FROM sr_attempts

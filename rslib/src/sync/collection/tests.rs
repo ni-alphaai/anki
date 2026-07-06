@@ -307,7 +307,45 @@ fn attempt(id: i64, cid: CardId) -> SrAttempt {
         usn: Usn(-1),
         data: String::new(),
         predicted: None,
+        topic: String::new(),
     }
+}
+
+/// The Speedrun attempt wire struct must serialize as a *named-field object*,
+/// not a positional tuple, so appending a field never breaks sync between
+/// mismatched peers (the regression that appending `topic` caused). This locks
+/// in both compatibility directions at the serde layer, without two live peers.
+#[test]
+fn sr_attempt_entry_wire_format_is_forward_compatible() {
+    use crate::sync::collection::chunks::SrAttemptEntry;
+
+    // 1. Serializes as an object keyed by field name (not a JSON array).
+    let entry = SrAttemptEntry::from(attempt(1, CardId(1)));
+    let value = serde_json::to_value(&entry).unwrap();
+    assert!(
+        value.is_object(),
+        "expected a named-field object, got {value}"
+    );
+    assert!(value.get("id").is_some());
+    assert!(value.get("topic").is_some());
+
+    // 2. New peer -> old peer: an object carrying an *unknown* extra key still
+    //    deserializes (the key is ignored), so a future field append is safe.
+    let mut with_extra = value.as_object().unwrap().clone();
+    with_extra.insert("some_future_field".into(), json!("ignored"));
+    let round: SrAttemptEntry =
+        serde_json::from_value(serde_json::Value::Object(with_extra)).unwrap();
+    assert_eq!(round.id, entry.id);
+
+    // 3. Old peer -> new peer: an object *missing* the appended `topic`/`predicted`
+    //    still deserializes via `#[serde(default)]`, coming through empty/None.
+    let mut without_appended = value.as_object().unwrap().clone();
+    without_appended.remove("topic");
+    without_appended.remove("predicted");
+    let defaulted: SrAttemptEntry =
+        serde_json::from_value(serde_json::Value::Object(without_appended)).unwrap();
+    assert_eq!(defaulted.topic, "");
+    assert_eq!(defaulted.predicted, None);
 }
 
 /// Speedrun `sr_attempts` ride Anki's chunk transport (modeled on revlog):
@@ -362,6 +400,151 @@ async fn sr_attempts_sync_roundtrip() -> Result<()> {
             ctx.col1().storage.sr_attempts_for_card(cid)?,
             ctx.col2().storage.sr_attempts_for_card(cid)?,
         );
+        Ok(())
+    })
+    .await
+}
+
+/// Regression for the "Sync now does nothing after practice" bug: recording a
+/// Speedrun attempt through the real service path (`record_attempt`) writes a
+/// pending (usn = -1) row, but if it does not also mark the collection
+/// modified, `sync_meta` reports the same `mod` as the server and the sync
+/// short-circuits to `NoChanges` *before* it ever gathers the pending
+/// attempts. This mirrors the user symptom exactly: exam-style practice
+/// recorded on device A never reaches device B after both hit "Sync now", so
+/// A's readiness score cannot be reproduced on B.
+///
+/// Unlike `sr_attempts_sync_roundtrip`, this test deliberately does NOT call
+/// `set_modified_time`: the product code must do that itself.
+#[tokio::test]
+async fn practice_only_attempt_reaches_other_device_after_sync() -> Result<()> {
+    with_active_server(|client| async move {
+        let ctx = SyncTestContext::new(client);
+        upload_download(&ctx).await?;
+
+        // Put device A (col1) into the ordinary steady state right after a
+        // successful "Sync now": fully level with the server (col1.mod ==
+        // server.mod). Being level is load-bearing - it is exactly when the
+        // mod-based meta check short-circuits to NoChanges. (A full
+        // upload/download alone leaves col1.mod != server.mod, which would mask
+        // the bug by forcing a normal sync regardless.)
+        {
+            let mut col2 = ctx.col2();
+            ctx.normal_sync(&mut col2).await;
+        }
+        {
+            let mut col1 = ctx.col1();
+            ctx.normal_sync(&mut col1).await;
+        }
+
+        // Device A: the student answers one exam-style practice question - the
+        // ONLY change since the last sync (no card review), exactly like
+        // practicing in the Speedrun Practice tab - then taps "Sync now".
+        {
+            let mut col1 = ctx.col1();
+            let _ = col1.record_attempt(anki_proto::speedrun::RecordAttemptRequest {
+                card_id: 0,
+                note_id: 0,
+                question_type: 1,
+                correct: true,
+                topic: "biology".to_string(),
+                ..Default::default()
+            })?;
+            ctx.normal_sync(&mut col1).await; // "Sync now"
+        }
+        // Device B: taps "Sync now".
+        {
+            let mut col2 = ctx.col2();
+            ctx.normal_sync(&mut col2).await;
+        }
+
+        // The evidence behind the readiness score must have reached device B:
+        // both the total attempt count and the exam-style attempt count (the
+        // two readiness inputs the user saw stuck at 0 on one device) match A.
+        let (a_total, a_exam) = {
+            let col1 = ctx.col1();
+            (
+                col1.storage.sr_attempt_count()?,
+                col1.storage.sr_exam_attempt_stats()?.0,
+            )
+        };
+        let (b_total, b_exam) = {
+            let col2 = ctx.col2();
+            (
+                col2.storage.sr_attempt_count()?,
+                col2.storage.sr_exam_attempt_stats()?.0,
+            )
+        };
+        assert_eq!(a_total, 1, "sanity: A recorded exactly one attempt");
+        assert_eq!(
+            b_total, a_total,
+            "attempt recorded on A did not reach B after Sync now"
+        );
+        assert_eq!(
+            b_exam, a_exam,
+            "exam-style attempt count on B must match A after sync"
+        );
+        Ok(())
+    })
+    .await
+}
+
+/// Companion to `practice_only_attempt_reaches_other_device_after_sync` for the
+/// config round-trip evidence (question bank / topic map / exam profile). These
+/// tables carry no USN and ride Anki's config sync, but adding a practice
+/// question persists it via `set_config`, which - because the Speedrun service
+/// bypasses `col.transact` - never bumps `col.mod`. So when device A is level
+/// with the server, adding a question and tapping "Sync now" would
+/// short-circuit to NoChanges and the question bank would never reach device B.
+///
+/// Unlike `sr_question_items_sync_via_config_roundtrip`, this test deliberately
+/// does NOT call `set_modified_time`: the product code must do that itself.
+#[tokio::test]
+async fn practice_only_question_item_reaches_other_device_after_sync() -> Result<()> {
+    with_active_server(|client| async move {
+        let ctx = SyncTestContext::new(client);
+        upload_download(&ctx).await?;
+
+        // Steady state: device A (col1) is fully level with the server (it was
+        // the last to sync) - exactly when the mod-based meta check would
+        // short-circuit to NoChanges.
+        {
+            let mut col2 = ctx.col2();
+            ctx.normal_sync(&mut col2).await;
+        }
+        {
+            let mut col1 = ctx.col1();
+            ctx.normal_sync(&mut col1).await;
+        }
+
+        // Device A: the student adds a held-out practice question (a config
+        // round-trip write, no card review) then taps "Sync now".
+        {
+            let mut col1 = ctx.col1();
+            let _ = col1.add_question_item(anki_proto::speedrun::QuestionItem {
+                id: 0,
+                card_id: 0,
+                topic: "biology".to_string(),
+                provenance: 1,
+                payload: "{\"stem\":\"synced question\"}".to_string(),
+            })?;
+            ctx.normal_sync(&mut col1).await; // "Sync now"
+        }
+        // Device B: taps "Sync now".
+        {
+            let mut col2 = ctx.col2();
+            ctx.normal_sync(&mut col2).await;
+        }
+
+        // The practice bank must have reached device B. get_practice_bank_summary
+        // reconstitutes the bank from synced config, so a non-empty total proves
+        // the question crossed devices.
+        let summary = ctx.col2().get_practice_bank_summary()?;
+        assert_eq!(
+            summary.total, 1,
+            "question item added on A did not reach B after Sync now"
+        );
+        assert_eq!(summary.topics[0].topic, "biology");
         Ok(())
     })
     .await

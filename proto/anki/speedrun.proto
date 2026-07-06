@@ -87,6 +87,20 @@ service SpeedrunService {
   // presentation layer from these counts, mirroring the global signals.
   // Appended last to keep existing method indices stable.
   rpc GetTopicSignals(generic.Empty) returns (TopicSignalsReport);
+  // Exam-style attempts grouped by the attempt's stored topic, restricted to
+  // unlinked (card_id=0) practice questions. The presentation layer maps each
+  // topic to its MCAT section and folds these into per-section performance so a
+  // section backed only by unlinked practice no longer reads "Perf -". Appended
+  // last to keep existing method indices stable.
+  rpc GetTopicAttemptStats(generic.Empty) returns (TopicAttemptStats);
+  // Note-encoding sync (Phase 5): mirror each sr_attempt into a hidden
+  // "Speedrun Data" note so evidence rides the standard note sync every peer
+  // keeps (AnkiWeb and other stock servers drop the custom sr_attempts chunk),
+  // and decode those notes back into sr_attempts on the other device. Both are
+  // idempotent (skip already-encoded ids / insert-if-absent by id) and return
+  // the count changed. Appended last to keep existing method indices stable.
+  rpc EncodeAttemptsAsNotes(generic.Empty) returns (generic.UInt32);
+  rpc DecodeNotesToAttempts(generic.Empty) returns (generic.UInt32);
 }
 
 // Backend counterpart. The methods above are implemented on Collection and are
@@ -126,6 +140,10 @@ message RecordAttemptRequest {
   // optional pre-answer predicted probability of a correct outcome (0..1),
   // used for calibration
   optional float predicted = 11;
+  // subject/content-category the question belongs to (e.g. "biology", "cars"),
+  // stored on the attempt so unlinked (card_id=0) practice questions still
+  // attribute to an MCAT section.
+  string topic = 12;
 }
 
 message RecordAttemptResponse {
@@ -390,4 +408,16 @@ message TopicSignal {
 
 message TopicSignalsReport {
   repeated TopicSignal topics = 1;
+}
+
+// Exam-style attempts for one stored topic (subject/content-category) that are
+// not linked to a source card, so the section dashboard can attribute them.
+message TopicAttemptStat {
+  string topic = 1;
+  uint32 attempts = 2;
+  uint32 correct = 3;
+}
+
+message TopicAttemptStats {
+  repeated TopicAttemptStat stats = 1;
 }

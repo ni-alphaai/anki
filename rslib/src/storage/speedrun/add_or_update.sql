@@ -14,9 +14,28 @@ INSERT INTO sr_attempts (
     action_status,
     usn,
     data,
-    predicted
+    predicted,
+    topic
   )
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO
+VALUES (
+    ?,
+    ?,
+    ?,
+    ?,
+    ?,
+    ?,
+    ?,
+    ?,
+    ?,
+    ?,
+    ?,
+    ?,
+    ?,
+    ?,
+    ?,
+    ?,
+    ?
+  ) ON CONFLICT(id) DO
 UPDATE
 SET cid = excluded.cid,
   nid = excluded.nid,
@@ -32,4 +51,5 @@ SET cid = excluded.cid,
   action_status = excluded.action_status,
   usn = excluded.usn,
   data = excluded.data,
-  predicted = excluded.predicted
+  predicted = excluded.predicted,
+  topic = excluded.topic

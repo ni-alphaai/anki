@@ -24,7 +24,8 @@ use crate::platform::overriden_rust_target_triple;
 pub fn build_rust(build: &mut Build) -> Result<()> {
     prepare_translations(build)?;
     build_proto_descriptors_and_interfaces(build)?;
-    build_rsbridge(build)
+    build_rsbridge(build)?;
+    build_sync_server(build)
 }
 
 fn prepare_translations(build: &mut Build) -> Result<()> {
@@ -163,6 +164,64 @@ fn build_rsbridge(build: &mut Build) -> Result<()> {
             target: overriden_rust_target_triple(),
             extra_args: &format!("-p rsbridge --features {features}"),
             release_override: None,
+        },
+    )
+}
+
+/// Copy the built sync-server binary into out/bin. On Apple Silicon, cargo/ld
+/// emit a *linker-signed* ad-hoc signature that the kernel rejects the moment
+/// the binary is copied to a new path (it SIGKILLs it with no output), so the
+/// copy is re-signed ad-hoc; a plain copy is sufficient elsewhere.
+struct StageSyncServer {
+    input: BuildInput,
+    output: &'static str,
+}
+
+impl BuildAction for StageSyncServer {
+    fn command(&self) -> &str {
+        if cfg!(target_os = "macos") {
+            "cp -f $in $out && codesign --force --sign - $out"
+        } else {
+            "cp -f $in $out"
+        }
+    }
+
+    fn files(&mut self, build: &mut impl FilesHandle) {
+        build.add_inputs("in", &self.input);
+        build.add_outputs("out", vec![self.output]);
+    }
+}
+
+/// Build the standalone `anki-sync-server` binary and stage it into `out/bin`,
+/// where the desktop's Speedrun phone-sync feature
+/// (`speedrun_sync._binary_path`) looks for it. Wiring this into the build
+/// graph keeps the server in lockstep with the collection wire format - a
+/// manually built binary silently goes stale whenever the sync/storage code
+/// changes, which breaks phone sync.
+fn build_sync_server(build: &mut Build) -> Result<()> {
+    build.add_action(
+        "rslib:sync-server:bin",
+        CargoBuild {
+            inputs: inputs![
+                glob!["rslib/**"],
+                // the server links the anki crate, which needs generated i18n/proto
+                ":rslib:i18n",
+                ":rslib:proto",
+                "$builddir/env",
+                "$builddir/buildhash",
+            ],
+            outputs: &[RustOutput::Binary("anki-sync-server")],
+            target: None,
+            extra_args: "-p anki-sync-server",
+            release_override: None,
+        },
+    )?;
+    // Stage into out/bin so the runtime lookup finds it regardless of profile.
+    build.add_action(
+        "anki:sync-server",
+        StageSyncServer {
+            input: inputs![":rslib:sync-server:bin"],
+            output: "bin/anki-sync-server",
         },
     )
 }
