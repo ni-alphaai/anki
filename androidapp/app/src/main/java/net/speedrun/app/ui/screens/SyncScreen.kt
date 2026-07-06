@@ -34,6 +34,7 @@ import net.speedrun.app.EngineRepository
 import net.speedrun.app.PortraitCaptureActivity
 import net.speedrun.app.SyncConflictPolicy
 import net.speedrun.app.SyncDiscovery
+import net.speedrun.app.SignInResult
 import net.speedrun.app.SyncPairing
 import net.speedrun.app.SyncUrl
 import net.speedrun.app.SyncResult
@@ -103,30 +104,30 @@ private fun AnkiWebSyncSection(context: Context) {
     val scope = rememberCoroutineScope()
     var email by remember { mutableStateOf(AppSettings.ankiwebEmail) }
     var password by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<SyncResult?>(null) }
-    var syncing by remember { mutableStateOf(false) }
+    var signInError by remember { mutableStateOf<String?>(null) }
+    // Reads a mutableStateOf, so signing in/out recomposes this section.
+    val signedIn = AppSettings.isAnkiwebSignedIn
 
-    fun sync(upload: Boolean? = null) {
-        val user = email.trim()
-        val pass = password
-        if (user.isBlank() || pass.isBlank() || syncing) return
-        AppSettings.setAnkiwebEmail(context, user)
-        syncing = true
+    fun syncNow(upload: Boolean? = null) {
+        val hkey = AppSettings.ankiwebHkey
+        val endpoint = AppSettings.ankiwebEndpoint
+        if (hkey.isBlank() || busy) return
+        busy = true
         result = null
         scope.launch {
             var r: SyncResult = if (upload == null) {
-                EngineRepository.sync(SyncUrl.ANKIWEB_ENDPOINT, user, pass)
+                EngineRepository.ankiwebSync(hkey, endpoint)
             } else {
-                EngineRepository.resolveSyncConflict(SyncUrl.ANKIWEB_ENDPOINT, user, pass, upload = upload)
+                EngineRepository.resolveAnkiwebConflict(hkey, endpoint, upload = upload)
             }
-            // Honor the saved conflict preference (same as desktop sync), so the
-            // first full sync isn't a dead-end prompt.
+            // Honor the saved conflict preference, so the first full sync isn't a
+            // dead-end prompt.
             val policy = AppSettings.syncConflictPolicy
             if (r is SyncResult.Conflict && policy != SyncConflictPolicy.Ask) {
                 val preferPhone = policy == SyncConflictPolicy.PreferPhone
-                val resolved = EngineRepository.resolveSyncConflict(
-                    SyncUrl.ANKIWEB_ENDPOINT, user, pass, upload = preferPhone,
-                )
+                val resolved = EngineRepository.resolveAnkiwebConflict(hkey, endpoint, upload = preferPhone)
                 r = if (resolved is SyncResult.Ok) {
                     SyncResult.Ok(autoResolvedConflictMessage(preferPhone))
                 } else {
@@ -138,40 +139,37 @@ private fun AnkiWebSyncSection(context: Context) {
                 AppSettings.refreshFromConfig(context)
             }
             result = r
-            syncing = false
+            busy = false
         }
     }
 
-    SpeedrunCard {
-        Text("Sync with AnkiWeb", color = c.textPrimary, style = MaterialTheme.typography.subhead)
-        Text(
-            "Sign in with your AnkiWeb account to sync over the cloud.",
-            color = c.textSecondary,
-            style = MaterialTheme.typography.body,
-            modifier = Modifier.padding(top = Space.xs, bottom = Space.m),
-        )
-        Text(
-            "Last synced: ${lastSyncedLabel(AppSettings.lastSyncedMs)}",
-            color = c.textTertiary,
-            style = MaterialTheme.typography.caption,
-            modifier = Modifier.padding(bottom = Space.m),
-        )
-        AppTextField(value = email, onValueChange = { email = it }, label = "AnkiWeb email")
-        Spacer(Modifier.height(Space.s))
-        AppTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = "Password",
-            placeholder = "Not stored on this device",
-            visualTransformation = PasswordVisualTransformation(),
-        )
-        Spacer(Modifier.height(Space.m))
-        PrimaryButton(
-            text = if (syncing) "Syncing…" else "Sync with AnkiWeb",
-            enabled = !syncing && email.isNotBlank() && password.isNotBlank(),
-        ) {
-            sync()
+    fun signIn() {
+        val user = email.trim()
+        val pass = password
+        if (user.isBlank() || pass.isBlank() || busy) return
+        busy = true
+        signInError = null
+        result = null
+        scope.launch {
+            when (val s = EngineRepository.ankiwebSignIn(user, pass)) {
+                is SignInResult.Ok -> {
+                    // Store the session token (not the password) so the user stays
+                    // signed in, then do a first sync right away.
+                    AppSettings.setAnkiwebSession(context, user, s.hkey, s.endpoint)
+                    password = ""
+                    busy = false
+                    syncNow()
+                }
+                is SignInResult.Error -> {
+                    signInError = s.message
+                    busy = false
+                }
+            }
         }
+    }
+
+    @Composable
+    fun ResultText() {
         result?.let { r ->
             Spacer(Modifier.height(Space.s))
             val (msg, color) = when (r) {
@@ -182,10 +180,66 @@ private fun AnkiWebSyncSection(context: Context) {
             Text(msg, color = color, style = MaterialTheme.typography.body)
             if (r is SyncResult.Conflict) {
                 Spacer(Modifier.height(Space.s))
-                PrimaryButton("Use phone data", enabled = !syncing) { sync(upload = true) }
+                PrimaryButton("Use phone data", enabled = !busy) { syncNow(upload = true) }
                 Spacer(Modifier.height(Space.xs))
-                SecondaryButton("Use AnkiWeb data", enabled = !syncing) { sync(upload = false) }
+                SecondaryButton("Use AnkiWeb data", enabled = !busy) { syncNow(upload = false) }
             }
+        }
+    }
+
+    SpeedrunCard {
+        Text("Sync with AnkiWeb", color = c.textPrimary, style = MaterialTheme.typography.subhead)
+        if (signedIn) {
+            Text(
+                "Signed in as ${AppSettings.ankiwebEmail} - you'll stay signed in.",
+                color = c.textSecondary,
+                style = MaterialTheme.typography.body,
+                modifier = Modifier.padding(top = Space.xs, bottom = Space.xs),
+            )
+            Text(
+                "Last synced: ${lastSyncedLabel(AppSettings.lastSyncedMs)}",
+                color = c.textTertiary,
+                style = MaterialTheme.typography.caption,
+                modifier = Modifier.padding(bottom = Space.m),
+            )
+            PrimaryButton(text = if (busy) "Syncing…" else "Sync now", enabled = !busy) {
+                syncNow()
+            }
+            Spacer(Modifier.height(Space.s))
+            SecondaryButton("Sign out", enabled = !busy) {
+                AppSettings.clearAnkiwebSession(context)
+                result = null
+            }
+            ResultText()
+        } else {
+            Text(
+                "Sign in with your AnkiWeb account to sync over the cloud. You only " +
+                    "sign in once - the session is remembered.",
+                color = c.textSecondary,
+                style = MaterialTheme.typography.body,
+                modifier = Modifier.padding(top = Space.xs, bottom = Space.m),
+            )
+            AppTextField(value = email, onValueChange = { email = it }, label = "AnkiWeb email")
+            Spacer(Modifier.height(Space.s))
+            AppTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = "Password",
+                placeholder = "Used once to sign in - not stored",
+                visualTransformation = PasswordVisualTransformation(),
+            )
+            Spacer(Modifier.height(Space.m))
+            PrimaryButton(
+                text = if (busy) "Signing in…" else "Sign in",
+                enabled = !busy && email.isNotBlank() && password.isNotBlank(),
+            ) {
+                signIn()
+            }
+            signInError?.let {
+                Spacer(Modifier.height(Space.s))
+                Text("Sign-in failed: $it", color = c.readinessBad, style = MaterialTheme.typography.body)
+            }
+            ResultText()
         }
     }
 }

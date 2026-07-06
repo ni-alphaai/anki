@@ -2160,24 +2160,39 @@ def sync_pair_body(data: dict) -> str:
     status_html = f'<p class="sr-sync-status">{status}</p>' if status else ""
 
     # AnkiWeb (recommended, primary) leads; phone/LAN pairing collapses below it.
+    # Sign-in and Sync are distinct: signing in once persists the session, so
+    # later syncs need no password.
     ankiweb_signed_in = bool(data.get("ankiweb_signed_in"))
-    ankiweb_status = (
-        '<span style="color:var(--sr-perf);font-weight:600">Signed in to AnkiWeb</span>'
-        if ankiweb_signed_in
-        else '<span style="color:var(--sr-secondary)">Not signed in yet</span>'
-    )
-    ankiweb_cta = "Sync with AnkiWeb" if ankiweb_signed_in else "Sign in &amp; sync"
+    if ankiweb_signed_in:
+        ankiweb_status = (
+            '<span style="color:var(--sr-perf);font-weight:600">'
+            "Signed in to AnkiWeb - you’ll stay signed in.</span>"
+        )
+        ankiweb_actions = (
+            '<div class="sr-actions" style="margin-top:14px">'
+            '<button class="sr-btn sr-primary" onclick="pycmd(\'speedrun:syncankiweb\')">'
+            "Sync now</button>"
+            '<button class="sr-btn" onclick="pycmd(\'speedrun:ankiwebsignout\')">'
+            "Sign out</button></div>"
+        )
+    else:
+        ankiweb_status = (
+            '<span style="color:var(--sr-secondary)">Not signed in yet</span>'
+        )
+        ankiweb_actions = (
+            '<div class="sr-actions" style="margin-top:14px">'
+            '<button class="sr-btn sr-primary" onclick="pycmd(\'speedrun:ankiwebsignin\')">'
+            "Sign in to AnkiWeb</button></div>"
+        )
     ankiweb_card = (
         '<div class="sr-card" style="margin-bottom:16px">'
         '<div class="sr-eyebrow">Sync with AnkiWeb (recommended)</div>'
         '<p style="color:var(--sr-secondary);line-height:1.6;margin:8px 0 12px">'
         "Sync over the cloud so your reviews and practice history reach every "
-        "device - no desktop running, no shared network. Sign in with your "
-        "AnkiWeb account (Anki asks for it the first time).</p>"
+        "device - no desktop running, no shared network. Sign in once and Anki "
+        "keeps you signed in.</p>"
         f'<p class="sr-sync-status">{ankiweb_status}</p>'
-        '<div class="sr-actions" style="margin-top:14px">'
-        '<button class="sr-btn sr-primary" onclick="pycmd(\'speedrun:syncankiweb\')">'
-        f"{ankiweb_cta}</button></div></div>"
+        f"{ankiweb_actions}</div>"
     )
     phone_section = (
         '<details class="sr-card">'

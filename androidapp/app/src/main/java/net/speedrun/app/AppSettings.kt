@@ -97,6 +97,8 @@ object AppSettings {
     private const val KEY_SYNC_USER = "sync_username"
     private const val KEY_SYNC_TOKEN = "sync_token"
     private const val KEY_ANKIWEB_EMAIL = "ankiweb_email"
+    private const val KEY_ANKIWEB_HKEY = "ankiweb_hkey"
+    private const val KEY_ANKIWEB_ENDPOINT = "ankiweb_endpoint"
     private const val KEY_SYNC_USB = "sync_via_usb"
     private const val KEY_LAST_SYNCED = "last_synced_ms"
     private const val KEY_SYNC_CONFLICT_POLICY = "sync_conflict_policy"
@@ -151,6 +153,17 @@ object AppSettings {
     /** AnkiWeb account email, remembered for convenience (password never stored). */
     var ankiwebEmail by mutableStateOf("")
         private set
+
+    /** Persisted AnkiWeb session token (hkey) + endpoint, so the user stays
+     * signed in and later syncs need no password. Blank when signed out. */
+    var ankiwebHkey by mutableStateOf("")
+        private set
+    var ankiwebEndpoint by mutableStateOf("")
+        private set
+
+    /** True when a persisted AnkiWeb session exists. */
+    val isAnkiwebSignedIn: Boolean
+        get() = ankiwebHkey.isNotBlank()
 
     /**
      * Sync token from QR pairing (the server "password"). Stored so a paired
@@ -221,6 +234,8 @@ object AppSettings {
         scrubInvalidSyncUrls()
         syncUsername = prefs.getString(KEY_SYNC_USER, "") ?: ""
         ankiwebEmail = prefs.getString(KEY_ANKIWEB_EMAIL, "") ?: ""
+        ankiwebHkey = prefs.getString(KEY_ANKIWEB_HKEY, "") ?: ""
+        ankiwebEndpoint = prefs.getString(KEY_ANKIWEB_ENDPOINT, "") ?: ""
         syncToken = prefs.getString(KEY_SYNC_TOKEN, "") ?: ""
         syncViaUsb = prefs.getBoolean(KEY_SYNC_USB, true)
         lastSyncedMs = prefs.getLong(KEY_LAST_SYNCED, 0L)
@@ -325,6 +340,29 @@ object AppSettings {
         ankiwebEmail = email
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putString(KEY_ANKIWEB_EMAIL, email).apply()
+    }
+
+    /** Persist an AnkiWeb sign-in: email + session token (hkey) + endpoint. The
+     * hkey is a session key (not the password), so the user stays signed in. */
+    fun setAnkiwebSession(context: Context, email: String, hkey: String, endpoint: String) {
+        ankiwebEmail = email
+        ankiwebHkey = hkey
+        ankiwebEndpoint = endpoint
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString(KEY_ANKIWEB_EMAIL, email)
+            .putString(KEY_ANKIWEB_HKEY, hkey)
+            .putString(KEY_ANKIWEB_ENDPOINT, endpoint)
+            .apply()
+    }
+
+    /** Forget the AnkiWeb session (keeps the email for convenience). */
+    fun clearAnkiwebSession(context: Context) {
+        ankiwebHkey = ""
+        ankiwebEndpoint = ""
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .remove(KEY_ANKIWEB_HKEY)
+            .remove(KEY_ANKIWEB_ENDPOINT)
+            .apply()
     }
 
     fun setExampleLoaded(context: Context, on: Boolean) {

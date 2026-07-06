@@ -748,47 +748,99 @@ object EngineRepository {
         withContext(dispatcher) {
             val b = backend ?: return@withContext SyncResult.Error("Collection is not open")
             try {
-                var session = beginSync(b, url, username, password)
-                // Note-encode Speedrun's sr_attempts before syncing so evidence
-                // rides the standard note sync a stock/AnkiWeb peer keeps (it drops
-                // the custom sr_attempts chunk). Idempotent; never block a sync.
-                runCatching { b.encodeAttemptsAsNotes() }
-                val resp = b.syncCollection(session.auth)
-                session = applyNewEndpoint(session, resp)
-                when (resp.required) {
-                    SyncCollectionResponse.ChangesRequired.NO_CHANGES,
-                    SyncCollectionResponse.ChangesRequired.NORMAL_SYNC -> {
-                        afterSyncRefresh()
-                        SyncResult.Ok("In sync")
-                    }
-                    SyncCollectionResponse.ChangesRequired.FULL_UPLOAD -> {
-                        b.fullUploadOrDownload(session.auth, upload = true)
-                        afterSyncRefresh()
-                        SyncResult.Ok("Uploaded this device's collection to the server")
-                    }
-                    SyncCollectionResponse.ChangesRequired.FULL_DOWNLOAD -> {
-                        b.fullUploadOrDownload(session.auth, upload = false)
-                        reopenCollection(b)
-                        afterSyncRefresh()
-                        SyncResult.Ok("Mirrored the server's collection to this device")
-                    }
-                    else -> {
-                        // FULL_SYNC: schemas differ AND both sides hold data, so the
-                        // engine can't pick a safe direction (the empty-server /
-                        // empty-phone cases already resolved to FULL_UPLOAD /
-                        // FULL_DOWNLOAD above). Surfacing a conflict lets the user
-                        // choose which copy wins instead of silently overwriting the
-                        // phone's data.
-                        SyncResult.Conflict(
-                            "This phone and the desktop have different data. Choose which " +
-                                "copy to keep - the other side will be replaced.",
-                        )
-                    }
-                }
+                runSyncSession(b, beginSync(b, url, username, password))
             } catch (e: Exception) {
                 SyncResult.Error(syncErrorMessage(e))
             }
         }
+
+    /**
+     * Sign in to AnkiWeb ONCE and return the session token (hkey) so the caller
+     * can persist it - later syncs reuse it with no password ("stay signed in").
+     */
+    suspend fun ankiwebSignIn(email: String, password: String): SignInResult =
+        withContext(dispatcher) {
+            val b = backend ?: return@withContext SignInResult.Error("Collection is not open")
+            try {
+                val endpoint = SyncUrl.normalize(SyncUrl.ANKIWEB_ENDPOINT)
+                val auth = pinAuth(b.syncLogin(email, password, endpoint), endpoint)
+                SignInResult.Ok(auth.hkey, auth.endpoint)
+            } catch (e: Exception) {
+                SignInResult.Error(syncErrorMessage(e))
+            }
+        }
+
+    /** Sync to AnkiWeb using a stored session token (no password needed). */
+    suspend fun ankiwebSync(hkey: String, endpoint: String): SyncResult =
+        withContext(dispatcher) {
+            val b = backend ?: return@withContext SyncResult.Error("Collection is not open")
+            try {
+                runSyncSession(b, SyncSession(SyncUrl.normalize(endpoint), buildAuth(hkey, endpoint)))
+            } catch (e: Exception) {
+                SyncResult.Error(syncErrorMessage(e))
+            }
+        }
+
+    /** Force-resolve an AnkiWeb conflict using the stored session token. */
+    suspend fun resolveAnkiwebConflict(hkey: String, endpoint: String, upload: Boolean): SyncResult =
+        withContext(dispatcher) {
+            val b = backend ?: return@withContext SyncResult.Error("Collection is not open")
+            try {
+                b.fullUploadOrDownload(buildAuth(hkey, endpoint), upload = upload)
+                if (!upload) reopenCollection(b)
+                afterSyncRefresh()
+                SyncResult.Ok(
+                    if (upload) {
+                        "Uploaded this device's collection to AnkiWeb"
+                    } else {
+                        "Mirrored AnkiWeb's collection to this device"
+                    },
+                )
+            } catch (e: Exception) {
+                SyncResult.Error(syncErrorMessage(e))
+            }
+        }
+
+    /**
+     * Run a sync given an already-authenticated session. Shared by the
+     * login-based sync (QR/manual) and the stored-session AnkiWeb sync.
+     */
+    private suspend fun runSyncSession(b: AnkiBackend, initial: SyncSession): SyncResult {
+        var session = initial
+        // Note-encode Speedrun's sr_attempts before syncing so evidence rides the
+        // standard note sync a stock/AnkiWeb peer keeps (it drops the custom
+        // sr_attempts chunk). Idempotent; never block a sync.
+        runCatching { b.encodeAttemptsAsNotes() }
+        val resp = b.syncCollection(session.auth)
+        session = applyNewEndpoint(session, resp)
+        return when (resp.required) {
+            SyncCollectionResponse.ChangesRequired.NO_CHANGES,
+            SyncCollectionResponse.ChangesRequired.NORMAL_SYNC -> {
+                afterSyncRefresh()
+                SyncResult.Ok("In sync")
+            }
+            SyncCollectionResponse.ChangesRequired.FULL_UPLOAD -> {
+                b.fullUploadOrDownload(session.auth, upload = true)
+                afterSyncRefresh()
+                SyncResult.Ok("Uploaded this device's collection to the server")
+            }
+            SyncCollectionResponse.ChangesRequired.FULL_DOWNLOAD -> {
+                b.fullUploadOrDownload(session.auth, upload = false)
+                reopenCollection(b)
+                afterSyncRefresh()
+                SyncResult.Ok("Mirrored the server's collection to this device")
+            }
+            else -> {
+                // FULL_SYNC: both sides hold data and schemas differ, so the engine
+                // can't pick a safe direction. Surface a conflict so the user
+                // chooses which copy wins instead of silently overwriting.
+                SyncResult.Conflict(
+                    "This phone and the server have different data. Choose which " +
+                        "copy to keep - the other side will be replaced.",
+                )
+            }
+        }
+    }
 
     /**
      * Resolve a two-sided sync conflict by forcing a direction: [upload] = true
@@ -879,6 +931,10 @@ object EngineRepository {
     private fun pinAuth(auth: SyncAuth, endpoint: String): SyncAuth =
         auth.toBuilder().setEndpoint(endpoint).build()
 
+    /** Build a SyncAuth from a persisted session token + endpoint (no login). */
+    private fun buildAuth(hkey: String, endpoint: String): SyncAuth =
+        SyncAuth.newBuilder().setHkey(hkey).setEndpoint(SyncUrl.normalize(endpoint)).build()
+
     private const val CONNECTIVITY_MESSAGE =
         "Couldn't reach the sync server. On the desktop open Sync with phone to host " +
             "it, and make sure USB or Wi-Fi is connected."
@@ -957,4 +1013,10 @@ sealed class SyncResult {
     data class Ok(val message: String) : SyncResult()
     data class Conflict(val message: String) : SyncResult()
     data class Error(val message: String) : SyncResult()
+}
+
+/** Outcome of an AnkiWeb sign-in; Ok carries the session token to persist. */
+sealed class SignInResult {
+    data class Ok(val hkey: String, val endpoint: String) : SignInResult()
+    data class Error(val message: String) : SignInResult()
 }

@@ -422,23 +422,29 @@ class TestSyncPairBody:
 
     def test_ankiweb_is_the_primary_sync_option(self) -> None:
         html = theme.sync_pair_body(self._running())
-        # AnkiWeb leads and routes to the cloud sync...
+        # AnkiWeb leads...
         assert "Sync with AnkiWeb (recommended)" in html
-        assert "speedrun:syncankiweb" in html
         # ...and phone pairing is demoted into a collapsible section below it.
         assert "Sync with phone (offline" in html
         assert "<details" in html
-        assert html.index("speedrun:syncankiweb") < html.index("<details")
+        assert html.index("Sync with AnkiWeb (recommended)") < html.index("<details")
 
-    def test_ankiweb_signed_in_state(self) -> None:
+    def test_ankiweb_sign_in_and_sync_are_distinct(self) -> None:
+        # Signed out: a Sign-in action, no Sync/Sign-out.
+        out = theme.sync_pair_body(self._running())
+        assert "Not signed in yet" in out
+        assert "speedrun:ankiwebsignin" in out
+        assert "Sign in to AnkiWeb" in out
+        assert "speedrun:syncankiweb" not in out
+        assert "speedrun:ankiwebsignout" not in out
+        # Signed in: Sync + Sign-out, no Sign-in (session persists).
         signed = self._running()
         signed["ankiweb_signed_in"] = True
         html = theme.sync_pair_body(signed)
-        assert "Signed in to AnkiWeb" in html
-        assert "Sync with AnkiWeb</button>" in html  # not "Sign in & sync"
-        out = theme.sync_pair_body(self._running())
-        assert "Not signed in yet" in out
-        assert "Sign in" in out
+        assert "stay signed in" in html
+        assert "speedrun:syncankiweb" in html and "Sync now" in html
+        assert "speedrun:ankiwebsignout" in html and "Sign out" in html
+        assert "speedrun:ankiwebsignin" not in html
 
 
 class TestLibraryBody:

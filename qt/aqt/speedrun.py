@@ -1394,6 +1394,8 @@ _EXACT_CMDS: dict[str, Callable[[aqt.AnkiQt], object]] = {
     "speedrun:back": lambda mw: _leave_workspace(mw),
     "speedrun:syncnow": lambda mw: _sync_now_from_screen(mw),
     "speedrun:syncankiweb": lambda mw: _sync_to_ankiweb(mw),
+    "speedrun:ankiwebsignin": lambda mw: _ankiweb_sign_in(mw),
+    "speedrun:ankiwebsignout": lambda mw: _ankiweb_sign_out(mw),
     "speedrun:syncrefresh": lambda mw: _refresh_pairing_code(mw),
     "speedrun:syncpull": lambda mw: _sync_pull_from_phone(mw),
     "speedrun:syncpush": lambda mw: _sync_push_to_phone(mw),
@@ -1840,23 +1842,10 @@ def _qr_svg(text: str) -> str:
 def _sync_pair_data(mw: aqt.AnkiQt) -> dict:
     running = srsync.is_running()
     policy = _sync_conflict_policy(mw.col) if mw.col is not None else "ask"
-    # Read the RAW stored auth (bypass the local-server pin) so a phone-paired
-    # user still sees their real AnkiWeb sign-in state.
-    prev_flag = getattr(mw, "_speedrun_ankiweb_sync", False)
-    try:
-        mw._speedrun_ankiweb_sync = True  # type: ignore[attr-defined]
-        auth = mw.pm.sync_auth()
-        ankiweb_signed_in = bool(
-            auth and _is_ankiweb_endpoint(getattr(auth, "endpoint", ""))
-        )
-    except Exception:
-        ankiweb_signed_in = False
-    finally:
-        mw._speedrun_ankiweb_sync = prev_flag  # type: ignore[attr-defined]
     data: dict = {
         "running": running,
         "conflict_policy": policy,
-        "ankiweb_signed_in": ankiweb_signed_in,
+        "ankiweb_signed_in": _ankiweb_signed_in(mw),
     }
     if running:
         payload = srsync.pairing_payload(mw)
@@ -2614,34 +2603,6 @@ def _sync_to_local(mw: aqt.AnkiQt, on_done=None, *, land_home: bool = True) -> N
     _login_to_local(mw, after_login)
 
 
-def _sync_to_ankiweb(mw: aqt.AnkiQt) -> None:
-    """Sync to AnkiWeb (the cloud) via Anki's stock login + sync, bypassing the
-    local-server pin. Speedrun's sr_attempts ride the standard note sync via the
-    ``sync_will_start``/``sync_did_finish`` hooks, so exam-practice evidence
-    reaches AnkiWeb even though it drops the custom chunk.
-
-    Because Anki keeps a single sync-auth slot (the fork uses it for the local
-    server), this forces a fresh AnkiWeb login: it clears the local auth/url so
-    the stock dialog targets AnkiWeb's default endpoint. A later local/phone sync
-    re-authenticates against the local server, so the two coexist."""
-    native = getattr(mw, "_speedrun_native_sync", None)
-    if native is None or mw.col is None:
-        tooltip("AnkiWeb sync is unavailable.")
-        return
-    mw._speedrun_ankiweb_sync = True  # type: ignore[attr-defined]
-    # Reuse an existing AnkiWeb login; only when the stored auth is the local
-    # server (or missing) do we drop it so the stock dialog logs in to AnkiWeb.
-    auth = mw.pm.sync_auth()
-    if not (auth and _is_ankiweb_endpoint(getattr(auth, "endpoint", ""))):
-        try:
-            mw.pm.clear_sync_auth()
-            mw.pm.set_current_sync_url(None)
-            mw.pm.set_custom_sync_url(None)
-        except Exception:
-            pass
-    native()
-
-
 def _is_ankiweb_endpoint(url: str | None) -> bool:
     """True when ``url`` points at AnkiWeb (vs the embedded/self-hosted server)."""
     if not url:
@@ -2653,6 +2614,78 @@ def _is_ankiweb_endpoint(url: str | None) -> bool:
     except Exception:
         return False
     return host.endswith("ankiweb.net")
+
+
+def _ankiweb_signed_in(mw: aqt.AnkiQt) -> bool:
+    """True when Anki holds a persisted AnkiWeb session (so the user stays signed
+    in across syncs). Reads the RAW stored auth past the local-server pin; an
+    empty endpoint means the default (AnkiWeb) endpoint, so it counts as signed
+    in, while a local (127.0.0.1/LAN) endpoint does not."""
+    prev = getattr(mw, "_speedrun_ankiweb_sync", False)
+    try:
+        mw._speedrun_ankiweb_sync = True  # type: ignore[attr-defined]
+        auth = mw.pm.sync_auth()
+        if not auth:
+            return False
+        endpoint = getattr(auth, "endpoint", "") or ""
+        return (not endpoint) or _is_ankiweb_endpoint(endpoint)
+    except Exception:
+        return False
+    finally:
+        mw._speedrun_ankiweb_sync = prev  # type: ignore[attr-defined]
+
+
+def _ankiweb_sign_in(mw: aqt.AnkiQt) -> None:
+    """Sign in to AnkiWeb ONCE (no sync). Anki persists the session key, so the
+    user stays signed in - later syncs reuse it without re-entering a password."""
+    if mw.col is None:
+        return
+    # Target AnkiWeb (not the pinned local server): drop any local url so the
+    # stock login dialog uses AnkiWeb's default endpoint.
+    try:
+        mw.pm.set_current_sync_url(None)
+        mw.pm.set_custom_sync_url(None)
+    except Exception:
+        pass
+    from aqt.sync import sync_login
+
+    sync_login(
+        mw,
+        on_success=lambda: _show_sync_pair(
+            mw, start=False, status_msg="Signed in to AnkiWeb."
+        ),
+    )
+
+
+def _ankiweb_sign_out(mw: aqt.AnkiQt) -> None:
+    """Forget the stored AnkiWeb session."""
+    try:
+        mw.pm.clear_sync_auth()
+    except Exception:
+        pass
+    _show_sync_pair(mw, start=False, status_msg="Signed out of AnkiWeb.")
+
+
+def _sync_to_ankiweb(mw: aqt.AnkiQt) -> None:
+    """Sync to AnkiWeb (the cloud), reusing the persisted sign-in when present so
+    no password is needed. sr_attempts ride the standard note sync via the
+    ``sync_will_start``/``sync_did_finish`` hooks. If not signed in, Anki's stock
+    login dialog collects credentials first (then the session is remembered)."""
+    native = getattr(mw, "_speedrun_native_sync", None)
+    if native is None or mw.col is None:
+        tooltip("AnkiWeb sync is unavailable.")
+        return
+    mw._speedrun_ankiweb_sync = True  # type: ignore[attr-defined]
+    # Reuse an existing AnkiWeb session; only when the stored auth is the local
+    # server (or missing) do we drop it so the stock dialog logs in to AnkiWeb.
+    if not _ankiweb_signed_in(mw):
+        try:
+            mw.pm.clear_sync_auth()
+            mw.pm.set_current_sync_url(None)
+            mw.pm.set_custom_sync_url(None)
+        except Exception:
+            pass
+    native()
 
 
 def _sync_now_from_screen(mw: aqt.AnkiQt) -> None:

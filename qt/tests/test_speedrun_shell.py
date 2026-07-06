@@ -288,6 +288,31 @@ def test_is_ankiweb_endpoint():
     assert not speedrun._is_ankiweb_endpoint(None)
 
 
+def test_ankiweb_signed_in_detection():
+    def mk(auth):
+        return types.SimpleNamespace(pm=types.SimpleNamespace(sync_auth=lambda: auth))
+
+    def auth(ep):
+        return types.SimpleNamespace(endpoint=ep)
+
+    assert speedrun._ankiweb_signed_in(mk(auth("https://sync.ankiweb.net/"))) is True
+    # An empty endpoint means the default (AnkiWeb) endpoint -> signed in.
+    assert speedrun._ankiweb_signed_in(mk(auth(""))) is True
+    # A local/self-hosted endpoint is not an AnkiWeb session.
+    assert speedrun._ankiweb_signed_in(mk(auth("http://127.0.0.1:27701/"))) is False
+    assert speedrun._ankiweb_signed_in(mk(None)) is False
+
+
+def test_ankiweb_sign_out_clears_stored_session(monkeypatch):
+    calls: list = []
+    monkeypatch.setattr(speedrun, "_show_sync_pair", lambda *a, **k: None)
+    mw = types.SimpleNamespace(
+        pm=types.SimpleNamespace(clear_sync_auth=lambda: calls.append("clear")),
+    )
+    speedrun._ankiweb_sign_out(mw)
+    assert calls == ["clear"]
+
+
 def test_sync_to_ankiweb_noop_without_native_handler(monkeypatch):
     # No saved stock handler -> don't half-run (flag stays unset).
     monkeypatch.setattr(speedrun, "tooltip", lambda *a, **k: None)
