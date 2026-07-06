@@ -97,47 +97,6 @@ def test_deck_browser_keeps_pairing_screen(monkeypatch):
     assert ws == []
 
 
-def test_reviewer_front_buttons_html():
-    """One-tap reveal+rate renders 4 data-ease buttons that post reviewrate."""
-    html = speedrun._reviewer_front_buttons_html()
-    for n in (1, 2, 3, 4):
-        assert f'data-ease="{n}"' in html
-        assert f"speedrun:reviewrate:{n}" in html
-    assert "Forgot" in html  # Again is relabeled on the front too
-
-
-class _FakeReviewer:
-    def __init__(self):
-        self.state = "question"
-        self.calls: list = []
-
-    def _showAnswer(self):
-        self.calls.append("show")
-        self.state = "answer"
-
-    def _answerCard(self, ease):
-        self.calls.append(("rate", ease))
-
-
-def test_reviewer_reveal_rate_reveals_then_rates():
-    rv = _FakeReviewer()
-    mw = types.SimpleNamespace(reviewer=rv, state="review")
-    speedrun._reviewer_reveal_rate(mw, "3")
-    assert rv.calls == ["show", ("rate", 3)]
-
-
-def test_reviewer_reveal_rate_guards():
-    # out-of-range ease and non-review state are no-ops
-    rv = _FakeReviewer()
-    speedrun._reviewer_reveal_rate(
-        types.SimpleNamespace(reviewer=rv, state="review"), "9"
-    )
-    speedrun._reviewer_reveal_rate(
-        types.SimpleNamespace(reviewer=rv, state="deckBrowser"), "2"
-    )
-    assert rv.calls == []
-
-
 def test_setup_registers_notesync_on_sync_lifecycle():
     """Encode/decode must ride the native sync lifecycle hooks (not just the
     hand-wired local path) so note-encoded attempts also travel over AnkiWeb."""

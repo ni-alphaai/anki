@@ -59,6 +59,7 @@ from aqt.qt import (
     QProgressBar,
     QPushButton,
     QRadioButton,
+    QScrollArea,
     QTextCursor,
     QVBoxLayout,
     QWidget,
@@ -1152,22 +1153,6 @@ def _next_action(data: dict) -> dict:
 # --- reviewer hooks ---------------------------------------------------------
 
 
-# One-tap reveal+rate: the rating buttons render on the question front, so a
-# single tap reveals the answer, records that rating, and advances (grading from
-# memory). Reuses the data-ease styling from _ANSWER_BUTTONS. "Again" is shown as
-# "Forgot" to match the answer-state relabel (_on_answer_buttons).
-_REVIEW_RATINGS = ((1, "Forgot"), (2, "Hard"), (3, "Good"), (4, "Easy"))
-
-
-def _reviewer_front_buttons_html() -> str:
-    cells = "".join(
-        f'<td align=center><button data-ease="{n}" '
-        f"onclick='pycmd(\"speedrun:reviewrate:{n}\")'>{label}</button></td>"
-        for n, label in _REVIEW_RATINGS
-    )
-    return f"<table cellpadding=0><tr>{cells}</tr></table>"
-
-
 def _on_show_question(card: Card) -> None:
     _state.shown_at = time.monotonic()
     _state.pending_explanation = ""
@@ -1182,32 +1167,6 @@ def _on_show_question(card: Card) -> None:
             web.eval(_explain_button_js())
         except Exception as exc:  # pragma: no cover - never break the review loop
             print(f"speedrun: failed to inject self-explain button: {exc}")
-    # Show the rating buttons on the front so one tap reveals + rates + advances.
-    if mw.col is not None and _modern_on(mw.col):
-        try:
-            mw.reviewer.bottom.web.eval(
-                f"showAnswer({json.dumps(_reviewer_front_buttons_html())}, false);"
-            )
-        except Exception as exc:  # pragma: no cover - never break the review loop
-            print(f"speedrun: failed to inject front rating buttons: {exc}")
-
-
-def _reviewer_reveal_rate(mw: aqt.AnkiQt, ease_str: str) -> None:
-    """A one-tap front rating: reveal the answer (flipping to the answer state and
-    firing the answer-side hooks) then rate + advance. No-op unless a review is
-    active and the ease is 1-4."""
-    reviewer = mw.reviewer
-    if reviewer is None or mw.state != "review":
-        return
-    try:
-        ease = int(ease_str)
-    except ValueError:
-        return
-    if not 1 <= ease <= 4:
-        return
-    if reviewer.state != "answer":
-        reviewer._showAnswer()
-    reviewer._answerCard(ease)  # type: ignore[arg-type]
 
 
 def _on_show_answer(card: Card) -> None:
@@ -1428,7 +1387,6 @@ _PREFIX_CMDS: list[tuple[str, Callable[[aqt.AnkiQt, str], object]]] = [
         lambda mw, a: _start_practice(mw, [t for t in a.split(",") if t]),
     ),
     ("speedrun:toggle:", lambda mw, a: _toggle(mw, a)),
-    ("speedrun:reviewrate:", _reviewer_reveal_rate),
 ]
 
 
@@ -4184,17 +4142,31 @@ class _PracticeDialog(QDialog):
         close_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
         qconnect(close_box.rejected, self.reject)
 
+        # Scrollable content so a long AI diagnosis scrolls instead of clipping
+        # or overlapping; the action + close buttons stay pinned at the bottom.
+        content = QWidget()
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(12)
+        content_layout.addWidget(self.progress)
+        content_layout.addWidget(self.stem)
+        content_layout.addWidget(options_container)
+        content_layout.addLayout(conf_row)
+        content_layout.addWidget(self.explain_btn)
+        content_layout.addWidget(self.verdict)
+        content_layout.addWidget(self.feedback)
+        content_layout.addWidget(self.ai_card)
+        content_layout.addStretch(1)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setWidget(content)
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(*_DIALOG_MARGINS)
         layout.setSpacing(12)
-        layout.addWidget(self.progress)
-        layout.addWidget(self.stem)
-        layout.addWidget(options_container)
-        layout.addLayout(conf_row)
-        layout.addWidget(self.explain_btn)
-        layout.addWidget(self.verdict)
-        layout.addWidget(self.feedback)
-        layout.addWidget(self.ai_card)
+        layout.addWidget(scroll, 1)
         layout.addWidget(self.action_btn)
         layout.addWidget(close_box)
         _style_dialog(self)

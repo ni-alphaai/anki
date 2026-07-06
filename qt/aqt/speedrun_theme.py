@@ -583,7 +583,12 @@ def dialog_qss(night: bool = False) -> str:
     QLabel[srRole="warn"] {{ color: {p["amber"]}; font-weight: 600; }}
     QLabel[srRole="chip"] {{ color: {p["secondary"]}; border: 1px solid {p["hairline"]};
         border-radius: {_RADII["pill"]}; padding: 2px 10px; }}
-    QRadioButton {{ padding: 7px 6px; border-radius: {_RADII["input"]}; }}
+    /* Explicit background + hover on every interactive widget: on macOS dark
+       mode, a QSS-styled widget with no background/:hover rule falls back to a
+       native LIGHT hover fill that overrides the dark theme. */
+    QRadioButton {{ padding: 7px 6px; border-radius: {_RADII["input"]};
+        background: transparent; }}
+    QRadioButton:hover {{ background: {p["hover_tint"]}; }}
     QRadioButton[srState="correct"] {{ color: {p["perf"]}; font-weight: 600;
         background: color-mix(in srgb, {p["perf"]} 12%, transparent); }}
     QRadioButton[srState="wrong"] {{ color: {p["danger"]}; font-weight: 600;
@@ -595,6 +600,14 @@ def dialog_qss(night: bool = False) -> str:
     }}
     QComboBox:focus, QSpinBox:focus, QDateEdit:focus, QPlainTextEdit:focus {{
         border-color: {p["accent"]};
+    }}
+    QComboBox:hover, QSpinBox:hover, QPlainTextEdit:hover {{ border-color: {p["accent"]}; }}
+    /* The dropdown list renders as a separate native (light) popup on macOS
+       unless its view is styled explicitly. */
+    QComboBox QAbstractItemView {{
+        background: {p["surface"]}; color: {p["ink"]};
+        border: 1px solid {p["hairline"]}; outline: none; padding: 4px;
+        selection-background-color: {p["sel_tint"]}; selection-color: {p["ink"]};
     }}
     /* Date field: taller, comfortably padded, with a soft (not solid-clay)
        section highlight so the focused segment reads as gentle, and a clean
@@ -613,8 +626,8 @@ def dialog_qss(night: bool = False) -> str:
         background: {p["surface"]}; border: 1px solid {p["hairline"]};
         border-radius: {_RADII["input"]}; padding: 8px 16px;
     }}
-    QPushButton:hover {{ border-color: {p["accent"]}; }}
-    QPushButton:disabled {{ color: {p["secondary"]}; }}
+    QPushButton:hover {{ border-color: {p["accent"]}; background: {p["hover_tint"]}; }}
+    QPushButton:disabled {{ color: {p["secondary"]}; background: {p["surface"]}; }}
     QPushButton[srPrimary="1"] {{
         background: {p["accent"]}; color: #fff; border: none; font-weight: 600;
         border-radius: {_RADII["pill"]}; padding: 9px 20px;
@@ -645,6 +658,16 @@ def dialog_qss(night: bool = False) -> str:
     QFrame[srRole="divider"] {{
         background: {p["hairline"]}; max-height: 1px; border: none;
     }}
+    /* Scroll area: transparent so the dialog canvas shows through (no native
+       light panel), with a slim themed scrollbar. */
+    QScrollArea {{ background: transparent; border: none; }}
+    QScrollArea > QWidget > QWidget {{ background: transparent; }}
+    QScrollBar:vertical {{ background: transparent; width: 10px; margin: 2px; }}
+    QScrollBar::handle:vertical {{ background: {p["hairline"]};
+        border-radius: 5px; min-height: 30px; }}
+    QScrollBar::handle:vertical:hover {{ background: {p["secondary"]}; }}
+    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; background: none; }}
+    QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{ background: none; }}
     """
 
 

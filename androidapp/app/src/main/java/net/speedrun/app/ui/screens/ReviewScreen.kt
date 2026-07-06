@@ -207,29 +207,34 @@ fun ReviewScreen(onDone: () -> Unit, onPractice: (() -> Unit)? = null) {
 
         if (!loading && !finished && card != null) {
             Column(Modifier.padding(horizontal = Space.l).padding(bottom = Space.l)) {
-                // One-tap reveal + rate: the rating buttons show on the front, so a
-                // single tap reveals the answer, records that rating, and advances
-                // (grade from memory). Self-explain stays available before rating.
+                // Classic two-step: self-explain (optional) + Show answer, then
+                // reveal, then rate. Revealing the answer is the natural moment to
+                // read it before grading.
                 if (!showAnswer) {
                     SelfExplainButton(captured = pendingExplanation.isNotBlank()) { showVoice = true }
                     Spacer(Modifier.height(Space.s))
-                }
-                val hints = card!!.intervals
-                // Colors mirror the desktop reviewer's data-ease mapping
-                // (danger / amber / performance / accent) so Again/Hard/Good/Easy
-                // read identically on both platforms.
-                Row(horizontalArrangement = Arrangement.spacedBy(Space.s)) {
-                    RatingButton("Again", hints.getOrElse(0) { "" }, c.readinessBad, Modifier.weight(1f)) {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress); showAnswer = true; onRate(Rating.AGAIN)
+                    PrimaryButton("Show answer") {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showAnswer = true
                     }
-                    RatingButton("Hard", hints.getOrElse(1) { "" }, c.readinessWarn, Modifier.weight(1f)) {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress); showAnswer = true; onRate(Rating.HARD)
-                    }
-                    RatingButton("Good", hints.getOrElse(2) { "" }, c.performance, Modifier.weight(1f)) {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress); showAnswer = true; onRate(Rating.GOOD)
-                    }
-                    RatingButton("Easy", hints.getOrElse(3) { "" }, c.accent, Modifier.weight(1f)) {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress); showAnswer = true; onRate(Rating.EASY)
+                } else {
+                    val hints = card!!.intervals
+                    // Colors mirror the desktop reviewer's data-ease mapping
+                    // (danger / amber / performance / accent) so Again/Hard/Good/Easy
+                    // read identically on both platforms.
+                    Row(horizontalArrangement = Arrangement.spacedBy(Space.s)) {
+                        RatingButton("Again", hints.getOrElse(0) { "" }, c.readinessBad, Modifier.weight(1f)) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress); onRate(Rating.AGAIN)
+                        }
+                        RatingButton("Hard", hints.getOrElse(1) { "" }, c.readinessWarn, Modifier.weight(1f)) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress); onRate(Rating.HARD)
+                        }
+                        RatingButton("Good", hints.getOrElse(2) { "" }, c.performance, Modifier.weight(1f)) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress); onRate(Rating.GOOD)
+                        }
+                        RatingButton("Easy", hints.getOrElse(3) { "" }, c.accent, Modifier.weight(1f)) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress); onRate(Rating.EASY)
+                        }
                     }
                 }
             }
