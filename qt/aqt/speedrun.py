@@ -120,6 +120,21 @@ _ACTION_LABEL = {
     3: "Next: review your test-taking strategy.",
 }
 
+
+def _persist_ai_diagnosis(mw, attempt_id: int, kind: int, routed_action: int) -> None:
+    """Make the AI coach's call authoritative: write it onto the attempt so the
+    misses-by-cause report, routed practice, and the synced record reflect the
+    coach - not just the practice feedback view."""
+    if not attempt_id or mw.col is None:
+        return
+    try:
+        mw.col._backend.update_attempt_diagnosis(
+            attempt_id=attempt_id, diagnosis_kind=kind, routed_action=routed_action
+        )
+    except Exception as exc:  # pragma: no cover - never break the practice loop
+        print(f"speedrun: failed to persist AI diagnosis: {exc}")
+
+
 _EXPLAIN_CMD = "speedrun:explain"
 
 # Question-side self-explain button, injected into the card web view and removed
@@ -3564,8 +3579,11 @@ class _WsPractice:
         if predicted is not None:
             req.predicted = predicted
         diagnosis = None
+        self._attempt_id = 0
         try:
-            diagnosis = self.mw.col._backend.record_attempt(req).diagnosis
+            resp = self.mw.col._backend.record_attempt(req)
+            self._attempt_id = resp.id
+            diagnosis = resp.diagnosis
         except Exception as exc:
             tooltip(f"Could not record attempt: {exc}")
         self.answered = True
@@ -3647,10 +3665,15 @@ class _WsPractice:
             )
             self.ai = {"body": body, "source": (result.get("source") or "").strip()}
             # AI is the authority when on + confident: sync the diagnosis line +
-            # routed action to its call (was the rule-based kind).
+            # routed action to its call, and persist it onto the attempt so
+            # reports / routing / sync agree (was the rule-based kind).
             ai_kind = int(result.get("kind") or 0)
             if ai_kind in _DIAGNOSIS_LABEL:
-                self._set_feedback_diag(ai_kind, int(result.get("routed_action") or 0))
+                ai_action = int(result.get("routed_action") or 0)
+                self._set_feedback_diag(ai_kind, ai_action)
+                _persist_ai_diagnosis(
+                    self.mw, getattr(self, "_attempt_id", 0), ai_kind, ai_action
+                )
         if _ws_active == "practice":
             self.render()
 
@@ -4298,8 +4321,11 @@ class _PracticeDialog(QDialog):
             req.predicted = predicted
 
         diagnosis = None
+        self._attempt_id = 0
         try:
-            diagnosis = self.mw.col._backend.record_attempt(req).diagnosis
+            resp = self.mw.col._backend.record_attempt(req)
+            self._attempt_id = resp.id
+            diagnosis = resp.diagnosis
         except Exception as exc:
             tooltip(f"Could not record attempt: {exc}")
 
@@ -4430,10 +4456,15 @@ class _PracticeDialog(QDialog):
             self.ai_source.setText(f"Source: {source}")
             self.ai_source.setVisible(True)
         # AI is the authority when it's on and confident: replace the rule-based
-        # diagnosis line + routed action with the coach's call so they agree.
+        # diagnosis line + routed action with the coach's call, and persist it
+        # onto the attempt so reports / routing / sync agree.
         ai_kind = int(result.get("kind") or 0)
         if ai_kind in _DIAGNOSIS_LABEL:
-            self._set_diagnosis_feedback(ai_kind, int(result.get("routed_action") or 0))
+            ai_action = int(result.get("routed_action") or 0)
+            self._set_diagnosis_feedback(ai_kind, ai_action)
+            _persist_ai_diagnosis(
+                self.mw, getattr(self, "_attempt_id", 0), ai_kind, ai_action
+            )
 
     def _next(self) -> None:
         self.index += 1
