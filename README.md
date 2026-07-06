@@ -11,7 +11,8 @@ concrete next action.
   the same Anki **Rust** core, extended with the Speedrun engine over the
   existing protobuf boundary. No scheduler is reimplemented on the client.
 - **AI is off by default.** The deterministic classifier is the required path and
-  the baseline any optional AI must beat. Nothing leaves the device.
+  the baseline any optional AI must beat — with AI off, no question or
+  self-explanation is ever sent to a model.
 - **Honest by design:** readiness refuses to show a number until there is enough
   evidence, and always shows its range and what's missing.
 
@@ -33,6 +34,10 @@ BSD-3-Clause.
 - **Diagnosis + routing** — a deterministic classifier labels each miss (memory /
   reasoning / passage / test-taking) and routes it to a repair; the student can
   correct a diagnosis.
+- **Optional AI coach** — a source-grounded, abstaining diagnosis on **both**
+  desktop and phone; off by default, gated on beating the deterministic baseline,
+  grounds each call in a cited source, and never reveals the answer. It reads the
+  student's own self-explanation as primary evidence.
 - **Recall → performance bridge** — held-out, reworded questions (never added as
   cards, so no leakage) measure the gap between remembering and applying.
 - **End-of-session reasoning round** — after a review session, a short check drawn
@@ -137,20 +142,35 @@ On first launch the app opens-or-creates the collection. On an empty device it
 seeds the bundled **biology example deck**; otherwise import from the **Library**
 tab (popular decks, MMLU pack, biology e2e, or paste a link / pick a file).
 
-### Sync desktop <-> phone (two-way)
+### Sync (AnkiWeb cloud, or device-to-device)
 
-Two-way sync works over Anki's native sync protocol; the desktop hosts a bundled
-`anki-sync-server` and the phone pairs to it by scanning a QR code (server URL +
-user + token), with manual entry as a fallback.
+Speedrun rides Anki's standard sync, so evidence travels on **any** Anki server —
+including AnkiWeb, with no self-hosting. The Speedrun-specific data a stock server
+would otherwise drop (`sr_attempts` — diagnoses, confidence, self-explanations) is
+**encoded as hidden Anki notes** before each sync and decoded back afterward, so it
+survives an AnkiWeb round-trip on the battle-tested note/revlog path.
+
+**AnkiWeb (cloud, no LAN).** Sign in once and stay signed in; later syncs reuse the
+session with no password re-entry.
+
+- Desktop: **Sync to AnkiWeb** (toolbar).
+- Phone: **Settings → Sync → AnkiWeb → Sign in**, then **Sync**.
+
+AnkiWeb shards accounts across hosts and 308-redirects the base to the account's
+shard; the client follows that redirect on every request — including the full
+upload/download used the first time a schema change forces a full sync.
+
+**Device-to-device (LAN / USB, no account).** The desktop hosts a bundled
+`anki-sync-server` and the phone pairs by scanning a QR (server URL + user +
+token), with manual entry as a fallback — handy for offline or guest-Wi-Fi demos.
 
 - Desktop: **Sync with phone** shows the pairing QR and hosts the local server.
 - Phone: **Sync** tab -> scan the QR once, then **Sync now**.
-- Offline review is local-first: reviews taken with no connection sync on
-  reconnect, with no lost or double-counted reviews.
 
-Verified live on a Galaxy S23 (phone review -> desktop `revlog` 3 -> 5; offline
-review -> reconnect -> `revlog` 5 -> 7). A reproducible headless harness covers
-the same path:
+Offline review is local-first: reviews taken with no connection sync on reconnect,
+with no lost or double-counted reviews. Verified live on a Galaxy S23 (phone review
+-> desktop `revlog` 3 -> 5; offline review -> reconnect -> `revlog` 5 -> 7). A
+reproducible headless harness covers the device-to-device path:
 
 ```bash
 ./tools/speedrun_sync_check.sh    # two independent collections, two-way, no loss/dupe
@@ -161,10 +181,6 @@ For a one-way USB copy of an existing desktop deck (e.g. first-time seeding):
 ```bash
 tools/push_deck.sh --media [path/to/collection.anki2]
 ```
-
-Production note: the shipped sync path is proven device-to-device; a persistent,
-network-reachable `anki-sync-server` is what a real deployment adds on top (the
-fork's modified schema does not sync to AnkiWeb, so self-hosting is required).
 
 ---
 
