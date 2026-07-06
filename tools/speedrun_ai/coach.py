@@ -29,7 +29,13 @@ SYSTEM = (
     "exam-style question incorrectly. Classify the single ROOT-CAUSE failure mode "
     "using ONLY these definitions:\n"
     + "\n".join(f"- {k}: {v}" for k, v in RUBRIC.items())
-    + "\nGround your reasoning in the provided answer explanation, which is the "
+    + "\nThe student's own self-explanation of their reasoning is your PRIMARY "
+    "evidence when present: pinpoint the specific misconception or misstep in "
+    "THEIR reasoning, and use it to separate the modes — did they not know the "
+    "fact (memory), know the facts but misapply them (reasoning), miss evidence "
+    "given in the passage/figure (passage), or know it but slip while rushing "
+    "(test_taking)? "
+    "Ground your reasoning in the provided answer explanation, which is the "
     "named source; refer to it. Explain the failure — do not simply restate the "
     "correct answer. If the evidence is insufficient to choose one mode "
     'confidently, set "abstain" to true.\n'
@@ -56,6 +62,11 @@ def _user(item: dict, s: Signals) -> str:
             tag += " [student chose this]"
         lines.append(f"  ({chr(65 + i)}) {o}{tag}")
     lines.append(f"Answer explanation (named source): {item.get('explanation', '')}")
+    expl = (s.self_explanation or "").strip()
+    if expl:
+        lines.append(f'Student self-explanation (PRIMARY evidence): "{expl}"')
+    else:
+        lines.append("Student self-explanation: (none provided)")
     lines.append(
         f"Behaviour: took_ms={s.took_ms}, self_confidence={s.confidence:.2f}, "
         f"question_type={s.question_type}"

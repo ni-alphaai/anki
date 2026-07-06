@@ -28,6 +28,7 @@ def main() -> int:
         took_ms=int(s.get("took_ms", 6000)),
         question_type=int(s.get("question_type", 1)),
         confidence=float(s.get("confidence", 0.0)),
+        self_explanation=str(s.get("self_explanation", "")),
         recall_failed=bool(s.get("recall_failed", False)),
         passage_evidence_missed=bool(s.get("passage_evidence_missed", False)),
     )

@@ -81,6 +81,10 @@ class Signals:
     question_type: int = 1
     # Self-reported / model-predicted pre-answer confidence, 0..1 (0 = unknown).
     confidence: float = 0.0
+    # The student's own words explaining their reasoning at answer time. This is
+    # the coach's primary evidence for locating the specific misstep (now
+    # mandatory on practice questions, so it is almost always present).
+    self_explanation: str = ""
     # Known for SRS reviews (the student pressed "Again"); usually unknown for
     # exam-style MCQs, which is exactly where the content-aware coach earns its keep.
     recall_failed: bool = False

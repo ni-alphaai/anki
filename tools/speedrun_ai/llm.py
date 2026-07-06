@@ -20,29 +20,38 @@ import pathlib
 _HERE = pathlib.Path(__file__).resolve().parent
 _ANKI_ROOT = _HERE.parent.parent  # .../anki
 CACHE_PATH = _ANKI_ROOT / "tools" / "speedrun_ai_cache.json"
-DEFAULT_MODEL = "gpt-4o-mini"
+# The diagnostic coach reasons over the student's own self-explanation, so it
+# runs on a strong general model by default (was gpt-4o-mini). Override per-run
+# with the SPEEDRUN_AI_MODEL env var (or a line in anki/.env).
+DEFAULT_MODEL = "gpt-4o"
 
 
 def _load_env() -> None:
-    """Populate OPENAI_API_KEY from anki/.env if not already in the environment."""
-    if os.environ.get("OPENAI_API_KEY"):
-        return
+    """Populate env vars (OPENAI_API_KEY, SPEEDRUN_AI_MODEL, ...) from anki/.env
+    for any key not already set in the environment."""
     envf = _ANKI_ROOT / ".env"
-    if envf.exists():
-        for line in envf.read_text().splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                k, v = line.split("=", 1)
-                os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+    if not envf.exists():
+        return
+    for line in envf.read_text().splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+
+
+def _resolve_model(model: str | None) -> str:
+    """Explicit arg wins, then SPEEDRUN_AI_MODEL, then the strong default."""
+    _load_env()
+    return model or os.environ.get("SPEEDRUN_AI_MODEL") or DEFAULT_MODEL
 
 
 class LLM:
     """A minimal chat-completions wrapper that returns parsed JSON, with caching."""
 
     def __init__(
-        self, model: str = DEFAULT_MODEL, temperature: float = 0.0, seed: int = 7
+        self, model: str | None = None, temperature: float = 0.0, seed: int = 7
     ):
-        self.model = model
+        self.model = _resolve_model(model)
         self.temperature = temperature
         self.seed = seed
         self.cache = self._cache_load()
